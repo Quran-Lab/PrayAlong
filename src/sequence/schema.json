@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://prayalong.app/schema/sequence-v1.json",
+  "title": "PrayAlong prayer sequence",
+  "description": "The ordered lines of one prayer, with the posture, expected camera pose and timing for each. Produced by src/sequence/build.ts; consumed by the UI, the 3D stage and the hands-free engine.",
+  "type": "object",
+  "required": ["version", "prayer", "rakahs", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "prayer": { "$ref": "#/$defs/prayerId" },
+    "rakahs": { "type": "integer", "minimum": 2, "maximum": 4 },
+    "steps": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/step" } }
+  },
+  "$defs": {
+    "prayerId": { "enum": ["fajr", "dhuhr", "asr", "maghrib", "isha"] },
+    "posture": {
+      "description": "What the avatar shows. Several postures can share one pose class.",
+      "enum": ["takbir", "qiyam", "ruku", "itidal", "sujud", "jalsah", "tashahhud", "salam-right", "salam-left"]
+    },
+    "poseClass": {
+      "description": "What the camera can tell apart. A change of pose class is what advances the prayer hands-free.",
+      "enum": ["hands-raised", "standing", "bowing", "prostrating", "sitting"]
+    },
+    "step": {
+      "type": "object",
+      "required": ["id", "rakah", "posture", "pose", "recitationId", "group", "groupIndex", "groupSize", "repeat", "voice", "timing"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "rakah": { "type": "integer", "minimum": 1, "maximum": 4 },
+        "posture": { "$ref": "#/$defs/posture" },
+        "pose": { "$ref": "#/$defs/poseClass" },
+        "recitationId": { "type": "string", "description": "Key into src/content/recitations.ts" },
+        "group": { "type": "string", "description": "Label for the run of lines, e.g. \"Al-Fatiha\"" },
+        "groupIndex": { "type": "integer", "minimum": 0 },
+        "groupSize": { "type": "integer", "minimum": 1 },
+        "repeat": { "type": "integer", "minimum": 1, "description": "Say the line this many times" },
+        "voice": { "enum": ["aloud", "quiet"] },
+        "cue": { "type": "string", "description": "Short movement instruction shown when this line starts a new movement" },
+        "timing": {
+          "type": "object",
+          "required": ["expectedMs", "minMs"],
+          "additionalProperties": false,
+          "properties": {
+            "expectedMs": { "type": "integer", "minimum": 0, "description": "Typical time on this line before pace scaling" },
+            "minMs": { "type": "integer", "minimum": 0, "description": "Never auto-advance sooner than this" }
+          }
+        }
+      }
+    }
+  }
+}

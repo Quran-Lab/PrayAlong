@@ -1,0 +1,16 @@
+node_modules
+dist
+*.local
+.DS_Store
+.vite
+coverage
+test-results
+playwright-report
+screenshots/
+# Model weights are large; ship them via a release/CDN, not git.
+public/models/*.onnx
+public/models/*.ort
+public/models/*.data
+
+# Local test characters (not licensed for the repo)
+public/avatars/_local/

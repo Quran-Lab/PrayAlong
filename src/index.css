@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+/*
+ * PrayAlong design tokens. Dark, calm and warm: near-black with a green
+ * undertone, one mint accent, and a per-prayer ambient hue (set at runtime
+ * on :root as --ambient) used only for glows.
+ */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-arabic: "Amiri", "Noto Naskh Arabic", "Geeza Pro", serif;
+
+  --color-canvas: #0a0d0c;
+  --color-surface: #111614;
+  --color-raised: #161c1a;
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-line-strong: rgb(255 255 255 / 0.14);
+  --color-ink: #eef2ef;
+  --color-ink-soft: rgb(238 242 239 / 0.72);
+  --color-ink-muted: rgb(238 242 239 / 0.48);
+  --color-ink-faint: rgb(238 242 239 / 0.28);
+  --color-mint: oklch(0.86 0.12 166);
+  --color-mint-strong: oklch(0.78 0.14 164);
+  --color-mint-deep: oklch(0.42 0.08 166);
+
+  --ease-calm: cubic-bezier(0.22, 1, 0.36, 1);
+  --shadow-glow: 0 0 0 1px oklch(0.86 0.12 166 / 0.45), 0 0 24px -4px oklch(0.86 0.12 166 / 0.45);
+
+  --animate-pop: pop 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-breathe: breathe 2.4s ease-in-out infinite;
+
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.98);
+    }
+  }
+  @keyframes breathe {
+    50% {
+      opacity: 0.35;
+    }
+  }
+}
+
+:root {
+  --ambient: oklch(0.78 0.13 165);
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: oklch(0.86 0.12 166 / 0.3);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-mint);
+  outline-offset: 2px;
+}
+
+/* Surfaces on the flat page. (No backdrop blur: nothing behind them to blur,
+   and Chromium can mis-composite blurred layers next to the WebGL canvas.) */
+@utility glass {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.03));
+  border: 1px solid var(--color-line);
+}
+
+/* Overlays that float on the 3D stage. */
+@utility frosted {
+  background: rgb(17 22 20 / 0.72);
+  border: 1px solid var(--color-line);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+
+@utility arabic {
+  font-family: var(--font-arabic);
+  font-feature-settings: "calt", "liga", "mark", "mkmk";
+  line-height: 1.85;
+  word-spacing: 0.06em;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
