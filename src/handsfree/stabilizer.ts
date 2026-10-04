@@ -12,9 +12,9 @@ export class PoseStabilizer {
   private since = 0
 
   constructor(
-    private readonly holdMs = 450,
-    private readonly windowMs = 900,
-    private readonly agreement = 0.7,
+    private readonly holdMs = 300,
+    private readonly windowMs = 700,
+    private readonly agreement = 0.65,
   ) {}
 
   push(pose: PoseClass | null, t: number): PoseClass | null {

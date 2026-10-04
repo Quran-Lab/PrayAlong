@@ -1,6 +1,6 @@
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { AlertDialog, Tooltip as RadixTooltip } from 'radix-ui'
-import { useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { CameraBubble, HandsFreeButton, isFollowing } from '@/components/HandsFree'
 import { Logo } from '@/components/Logo'
 import { CompletePanel, ReadyPanel } from '@/components/Panels'
@@ -9,7 +9,6 @@ import { PrayerChips, PrayerMenu } from '@/components/PrayerSelector'
 import { Recitation } from '@/components/Recitation'
 import { SettingsPopover } from '@/components/SettingsPopover'
 import { CHARACTERS, DEFAULT_CHARACTER } from '@/components/stage/characters'
-import { CompanionStage } from '@/components/stage/CompanionStage'
 import type { PoseName } from '@/components/stage/rig/prayer-poses'
 import { Button } from '@/components/ui/primitives'
 import { PRAYER_BY_ID } from '@/content/prayers'
@@ -19,6 +18,9 @@ import { usePrayerClock } from '@/lib/use-prayer-clock'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import type { PrayerId } from '@/sequence/types'
 import { PACE_FACTOR, currentStep, useSession } from '@/state/session'
+
+// The 3D stack is the heaviest part of the app; let the UI paint first.
+const CompanionStage = lazy(() => import('@/components/stage/CompanionStage').then((m) => ({ default: m.CompanionStage })))
 
 export function App() {
   const clock = usePrayerClock()
@@ -65,13 +67,15 @@ export function App() {
           {/* Stage */}
           <main className="relative flex min-h-0 flex-1 flex-col">
             <div className="relative min-h-0 flex-1">
-              <CompanionStage
-                posture={posture}
-                character={character}
-                ambient={ambient}
-                reducedMotion={reducedMotion}
-                onLoaded={() => setStageReady(true)}
-              />
+              <Suspense>
+                <CompanionStage
+                  posture={posture}
+                  character={character}
+                  ambient={ambient}
+                  reducedMotion={reducedMotion}
+                  onLoaded={() => setStageReady(true)}
+                />
+              </Suspense>
               <AnimatePresence>
                 {!stageReady && (
                   <motion.div exit={{ opacity: 0 }} className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-ink-faint">

@@ -20,9 +20,16 @@ export function PostureDock({ following }: { following: boolean }) {
   const rakah = phase === 'ready' ? 1 : phase === 'complete' ? sequence.rakahs : step.rakah
   const inRakah = segments.filter((s) => s.rakah === rakah)
   const activeRef = useRef<HTMLButtonElement>(null)
+  const listRef = useRef<HTMLOListElement>(null)
 
+  // Keep the current movement in view on narrow screens. (Scroll only the
+  // list — scrollIntoView would also nudge the page.)
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    const list = listRef.current
+    const item = activeRef.current
+    if (!list || !item) return
+    const left = item.offsetLeft - list.clientWidth / 2 + item.clientWidth / 2
+    list.scrollTo({ left, behavior: 'smooth' })
   }, [index])
 
   return (
@@ -42,7 +49,7 @@ export function PostureDock({ following }: { following: boolean }) {
       <div className="my-2 w-px shrink-0 bg-line" />
 
       {/* Movements of this rak'ah */}
-      <ol className="flex min-w-0 flex-1 items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ol ref={listRef} className="relative flex min-w-0 flex-1 items-center overflow-x-auto [mask-image:linear-gradient(to_right,transparent,black_14px,black_calc(100%-14px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {inRakah.map((seg, i) => {
           const active = praying && index >= seg.start && index < seg.end
           const done = phase === 'complete' || (praying && index >= seg.end)

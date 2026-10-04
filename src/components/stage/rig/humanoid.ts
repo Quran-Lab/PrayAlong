@@ -64,6 +64,32 @@ export interface Humanoid {
   dispose(): void
 }
 
+/**
+ * Put every bone back in the pose the mesh was skinned in (usually a T- or
+ * A-pose), whatever pose the file happens to be saved in. Unlike
+ * `Skeleton.pose()`, this respects transforms on non-bone parents such as a
+ * scaled Blender "Armature" node.
+ */
+function restoreBindPose(mesh: THREE.SkinnedMesh) {
+  const { bones, boneInverses } = mesh.skeleton
+  const world = new Map<THREE.Object3D, THREE.Matrix4>()
+  bones.forEach((bone, i) => world.set(bone, mesh.bindMatrix.clone().multiply(boneInverses[i]!.clone().invert())))
+  const depth = (o: THREE.Object3D) => {
+    let d = 0
+    for (let p = o.parent; p; p = p.parent) d++
+    return d
+  }
+  for (const bone of [...bones].sort((a, b) => depth(a) - depth(b))) {
+    const parent = bone.parent!
+    let parentWorld = world.get(parent)
+    if (!parentWorld) {
+      parent.updateWorldMatrix(true, false)
+      parentWorld = parent.matrixWorld
+    }
+    parentWorld.clone().invert().multiply(world.get(bone)!).decompose(bone.position, bone.quaternion, bone.scale)
+  }
+}
+
 const sanitize = (name: string) => name.replace(/^mixamorig\d*[:_]?/i, '').replace(/[:.\s]/g, '')
 
 /** glTF with a Mixamo-style skeleton. Mirrors three-vrm's normalization. */
@@ -77,12 +103,14 @@ class GltfHumanoid implements Humanoid {
 
   constructor(readonly scene: THREE.Object3D) {
     const byName = new Map<string, THREE.Object3D>()
+    let skin: THREE.SkinnedMesh | null = null
+    scene.updateMatrixWorld(true)
     scene.traverse((o) => {
       if ((o as THREE.Bone).isBone || o.type === 'Object3D') byName.set(sanitize(o.name), o)
       const mesh = o as THREE.SkinnedMesh
       if (mesh.isSkinnedMesh) {
-        mesh.skeleton.pose() // start from the bind pose (T/A-pose), whatever the file's default
         mesh.frustumCulled = false
+        if (!skin || mesh.skeleton.bones.length > skin.skeleton.bones.length) skin = mesh
       }
       if ((o as THREE.Mesh).isMesh && (o as THREE.Mesh).morphTargetDictionary) {
         const dict = (o as THREE.Mesh).morphTargetDictionary!
@@ -97,6 +125,7 @@ class GltfHumanoid implements Humanoid {
     }
     const missing = REQUIRED.filter((b) => !this.raw[b])
     if (missing.length) throw new Error(`Character rig is missing bones: ${missing.join(', ')}`)
+    if (skin) restoreBindPose(skin)
 
     scene.updateMatrixWorld(true)
     for (const [bone, node] of Object.entries(this.raw) as [HumanBone, THREE.Object3D][]) {
