@@ -50,10 +50,11 @@ adhan · Zustand · Vitest.
 
 ## Characters
 
-The stage is character-agnostic: any humanoid VRM, or GLB with a
-Mixamo-style skeleton, plays every posture with no per-character tuning.
-See [docs/characters.md](docs/characters.md) for the asset spec and how to
-add one. The bundled "Studio" mannequin is a placeholder.
+Four companions ship with the app — **Yusuf**, **Maryam**, **Ahmad** and
+**Aisha** — soft clay chibi characters built in Blender from the scripts in
+`tools/characters/`. The stage is character-agnostic: any humanoid VRM, or
+GLB with a Mixamo-style skeleton, plays every posture with no
+per-character tuning. See [docs/characters.md](docs/characters.md).
 
 ## Hands-free
 

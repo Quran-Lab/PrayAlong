@@ -12,8 +12,40 @@ applied to whichever character is loaded:
 - **Sujud**: the torso pitches until the character's own forehead rests on
   the mat, whatever its proportions.
 
-Tested on three unrelated rigs (a Mixamo mannequin, a Ready Player Me avatar
-and a stylised cartoon character) with no per-character changes.
+Tested on three unrelated third-party rigs (a Mixamo mannequin, a Ready
+Player Me avatar and a stylised cartoon character) with no per-character
+changes, and on the four PrayAlong companions below.
+
+## The cast
+
+| | File | Look |
+| --- | --- | --- |
+| Yusuf | `public/avatars/yusuf.glb` | Swoopy brown hair, cream kurta, olive trousers |
+| Maryam | `public/avatars/maryam.glb` | Dusty-rose hijab over a cream under-scarf, periwinkle dress |
+| Ahmad | `public/avatars/ahmad.glb` | White kufi, short beard, stone thobe over sirwal |
+| Aisha | `public/avatars/aisha.glb` | Sand hijab with a long cape, plum abaya |
+
+Each is ~1 MB and ~30k triangles, T-pose, Mixamo skeleton with finger roots,
+eyes modelled closed. They're built by Blender scripts — reproducible and
+editable:
+
+```bash
+pip install bpy==5.0.1 scikit-image
+python3 tools/characters/build_yusuf.py        # ~3–5 min; also maryam, ahmad, aisha
+python3 tools/characters/validate_glb.py public/avatars/*.glb
+```
+
+`common.py` holds the modelling, rig, weighting and export helpers; `kit.py`
+the shared head/face, hands, feet, skeletons, hijab builder and weight
+rules. Options: `NO_RENDER=1` (export only), `POSES=1` (render the postures
+in Blender), `CHAR_CACHE=<dir>`, `PREVIEW_DIR=<dir>`.
+
+Known rough edges: a small dark sliver at the hijab cape edge beside the
+right arm when sitting; long skirts read slightly boxy on the lap and the
+hem trim stretches in sujud; Ahmad has a tiny notch at the collar opening.
+
+Portraits for the picker (`public/avatars/<id>.webp`) are cropped from
+Pose Lab renders so they match the app's lighting.
 
 ## Asset spec
 
@@ -37,14 +69,14 @@ job. Two routes that land in the spec above:
    image-to-3D tool (Meshy, Tripo, Rodin), auto-rig it (Mixamo or AccuRIG),
    export GLB in T-pose. Clean up in Blender if needed.
 
-Plan a small cast so people can pick a companion who feels like them — for
-example a boy, a girl in hijab, a man, a woman in hijab, and an elder.
+Ideas for more: an elder, a younger child, more skin tones and clothing
+styles, so everyone can pick a companion who feels like them.
 
 ## Adding one
 
 1. Drop the file in `public/avatars/`.
-2. Add an entry to `src/components/stage/characters.ts`.
+2. Add an entry (with a `thumbnail`) to `src/components/stage/characters.ts`.
 3. Check it in the Pose Lab: `/?lab&pose=sujud&character=/avatars/<file>.glb`
    (add `&az=1.57` for a side view).
 
-Once there's more than one, a **Companion** picker appears in Settings.
+The **Companion** picker in Settings lists every entry.
