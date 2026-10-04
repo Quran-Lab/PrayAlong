@@ -5,7 +5,7 @@ name: CI & Pages
 
 on:
   push:
-    branches: [main, claude/prayalong-salah-companion-e0baq9]
+    branches: [main]
   workflow_dispatch:
 
 permissions:

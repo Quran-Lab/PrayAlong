@@ -605,7 +605,7 @@ def groove(f, xy, depth=0.003, radius=0.005, z_from=1.3, taper=True):
     return tube([tuple(c) for c in centres], rs)
 
 
-def stroke(name, f_surface, xz, radii, sink=0.35, flatten=1.0, resolution=6, bevel_res=4):
+def stroke(name, f_surface, xz, radii, sink=0.35, flatten=1.0, resolution=4, bevel_res=2):
     """A tapered tube lying on a surface: lash lines, brows, mouths.
 
     xz: front-view control points; radii: per-point tube radius.
@@ -656,7 +656,7 @@ def srgb(h):
     return (*lin, 1.0)
 
 
-def material(name, color, roughness=0.7, sheen=0.0, sheen_tint=None, vertex_color=False, specular=0.4, coat=0.0):
+def material(name, color, roughness=0.7, sheen=0.0, sheen_tint=None, vertex_color=False, specular=0.4, coat=0.0, glow=0.0):
     m = bpy.data.materials.new(name)
     m.use_nodes = True
     nt = m.node_tree
@@ -672,6 +672,10 @@ def material(name, color, roughness=0.7, sheen=0.0, sheen_tint=None, vertex_colo
     if coat:
         bsdf.inputs['Coat Weight'].default_value = coat
         bsdf.inputs['Coat Roughness'].default_value = 0.35
+    if glow:
+        # A faint self-lit lift (soft "subsurface" feel) so skin never goes muddy in shade.
+        bsdf.inputs['Emission Color'].default_value = srgb(color)
+        bsdf.inputs['Emission Strength'].default_value = glow
     if vertex_color:
         ca = nt.nodes.new('ShaderNodeVertexColor')
         ca.layer_name = 'Col'

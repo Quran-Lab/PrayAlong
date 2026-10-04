@@ -46,7 +46,7 @@ SK = Skeleton(
     middle=knuckles['middle'],
     pinky=knuckles['pinky'],
     hip=(0.054, 0.005, 0.39),
-    knee=(0.057, 0.0, 0.22),
+    knee=(0.057, -0.012, 0.22),
     ankle=ANKLE,
     toe=foot_j['toe'],
     toe_tip=foot_j['toe_tip'],
@@ -136,7 +136,7 @@ def buttons_sdf(kurta):
 def build(render_previews=True):
     reset_scene()
     mats = dict(
-        skin=material('Skin', COLORS['skin'], roughness=0.6, vertex_color=True),
+        skin=material('Skin', COLORS['skin'], roughness=0.6, vertex_color=True, glow=0.07),
         hair=material('Hair', COLORS['hair'], roughness=0.55),
         kurta=material('Kurta', COLORS['kurta'], roughness=0.78, sheen=0.2, sheen_tint='#fff1dc'),
         trousers=material('Trousers', COLORS['trousers'], roughness=0.85, sheen=0.2, sheen_tint='#e8ecd8'),
@@ -146,18 +146,18 @@ def build(render_previews=True):
         mouth=material('Mouth', FaceStyle.mouth, roughness=0.6),
     )
     field = body_field(SK, hip_front_width=0.06)
-    field_cuff = body_field(SK, hip_front_width=0.06, wrist_shift=0.012)
+    field_cuff = body_field(SK, hip_front_width=0.06, wrist_shift=0.012, neck_shift=0.03)
     every = lambda P: sided(P, field)  # noqa: E731
     head_only = lambda P: {'Head': np.ones(len(P))}  # noqa: E731
 
     parts = []
     skull_w, head_w, neck_w = PLACE.sdf(HEAD['skull']), PLACE.sdf(HEAD['head']), PLACE.sdf(HEAD['neck'])
-    head = sdf_mesh('Head', head_w, voxel=0.0014, faces=3900, symmetric=True)
+    head = sdf_mesh('Head', head_w, voxel=0.0014, faces=3700, symmetric=True)
     finish_part('Head', head, mats['skin'], lambda P: head_weights(P, SK, skull_w, neck_w, field),
                 colors=blush_colors(get_verts(head), PLACE, COLORS['skin']))
     parts.append(head)
 
-    hair = sdf_mesh('Hair', PLACE.sdf(hair_sdf()), voxel=0.0014, faces=3700)
+    hair = sdf_mesh('Hair', PLACE.sdf(hair_sdf()), voxel=0.0013, faces=4600)
     finish_part('Hair', hair, mats['hair'], head_only)
     parts.append(hair)
 
@@ -166,7 +166,7 @@ def build(render_previews=True):
         parts.append(s)
 
     kurta, torso = kurta_sdf()
-    kob = sdf_mesh('Kurta', kurta, voxel=0.0018, faces=3300, symmetric=True)
+    kob = sdf_mesh('Kurta', kurta, voxel=0.0018, faces=3100, symmetric=True)
     finish_part('Kurta', kob, mats['kurta'], lambda P: sided(P, field_cuff, blend=0.04))
     parts.append(kob)
 

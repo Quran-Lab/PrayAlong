@@ -189,14 +189,15 @@ def bare_foot(ankle, s=1.0):
 
 
 def body_field(sk: Skeleton, *, shoulder_bias=0.022, knee_bias=0.026, hip_back_bias=0.03, elbow_bias=0.018,
-               wrist_shift=0.0, hip_width=0.032, hip_front_width=None, hip_front_bias=0.0, knee_width=0.017, arm_zone=None):
+               wrist_shift=0.0, hip_width=0.032, hip_front_width=None, hip_front_bias=0.0, knee_width=0.017, arm_zone=None,
+               neck_shift=0.0):
     """A left-side weight field (bone → weight) for points with x ≥ 0."""
     hips, spine, spine1, spine2, neck, head = (np.array(v) for v in (sk.hips, sk.spine, sk.spine1, sk.spine2, sk.neck, sk.head))
     sh, el, wr = np.array(sk.shoulder), np.array(sk.elbow), np.array(sk.wrist)
     hip, kn, an, toe = np.array(sk.hip), np.array(sk.knee), np.array(sk.ankle), np.array(sk.toe)
     Z = (0, 0, 1)
     J = Joint
-    torso_j = [J(spine, Z, 0.03), J(spine1, Z, 0.03), J(spine2, Z, 0.03), J(neck, Z, 0.022), J(head, Z, 0.014)]
+    torso_j = [J(spine, Z, 0.03), J(spine1, Z, 0.03), J(spine2, Z, 0.03), J(neck + np.array([0, 0, neck_shift]), Z, 0.022), J(head, Z, 0.014)]
     arm_j = [J(sh, (1, 0, 0), 0.026, outer=(0, 0, 1), bias=shoulder_bias),
              J(el, (1, 0, 0), 0.02, outer=(0, 1, 0), bias=elbow_bias),
              J(wr + np.array([wrist_shift, 0, 0]), (1, 0, 0), 0.012)]
