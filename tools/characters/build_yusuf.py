@@ -133,7 +133,7 @@ def buttons_sdf(kurta):
 
 # ───────────────────────────────────────────────────────────── build
 
-def build(render_previews=True):
+def build():
     reset_scene()
     mats = dict(
         skin=material('Skin', COLORS['skin'], roughness=0.6, vertex_color=True, glow=0.07),
@@ -187,11 +187,9 @@ def build(render_previews=True):
         parts.append(f)
 
     arm, body, tris = assemble('Yusuf', SK, parts, OUT_GLB)
-    if render_previews:
-        preview_setup()
-        hero_renders(os.path.join(PREVIEW_DIR, NAME), height=0.985, face_z=0.83, arm_ob=arm)
+    previews(NAME, arm, body)
     return tris
 
 
 if __name__ == '__main__':
-    build(render_previews=not os.environ.get('NO_RENDER'))
+    build()

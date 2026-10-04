@@ -16,6 +16,7 @@ export function SetupSheet({
   status,
   stream,
   framing,
+  engineLabel,
   facingMode,
   onFlip,
   onRetry,
@@ -26,6 +27,7 @@ export function SetupSheet({
   status: HandsFreeStatus
   stream: MediaStream | null
   framing: Framing
+  engineLabel: string | null
   facingMode: 'user' | 'environment'
   onFlip: () => void
   onRetry: () => void
@@ -89,6 +91,10 @@ export function SetupSheet({
           </button>
         )}
       </div>
+
+      {engineLabel && status === 'watching' && (
+        <p className="mt-2 text-center text-[11px] text-ink-faint">{engineLabel} · {t('hf.private')}</p>
+      )}
 
       <ol className="mt-4 space-y-2.5">
         {steps.map(({ icon: Icon, text }, i) => (

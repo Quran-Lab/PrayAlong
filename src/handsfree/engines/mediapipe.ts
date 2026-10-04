@@ -24,15 +24,18 @@ export async function createMediaPipeEngine(): Promise<PoseEngine> {
       minTrackingConfidence: 0.5,
     })
   let landmarker: Awaited<ReturnType<typeof create>>
+  let delegate: 'GPU' | 'CPU' = 'GPU'
   try {
     landmarker = await create('GPU')
   } catch {
+    delegate = 'CPU'
     landmarker = await create('CPU')
   }
 
   let last = 0
   return {
     id: 'mediapipe',
+    label: `MediaPipe · ${delegate === 'GPU' ? 'GPU (WebGL)' : 'CPU'}`,
     async detect(video, timestamp) {
       // Timestamps must strictly increase.
       last = Math.max(last + 1, Math.round(timestamp))

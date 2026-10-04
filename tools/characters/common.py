@@ -510,9 +510,35 @@ def recalc_outward(ob):
     bm.free()
 
 
+_PROBES = np.random.default_rng(7).uniform((-0.6, -0.4, -0.05), (0.6, 0.4, 1.25), (6000, 3)).astype(F32)
+CACHE_DIR = os.environ.get('CHAR_CACHE')
+
+
+def _fingerprint(f, *params):
+    import hashlib
+
+    d = np.round(f(_PROBES), 5).astype(np.float32)
+    h = hashlib.sha1(d.tobytes())
+    h.update(repr(params).encode())
+    return h.hexdigest()[:16]
+
+
 def sdf_mesh(name, f, voxel=0.002, faces=3000, symmetric=False, relax_iters=2, lo=None, hi=None, remesh=True):
-    """SDF → marching cubes → QuadriFlow → snapped, smooth-normal mesh object."""
+    """SDF → marching cubes → QuadriFlow → snapped, smooth-normal mesh object.
+    Set CHAR_CACHE=<dir> to reuse meshes whose shape and settings are unchanged."""
     t = time.time()
+    path = None
+    if CACHE_DIR:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        path = os.path.join(CACHE_DIR, f'{name}-{_fingerprint(f, voxel, faces, symmetric, relax_iters, remesh)}.npz')
+        if os.path.exists(path):
+            z = np.load(path)
+            ob = mesh_object(name, z['v'], z['f'])
+            me = ob.data
+            me.shade_smooth()
+            me.normals_split_custom_set_from_vertices(z['n'].tolist())
+            log(f'{name}: cached, {len(me.vertices)} verts, {triangulated_count(ob)} tris')
+            return ob
     if lo is None:
         lo, hi = find_bounds(f)
     V, Fc = marching(f, voxel, lo, hi)
@@ -535,6 +561,15 @@ def sdf_mesh(name, f, voxel=0.002, faces=3000, symmetric=False, relax_iters=2, l
         relax(ob, f, iters=relax_iters)
     recalc_outward(ob)
     set_sdf_normals(ob, f)
+    if path:
+        bpy_tris = [list(p.vertices) for p in ob.data.polygons]
+        if all(len(p) == len(bpy_tris[0]) for p in bpy_tris):
+            fc = np.array(bpy_tris, np.int32)
+        else:  # mixed quads/tris: store as triangles
+            fc = np.array([tri for p in bpy_tris for tri in ([p[0], p[i], p[i + 1]] for i in range(1, len(p) - 1))], np.int32)
+        g = gradient(f, get_verts(ob))
+        g /= np.maximum(np.linalg.norm(g, axis=1, keepdims=True), 1e-8)
+        np.savez(path, v=get_verts(ob), f=fc, n=g)
     log(f'{name}: {len(ob.data.vertices)} verts, {triangulated_count(ob)} tris ({time.time() - t:.1f}s)')
     return ob
 

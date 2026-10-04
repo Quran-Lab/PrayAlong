@@ -10,20 +10,37 @@ import { KP, type Framing, type HandsFreeStatus, type Keypoint } from './types'
 const FPS = 15
 const DEMO_KEYS: Record<string, PoseClass> = { '1': 'hands-raised', '2': 'standing', '3': 'bowing', '4': 'prostrating', '5': 'sitting' }
 
-/** Which engine to try first: `?engine=detrpose` or VITE_POSE_ENGINE, else MediaPipe. */
-function enginePreference(): ('mediapipe' | 'detrpose')[] {
-  const wanted = new URLSearchParams(location.search).get('engine') ?? import.meta.env.VITE_POSE_ENGINE
-  return wanted === 'detrpose' ? ['detrpose', 'mediapipe'] : ['mediapipe', 'detrpose']
+type EngineChoice = { id: 'mediapipe' } | { id: 'detrpose'; maxFrameMs?: number }
+
+/** A frame budget for DETRPose to be the default (~8 fps or better). */
+const DETRPOSE_BUDGET_MS = 120
+
+/**
+ * Engine order. Tracking starts right away with MediaPipe (GPU via WebGL,
+ * then CPU); on WebGPU devices DETRPose — the stronger model — warms up in
+ * the background and takes over if a frame fits the budget. Force either
+ * with `?engine=` or VITE_POSE_ENGINE. DETRPose on WebAssembly is the last
+ * resort.
+ */
+const forcedEngine = () => new URLSearchParams(location.search).get('engine') ?? import.meta.env.VITE_POSE_ENGINE
+
+function engineOrder(): EngineChoice[] {
+  const wanted = forcedEngine()
+  if (wanted === 'detrpose') return [{ id: 'detrpose' }, { id: 'mediapipe' }]
+  return [{ id: 'mediapipe' }, { id: 'detrpose' }]
 }
+
+/** Upgrade to DETRPose on WebGPU in the background (unless an engine is forced). */
+const shouldUpgrade = () => !forcedEngine() && 'gpu' in navigator
 
 async function startEngine(): Promise<PoseEngine> {
   let lastError: unknown
-  for (const id of enginePreference()) {
+  for (const choice of engineOrder()) {
     try {
-      return id === 'mediapipe' ? await createMediaPipeEngine() : await createDetrPoseEngine()
+      return choice.id === 'mediapipe' ? await createMediaPipeEngine() : await createDetrPoseEngine({ maxFrameMs: choice.maxFrameMs })
     } catch (err) {
       lastError = err
-      console.warn(`[hands-free] ${id} unavailable`, err)
+      console.warn(`[hands-free] ${choice.id} unavailable`, err)
     }
   }
   throw lastError
@@ -59,6 +76,7 @@ export function useHandsFree({
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [pose, setPose] = useState<PoseClass | null>(null)
   const [framing, setFraming] = useState<Framing>('none')
+  const [engineLabel, setEngineLabel] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const onPoseRef = useRef(onPose)
   onPoseRef.current = onPose
@@ -167,8 +185,23 @@ export function useHandsFree({
         return
       }
       if (cancelled) return engine.dispose()
+      setEngineLabel(engine.label)
       setStatus('watching')
       loop()
+
+      // Tracking already works; now try the stronger model on WebGPU and
+      // switch over only if this device runs it fast enough.
+      if (shouldUpgrade() && engine.id !== 'detrpose') {
+        createDetrPoseEngine({ maxFrameMs: DETRPOSE_BUDGET_MS })
+          .then((stronger) => {
+            if (cancelled) return stronger.dispose()
+            const previous = engine
+            engine = stronger
+            previous?.dispose()
+            setEngineLabel(stronger.label)
+          })
+          .catch((err) => console.info('[hands-free] staying on', engine?.label, '—', err?.message))
+      }
     })()
 
     return () => {
@@ -183,5 +216,5 @@ export function useHandsFree({
 
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
-  return { status, stream, pose, framing, actOut, retry }
+  return { status, stream, pose, framing, engineLabel, actOut, retry }
 }

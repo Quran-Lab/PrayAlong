@@ -182,6 +182,7 @@ export function App() {
             status={hands.status}
             stream={hands.stream}
             framing={hands.framing}
+            engineLabel={hands.engineLabel}
             facingMode={facingMode}
             onFlip={() => setFacingMode((m) => (m === 'user' ? 'environment' : 'user'))}
             onRetry={hands.retry}

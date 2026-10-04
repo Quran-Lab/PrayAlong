@@ -368,3 +368,108 @@ def hero_renders(prefix, height=1.0, face_z=None, views=((0, 4), (30, 6), (-32, 
     render(out, res=(600, 600), samples=40)
     outs.append(out)
     return outs
+
+
+# ════════════════════════════════════════════════════════════ app poses (preview)
+
+# Forward-kinematics part of src/components/stage/rig/prayer-poses.ts, in the
+# app's normalized space (degrees, Euler XYZ, glTF axes). Arms are IK in the
+# app; here they just hang so the legs and clothes can be inspected.
+def _kneeling(hips, flex, lift=16):
+    knee = 90 + lift + flex - hips
+    return {'LeftUpLeg': (-flex, 0, 3), 'RightUpLeg': (-flex, 0, -3), 'LeftLeg': (knee, 0, 0), 'RightLeg': (knee, 0, 0),
+            'LeftFoot': (-lift, 0, 0), 'RightFoot': (-lift, 0, 0), 'LeftToeBase': (-80, 0, 0), 'RightToeBase': (-80, 0, 0)}
+
+
+APP_POSES = {
+    'ruku': {'Hips': (70, 0, 0), 'Spine': (3, 0, 0), 'Spine1': (2, 0, 0), 'Neck': (-8, 0, 0), 'Head': (-4, 0, 0),
+             'LeftUpLeg': (-72, 0, 1.5), 'RightUpLeg': (-72, 0, -1.5), 'LeftLeg': (4, 0, 0), 'RightLeg': (4, 0, 0),
+             'LeftFoot': (-4, 6, 0), 'RightFoot': (-4, -6, 0)},
+    'kneel': {'Hips': (12, 0, 0), 'Spine': (4, 0, 0), 'Neck': (8, 0, 0), 'Head': (8, 0, 0), **_kneeling(12, 12)},
+    'sujud': {'Hips': (100, 0, 0), 'Spine': (3, 0, 0), 'Spine1': (3, 0, 0), 'Spine2': (2, 0, 0), 'Neck': (4, 0, 0), 'Head': (8, 0, 0),
+              **_kneeling(100, 108)},
+    'jalsah': {'LeftUpLeg': (-84, 0, 4), 'RightUpLeg': (-84, 0, -4), 'LeftLeg': (172, 0, 0), 'RightLeg': (172, 0, 0),
+               'LeftFoot': (92, 0, 0), 'RightFoot': (8, 0, 0), 'RightToeBase': (-70, 0, 0),
+               'Spine': (3, 0, 0), 'Spine1': (2, 0, 0), 'Neck': (4.8, 0, 0), 'Head': (7.2, 0, 0)},
+}
+
+
+def apply_app_pose(arm_ob, name, arms=True):
+    import math
+    import mathutils
+
+    fk = APP_POSES[name]
+    Cm = mathutils.Matrix(((1, 0, 0), (0, 0, -1), (0, 1, 0)))  # glTF → Blender axes
+    bones = arm_ob.data.bones
+    world = {}
+    head = {}
+    for pb in arm_ob.pose.bones:
+        pb.matrix_basis = mathutils.Matrix.Identity(4)
+    bpy.context.view_layer.update()
+
+    def order(b):
+        d, p = 0, b.parent
+        while p:
+            d, p = d + 1, p.parent
+        return d
+
+    for b in sorted(bones, key=order):
+        e = fk.get(b.name, (0, 0, 0))
+        q = mathutils.Euler([math.radians(a) for a in e], 'XYZ').to_matrix()
+        # three.js 'XYZ' = Rx·Ry·Rz; Blender's Euler 'XYZ' matrix is Rz·Ry·Rx, so build it explicitly.
+        rx = mathutils.Matrix.Rotation(math.radians(e[0]), 3, 'X')
+        ry = mathutils.Matrix.Rotation(math.radians(e[1]), 3, 'Y')
+        rz = mathutils.Matrix.Rotation(math.radians(e[2]), 3, 'Z')
+        q = Cm @ (rx @ ry @ rz) @ Cm.transposed()
+        rest_head = b.head_local
+        if b.parent:
+            W = world[b.parent.name] @ q
+            h = head[b.parent.name] + world[b.parent.name] @ (rest_head - b.parent.head_local)
+        else:
+            W = q
+            h = rest_head.copy()
+        world[b.name], head[b.name] = W, h
+        M = mathutils.Matrix.Translation(h) @ (W @ b.matrix_local.to_3x3()).to_4x4()
+        arm_ob.pose.bones[b.name].matrix = M
+        bpy.context.view_layer.update()
+    if arms:
+        pose_relaxed(arm_ob, arm_down=70, elbow=30)
+
+
+def ground(arm_ob, mesh_ob):
+    """Move the armature so the posed mesh rests on z = 0 (for previews)."""
+    bpy.context.view_layer.update()
+    dg = bpy.context.evaluated_depsgraph_get()
+    ev = mesh_ob.evaluated_get(dg)
+    me = ev.to_mesh()
+    zs = [ (ev.matrix_world @ v.co).z for v in me.vertices]
+    ev.to_mesh_clear()
+    arm_ob.location.z -= min(zs)
+    bpy.context.view_layer.update()
+
+
+def pose_renders(prefix, arm_ob, mesh_ob, poses=('jalsah', 'kneel', 'sujud'), height=1.0):
+    """Render app postures (legs/spine) from a few angles for skinning checks."""
+    outs = []
+    for name in poses:
+        arm_ob.location = (0, 0, 0)
+        apply_app_pose(arm_ob, name)
+        ground(arm_ob, mesh_ob)
+        for az in (35, 90, 150):
+            orbit_camera(az, 14, 2.4 * height, (0, -0.05, 0.25 * height), lens=60)
+            out = f'{prefix}_{name}_{az:03d}.png'
+            render(out, res=(480, 400), samples=24)
+            outs.append(out)
+    return outs
+
+
+def previews(name, arm, body, height=0.985, face_z=0.83):
+    """NO_RENDER=1: none. POSES=1: posture checks only. Default: hero renders."""
+    if os.environ.get('NO_RENDER'):
+        return
+    preview_setup()
+    prefix = os.path.join(PREVIEW_DIR, name)
+    if os.environ.get('POSES'):
+        pose_renders(prefix, arm, body, height=height)
+    else:
+        hero_renders(prefix, height=height, face_z=face_z, arm_ob=arm)

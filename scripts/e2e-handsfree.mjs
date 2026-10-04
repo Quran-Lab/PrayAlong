@@ -9,6 +9,11 @@ const base = process.env.BASE_URL ?? 'http://127.0.0.1:4173'
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
   args: [
+    // Software WebGPU so the WebGPU path can be exercised headless.
+    '--enable-unsafe-webgpu',
+    '--enable-features=Vulkan',
+    '--use-vulkan=swiftshader',
+    '--use-webgpu-adapter=swiftshader',
     '--use-angle=swiftshader',
     '--enable-unsafe-swiftshader',
     '--ignore-gpu-blocklist',
@@ -20,6 +25,7 @@ const browser = await chromium.launch({
 const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, permissions: ['camera'] })
 const page = await context.newPage()
 page.on('pageerror', (e) => console.log('pageerror', e.message))
+page.on('console', (m) => /\[detrpose\]|\[hands-free\]/.test(m.text()) && console.log('console', m.text().slice(0, 200)))
 await page.goto(base + '/' + (process.env.ENGINE ? `?engine=${process.env.ENGINE}` : ''), { waitUntil: 'networkidle' })
 await page.waitForTimeout(4000)
 await page.keyboard.press('h') // hands-free on → setup sheet

@@ -9,13 +9,14 @@
  *   out  labels             int64   [1,Q]
  *   out  keypoints          float32 [1,Q,17,2]     COCO-17 (x, y)
  */
-import type * as Ort from 'onnxruntime-web/wasm'
+import type * as Ort from 'onnxruntime-web'
 
 const SIZE = 640
 
 type In = { type: 'load'; url: string } | { type: 'frame'; bitmap: ImageBitmap; timestamp: number }
 export type WorkerOut =
-  | { type: 'ready'; backend: string }
+  | { type: 'ready'; backend: 'webgpu' | 'wasm'; ms: number }
+  | { type: 'benchmarking' }
   | { type: 'missing' }
   | { type: 'error'; message: string }
   | { type: 'pose'; keypoints: { x: number; y: number }[]; score: number; timestamp: number }
@@ -30,16 +31,77 @@ const input = new Float32Array(3 * SIZE * SIZE)
 
 const post = (msg: WorkerOut) => (self as unknown as Worker).postMessage(msg)
 
+/**
+ * The WebGPU runtime is ~28 MB — over Cloudflare's 25 MiB per-file limit —
+ * so production builds ship it in parts (scripts/split-large-assets.mjs)
+ * and we stitch it back together here. Still fully self-hosted.
+ */
+async function stitchedRuntime(): Promise<ArrayBuffer | undefined> {
+  if (!import.meta.env.PROD) return undefined
+  try {
+    const manifestUrl = new URL('../ort/manifest.json', self.location.href)
+    const res = await fetch(manifestUrl)
+    if (!res.ok) return undefined
+    const manifest = (await res.json()) as { files: { name: string; parts: string[] }[] }
+    const entry = manifest.files.find((f) => f.name.includes('jsep')) ?? manifest.files[0]
+    if (!entry) return undefined
+    const parts = await Promise.all(entry.parts.map((p) => fetch(new URL(p, manifestUrl)).then((r) => r.arrayBuffer())))
+    const out = new Uint8Array(parts.reduce((n, p) => n + p.byteLength, 0))
+    let offset = 0
+    for (const p of parts) {
+      out.set(new Uint8Array(p), offset)
+      offset += p.byteLength
+    }
+    return out.buffer
+  } catch {
+    return undefined
+  }
+}
+
+const zeros = () => ({
+  images: new ort.Tensor('float32', new Float32Array(3 * SIZE * SIZE), [1, 3, SIZE, SIZE]),
+  orig_target_sizes: new ort.Tensor('int64', new BigInt64Array([1n, 1n]), [1, 2]),
+})
+
+/** Warm up, then time one frame — the app uses this to pick the fastest engine. */
+async function benchmark(s: Ort.InferenceSession) {
+  await s.run(zeros())
+  const t = performance.now()
+  await s.run(zeros())
+  return performance.now() - t
+}
+
 async function load(url: string) {
   try {
     const head = await fetch(url, { method: 'HEAD' })
-    if (!head.ok) return post({ type: 'missing' })
-    // The WebAssembly-only runtime (14 MB) — the WebGPU builds are over
-    // Cloudflare's 25 MiB per-file limit. It runs multi-threaded when the
-    // page is cross-origin isolated (see public/_headers).
-    ort = await import('onnxruntime-web/wasm')
+    // Single-page hosts answer unknown paths with index.html — that's "missing" too.
+    if (!head.ok || head.headers.get('content-type')?.includes('text/html')) return post({ type: 'missing' })
+    const log = (m: string) => console.info(`[detrpose] ${m}`)
+    log('loading runtime')
+    // The JSEP WebGPU backend — verified to match PyTorch (tools/detrpose).
+    ort = await import('onnxruntime-web')
+    const binary = await stitchedRuntime()
+    log(binary ? `stitched runtime ${(binary.byteLength / 1e6).toFixed(1)} MB` : 'default runtime')
+    if (binary) ort.env.wasm.wasmBinary = binary
+
+    // WebGPU first — fast and strong — then multi-threaded WebAssembly.
+    // (Some WebGPU problems only show up on the first run, hence the warm-up.)
+    if ('gpu' in navigator) {
+      try {
+        log('creating WebGPU session')
+        session = await ort.InferenceSession.create(url, { executionProviders: ['webgpu'], graphOptimizationLevel: 'all' })
+        log('benchmarking')
+        post({ type: 'benchmarking' })
+        return post({ type: 'ready', backend: 'webgpu', ms: await benchmark(session) })
+      } catch (err) {
+        console.warn('[detrpose] WebGPU unavailable, using WebAssembly', err)
+        await session?.release().catch(() => {})
+        session = null
+      }
+    }
     session = await ort.InferenceSession.create(url, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' })
-    post({ type: 'ready', backend: `wasm×${ort.env.wasm.numThreads ?? 1}` })
+    post({ type: 'benchmarking' })
+    post({ type: 'ready', backend: 'wasm', ms: await benchmark(session) })
   } catch (err) {
     post({ type: 'error', message: err instanceof Error ? err.message : String(err) })
   }

@@ -16,7 +16,7 @@ OUT_GLB = os.path.join(REPO, 'public', 'avatars', f'{NAME}.glb')
 
 COLORS = dict(
     skin='#ebb791',
-    hijab='#c99b95',
+    hijab='#c7a19b',
     under='#f5ece1',
     dress='#8b97b6',
     trim='#f1e4d0',
@@ -31,12 +31,12 @@ PLACE = Place(centre=(0.0, 0.008, 0.818), scale=1.08)
 
 # ───────────────────────────────────────────────────────────── hijab (kid head space)
 
-FACE_OVAL = dict(rx=0.083, rz=0.083, zc=0.836)
+FACE_OVAL = dict(rx=0.088, rz=0.087, zc=0.835)
 
 
 def hijab_sdf():
-    hood = ellipsoid((0, 0.014, 0.884), (0.14, 0.138, 0.128))
-    wrap = offset(HEAD['skull'], 0.013)  # guarantees the cheeks stay covered
+    hood = ellipsoid((0, 0.014, 0.882), (0.137, 0.135, 0.125))
+    wrap = offset(HEAD['skull'], 0.0105)  # guarantees the cheeks stay covered
     chin_wrap = ellipsoid((0, -0.008, 0.79), (0.11, 0.104, 0.076))
     h = union(hood, wrap, k=0.03)
     h = union(h, chin_wrap, k=0.05)
@@ -45,7 +45,7 @@ def hijab_sdf():
     # A little longer at the front, like a khimar.
     h = intersect(h, plane((0, 0.42, -1), (0, 0, 0.625)), k=0.03)
     o = FACE_OVAL
-    h = subtract(h, oval_tunnel(o['rx'], o['rz'], o['zc'], y_max=-0.03), k=0.012)
+    h = subtract(h, oval_tunnel(o['rx'], o['rz'], o['zc'], y_max=-0.03), k=0.016)
     return h
 
 
@@ -85,11 +85,11 @@ def trim_sdf(torso):
 
 # ───────────────────────────────────────────────────────────── build
 
-def build(render_previews=True):
+def build():
     reset_scene()
     mats = dict(
         skin=material('Skin', COLORS['skin'], roughness=0.6, vertex_color=True, glow=0.07),
-        hijab=material('Hijab', COLORS['hijab'], roughness=0.8, sheen=0.35, sheen_tint='#ffe6e0'),
+        hijab=material('Hijab', COLORS['hijab'], roughness=0.8, sheen=0.3, sheen_tint='#fff4ee'),
         under=material('UnderScarf', COLORS['under'], roughness=0.8, sheen=0.2),
         dress=material('Dress', COLORS['dress'], roughness=0.8, sheen=0.3, sheen_tint='#e8ecff'),
         trim=material('Trim', COLORS['trim'], roughness=0.7, sheen=0.2),
@@ -109,7 +109,7 @@ def build(render_previews=True):
                 colors=blush_colors(get_verts(head), PLACE, COLORS['skin'], amount=0.6))
     parts.append(head)
 
-    hij = sdf_mesh('Hijab', PLACE.sdf(hijab_sdf()), voxel=0.0016, faces=4200, symmetric=True)
+    hij = sdf_mesh('Hijab', PLACE.sdf(hijab_sdf()), voxel=0.0015, faces=4500, symmetric=True)
     finish_part('Hijab', hij, mats['hijab'], lambda P: blend_to_head(P, field, SK.neck[2] + 0.012, SK.head[2] + 0.012))
     parts.append(hij)
 
@@ -140,11 +140,9 @@ def build(render_previews=True):
         parts.append(f)
 
     arm, body, tris = assemble('Maryam', SK, parts, OUT_GLB)
-    if render_previews:
-        preview_setup()
-        hero_renders(os.path.join(PREVIEW_DIR, NAME), height=0.985, face_z=0.83, arm_ob=arm)
+    previews(NAME, arm, body)
     return tris
 
 
 if __name__ == '__main__':
-    build(render_previews=not os.environ.get('NO_RENDER'))
+    build()

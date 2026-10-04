@@ -2,8 +2,9 @@
 
 ```
 camera (15 fps) ──▶ pose engine ──▶ 17 COCO keypoints of the most prominent person
-                         │            MediaPipe Pose Landmarker (default; GPU → CPU)
-                         │            DETRPose-N ONNX in a Web Worker (?engine=detrpose)
+                         │            MediaPipe Pose Landmarker — starts instantly (GPU → CPU)
+                         │            DETRPose-N on WebGPU — warms up in the background and
+                         │            takes over when a frame fits the budget (≤ 120 ms)
                          ▼
                    classify.ts   ──▶ hands-raised · standing · bowing · prostrating · sitting
                          ▼
@@ -34,8 +35,17 @@ default: fast on laptops and phones, with per-landmark visibility used for
 the framing check.
 
 **DETRPose-N** (`public/models/detrpose.onnx`, 8.8 MB, fp16 weights / fp32
-maths, COCO 57.2 AP) runs with onnxruntime-web (WebGPU when available, else
-WASM). Choose it with `?engine=detrpose` or `VITE_POSE_ENGINE=detrpose`.
+maths, COCO 57.2 AP) runs in a Web Worker with onnxruntime-web's WebGPU
+(JSEP) backend, falling back to multi-threaded WebAssembly. On WebGPU
+devices it warms up behind MediaPipe and takes over once its speed test
+passes; the camera setup sheet shows which engine is live. Force it with
+`?engine=detrpose` (or `?engine=mediapipe`, or `VITE_POSE_ENGINE`).
+
+The WebGPU runtime is 28 MB — over Cloudflare's 25 MiB per-file limit — so
+`npm run build` splits it into parts under `dist/ort/`
+(`scripts/split-large-assets.mjs`) and the worker stitches them back
+together. Still fully self-hosted; a hung GPU times out and never blocks
+hands-free.
 `tools/detrpose/` rebuilds it byte-for-byte — see its README for the three
 export fixes (in-place decoder op, shape annotation, MaxPool `ceil_mode`).
 
@@ -47,9 +57,9 @@ export fixes (in-place decoder op, shape annotation, MaxPool `ceil_mode`).
 | `labels` (out) | int64 `[1,60]` | Always person |
 | `keypoints` (out) | float32 `[1,60,17,2]` | COCO-17 (x, y) |
 
-Speed: WASM is single-threaded unless the page is cross-origin isolated —
-`vercel.json` and `public/_headers` set COOP/COEP for Vercel, Netlify and
-Cloudflare Pages (GitHub Pages can't set headers).
+Speed: WebAssembly is single-threaded unless the page is cross-origin
+isolated — `public/_headers` sets COOP/COEP on Cloudflare (Workers static
+assets), Netlify and Cloudflare Pages.
 
 ## Testing
 
