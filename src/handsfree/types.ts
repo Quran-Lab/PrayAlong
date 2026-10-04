@@ -4,13 +4,8 @@ import type { PoseClass } from '@/sequence/types'
 export interface Keypoint {
   x: number
   y: number
-}
-
-/** The most prominent person in a camera frame. */
-export interface PoseFrame {
-  keypoints: Keypoint[] // COCO-17 order
-  score: number
-  timestamp: number
+  /** 0..1 — how sure the model is this point is visible (1 if unknown). */
+  v?: number
 }
 
 export const KP = {
@@ -25,11 +20,18 @@ export interface Reading {
   headTurn: 'right' | 'left' | null
 }
 
+/** How much of the body the camera can see. */
+export type Framing = 'full' | 'partial' | 'none'
+
 export type HandsFreeStatus =
   | 'off'
-  | 'starting' // asking for the camera / loading the model
+  | 'starting' // asking for the camera
+  | 'loading' // loading the pose model
   | 'watching' // running
-  | 'simulated' // dev: poses come from the keyboard
-  | 'no-camera' // permission denied or no device
-  | 'no-model' // pose model not installed
-  | 'error'
+  | 'demo' // poses come from on-screen buttons / keys 1–5
+  | 'denied' // camera permission refused
+  | 'no-camera' // no camera, or not a secure context
+  | 'no-model' // pose tracking couldn't start on this device
+
+export const isFollowing = (s: HandsFreeStatus) => s === 'watching' || s === 'demo'
+export const isFallback = (s: HandsFreeStatus) => s === 'denied' || s === 'no-camera' || s === 'no-model'

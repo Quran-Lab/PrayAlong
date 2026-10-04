@@ -1,20 +1,17 @@
 import type { PoseClass, Posture } from '@/sequence/types'
 
-export interface PostureInfo {
-  label: string
-  /** One-line, plain-language description for learners. */
-  hint: string
-  pose: PoseClass
+/** The pose the camera should see in each posture. */
+export const POSE_OF: Record<Posture, PoseClass> = {
+  takbir: 'hands-raised',
+  qiyam: 'standing',
+  ruku: 'bowing',
+  itidal: 'standing',
+  sujud: 'prostrating',
+  jalsah: 'sitting',
+  tashahhud: 'sitting',
+  'salam-right': 'sitting',
+  'salam-left': 'sitting',
 }
 
-export const POSTURES: Record<Posture, PostureInfo> = {
-  takbir: { label: 'Takbir', hint: 'Raise your hands to your ears', pose: 'hands-raised' },
-  qiyam: { label: 'Qiyam', hint: 'Stand with your right hand over your left', pose: 'standing' },
-  ruku: { label: 'Ruku', hint: 'Bow with a straight back, hands on knees', pose: 'bowing' },
-  itidal: { label: "I'tidal", hint: 'Rise and stand upright', pose: 'standing' },
-  sujud: { label: 'Sujud', hint: 'Forehead, nose, palms, knees and toes on the ground', pose: 'prostrating' },
-  jalsah: { label: 'Jalsah', hint: 'Sit calmly between the two prostrations', pose: 'sitting' },
-  tashahhud: { label: 'Tashahhud', hint: 'Sit and raise your right index finger', pose: 'sitting' },
-  'salam-right': { label: 'Salam', hint: 'Turn your face to the right', pose: 'sitting' },
-  'salam-left': { label: 'Salam', hint: 'Turn your face to the left', pose: 'sitting' },
-}
+/** Label/hint message suffix: both salams read as one movement. */
+export const postureKey = (p: Posture) => (p.startsWith('salam') ? 'salam' : (p as Exclude<Posture, 'salam-right' | 'salam-left'>))

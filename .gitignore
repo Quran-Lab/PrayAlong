@@ -9,9 +9,15 @@ playwright-report
 screenshots/
 # Model weights are large; ship them via a release/CDN, not git.
 public/models/*.onnx
+!public/models/detrpose.onnx
 public/models/*.ort
 public/models/*.data
 
 # Local test characters (not licensed for the repo)
 public/avatars/_local/
 *.tsbuildinfo
+
+# Copied from node_modules on install
+public/mediapipe/
+dist-artifact
+dist-packed

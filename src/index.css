@@ -107,3 +107,34 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Sheets: slide up on phones, in from the side on larger screens. */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes sheet-side {
+  from {
+    transform: translateX(var(--sheet-from, 100%));
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+[dir="rtl"] {
+  --sheet-from: -100%;
+}
+.sheet-content {
+  animation: sheet-up 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (min-width: 640px) {
+  .sheet-content {
+    animation-name: sheet-side;
+  }
+}
+.sheet-overlay {
+  animation: fade-in 240ms ease-out;
+}

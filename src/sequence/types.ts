@@ -26,12 +26,14 @@ export type PoseClass = 'hands-raised' | 'standing' | 'bowing' | 'prostrating' |
 
 export type Voice = 'aloud' | 'quiet'
 
-export interface Recitation {
-  id: string
-  arabic: string
-  transliteration: string
-  translation: string
-}
+/** Runs of lines, labelled in the UI via the `group.*` messages. */
+export type GroupId =
+  | 'openingTakbir' | 'opening' | 'fatiha' | 'amin' | 'kawthar' | 'ikhlas'
+  | 'ruku' | 'itidal' | 'sujud' | 'jalsah' | 'tashahhud' | 'salawat' | 'salam'
+
+/** Movement instructions, shown via the `cue.*` messages. */
+export type CueId =
+  | 'begin' | 'fold' | 'rise' | 'bow' | 'rising' | 'prostrate' | 'sitUp' | 'prostrateAgain' | 'sit' | 'right' | 'left'
 
 export interface StepTiming {
   /** How long a typical worshipper stays on this line, before pace scaling. */
@@ -48,8 +50,8 @@ export interface Step {
   /** The pose the camera should see while this line is recited. */
   pose: PoseClass
   recitationId: string
-  /** Label for the run of lines this belongs to, e.g. "Al-Fātiḥah". */
-  group: string
+  /** The run of lines this belongs to, e.g. "fatiha". */
+  group: GroupId
   /** 0-based position inside `group`, and the group's length. */
   groupIndex: number
   groupSize: number
@@ -57,7 +59,7 @@ export interface Step {
   repeat: number
   voice: Voice
   /** Short instruction shown when this line starts a new movement. */
-  cue?: string
+  cue?: CueId
   timing: StepTiming
 }
 

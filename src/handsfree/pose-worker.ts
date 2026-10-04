@@ -44,7 +44,10 @@ async function load(url: string) {
 }
 
 async function infer(bitmap: ImageBitmap, timestamp: number) {
-  if (!session || busy) return bitmap.close()
+  if (!session || busy) {
+    bitmap.close()
+    return post({ type: 'none', timestamp })
+  }
   busy = true
   try {
     ctx.drawImage(bitmap, 0, 0, SIZE, SIZE)

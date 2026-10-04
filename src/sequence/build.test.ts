@@ -1,7 +1,9 @@
 import Ajv2020 from 'ajv/dist/2020'
 import { describe, expect, it } from 'vitest'
 import { PRAYERS } from '@/content/prayers'
-import { getRecitation } from '@/content/recitations'
+import { getLine } from '@/content/recitations'
+import { resolveLine } from '@/content/lines'
+import { LOCALES, type Locale } from '@/i18n/locales'
 import { buildSequence, nextPoseChange, postureSegments } from './build'
 import schema from './schema.json'
 
@@ -16,7 +18,7 @@ describe('buildSequence', () => {
   })
 
   it('every line has real text', () => {
-    for (const p of PRAYERS) for (const s of buildSequence(p.id).steps) expect(getRecitation(s.recitationId).arabic.length).toBeGreaterThan(0)
+    for (const p of PRAYERS) for (const s of buildSequence(p.id).steps) expect(getLine(s.recitationId).arabic.length).toBeGreaterThan(0)
   })
 
   it('opens with takbir and ends with both salams', () => {
@@ -52,6 +54,27 @@ describe('buildSequence', () => {
     expect(quiet.every((s) => s.voice === 'quiet')).toBe(true)
     const maghrib = buildSequence('maghrib').steps.filter((s) => s.recitationId === 'fatiha-1').map((s) => s.voice)
     expect(maghrib).toEqual(['aloud', 'aloud', 'quiet'])
+  })
+})
+
+describe('content', () => {
+  it('has a meaning for every line in every language (English as the floor)', () => {
+    const ids = new Set(PRAYERS.flatMap((p) => buildSequence(p.id).steps.map((s) => s.recitationId)))
+    for (const locale of Object.keys(LOCALES) as Locale[]) {
+      for (const id of ids) {
+        const line = resolveLine(id, locale)
+        expect(line.transliteration).not.toBe('')
+        if (locale !== 'ar') expect(line.meaning, `${locale} ${id}`).not.toBe('')
+      }
+    }
+  })
+
+  it('uses Saheeh International for English Quran lines', () => {
+    expect(resolveLine('fatiha-1', 'en')).toMatchObject({
+      meaning: 'In the name of Allah, the Entirely Merciful, the Especially Merciful',
+      credit: 'Saheeh International',
+      ref: '1:1',
+    })
   })
 })
 

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { oklchToHex } from '@/lib/color'
 import type { CharacterInfo } from './characters'
-import { createMatTexture } from './mat-texture'
+import { PrayerRug, RUG } from './PrayerRug'
 import { loadHumanoid } from './rig/humanoid'
 import { Performer, STAGE_HEIGHT } from './rig/performer'
 import type { PoseName } from './rig/prayer-poses'
@@ -47,9 +47,9 @@ export function CompanionStage(props: StageProps) {
         <Lightformer form="rect" intensity={0.9} position={[-5, 2, 1]} rotation-y={Math.PI / 2} scale={[4, 3, 1]} color="#f1efe9" />
         <Lightformer form="ring" intensity={1.4} position={[3, 2, -4]} scale={2} color={ambient} />
       </Environment>
-      <PrayerMat />
+      <PrayerRug />
       <Companion {...props} />
-      <ContactShadows position={[0, 0.0135, 0.25]} scale={3.2} blur={2.2} far={1.4} opacity={0.62} resolution={512} color="#04110c" />
+      <ContactShadows position={[0, RUG.top + 0.001, RUG.center]} scale={[RUG.width + 0.4, RUG.length + 0.4]} blur={2.4} far={1.4} opacity={0.55} resolution={512} color="#0b3328" />
       {quality === 'high' && (
         <EffectComposer multisampling={4}>
           <N8AO halfRes aoRadius={0.35} intensity={2.2} distanceFalloff={0.6} color="#06140e" />
@@ -104,7 +104,12 @@ function Companion({ posture, character, reducedMotion, onLoaded, onError }: Sta
     }
   })
 
-  return performer ? <primitive object={performer.root} /> : null
+  // Feet sink a touch into the plush rug.
+  return performer ? (
+    <group position-y={RUG.top - 0.006}>
+      <primitive object={performer.root} />
+    </group>
+  ) : null
 }
 
 /** PrayAlong's soft clay finish, for placeholder characters. */
@@ -126,47 +131,6 @@ function applyClay(scene: THREE.Object3D) {
 }
 
 // ————————————————————————————————————————————————————————— set dressing
-
-const MAT = { width: 0.78, length: 1.32, thickness: 0.012, center: 0.38 }
-
-function PrayerMat() {
-  const texture = useMemo(() => createMatTexture(), [])
-  const fringe = useMemo(() => {
-    const geo = new THREE.CylinderGeometry(0.0022, 0.0018, 0.05, 5)
-    geo.rotateX(Math.PI / 2)
-    const mat = new THREE.MeshStandardMaterial({ color: '#e5d9c0', roughness: 0.9 })
-    const count = 44
-    const mesh = new THREE.InstancedMesh(geo, mat, count * 2)
-    const m = new THREE.Matrix4()
-    for (let end = 0; end < 2; end++) {
-      for (let i = 0; i < count; i++) {
-        const x = -MAT.width / 2 + 0.02 + (i / (count - 1)) * (MAT.width - 0.04)
-        const dir = end === 0 ? 1 : -1
-        const z = MAT.center + dir * (MAT.length / 2 + 0.022)
-        const wobble = Math.sin(i * 12.9898) * 0.08
-        m.makeRotationY(wobble).setPosition(x, 0.004, z)
-        mesh.setMatrixAt(end * count + i, m)
-      }
-    }
-    mesh.receiveShadow = true
-    return mesh
-  }, [])
-
-  return (
-    <group>
-      <mesh position={[0, MAT.thickness / 2, MAT.center]} receiveShadow castShadow>
-        <boxGeometry args={[MAT.width, MAT.thickness, MAT.length]} />
-        <meshStandardMaterial color="#11231c" roughness={0.95} />
-      </mesh>
-      {/* Canvas top is the qibla end, so it faces +Z. */}
-      <mesh position={[0, MAT.thickness + 0.0005, MAT.center]} rotation={[-Math.PI / 2, 0, Math.PI]} receiveShadow>
-        <planeGeometry args={[MAT.width, MAT.length]} />
-        <meshPhysicalMaterial map={texture} roughness={0.92} sheen={0.5} sheenRoughness={0.8} sheenColor="#c9b98f" />
-      </mesh>
-      <primitive object={fringe} />
-    </group>
-  )
-}
 
 function Glow({ color }: { color: string }) {
   const texture = useMemo(() => {

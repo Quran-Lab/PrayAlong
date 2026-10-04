@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "PrayAlong — a calm, hands-free Salah companion.",
+  "description": "PrayAlong \u2014 a calm, hands-free Salah companion.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -11,11 +11,14 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
-    "shots": "node scripts/screenshots.mjs"
+    "shots": "node scripts/screenshots.mjs",
+    "postinstall": "node scripts/copy-mediapipe.mjs",
+    "fetch:quran": "node scripts/fetch-quran-translations.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource/amiri": "^5.3.0",
+    "@mediapipe/tasks-vision": "^1.0.1",
     "@pixiv/three-vrm": "^3.5.5",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",

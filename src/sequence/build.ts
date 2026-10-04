@@ -1,14 +1,14 @@
-import { POSTURES } from '@/content/postures'
+import { POSE_OF } from '@/content/postures'
 import { PRAYER_BY_ID } from '@/content/prayers'
-import { getRecitation, surahsByRakah, type RecitationId } from '@/content/recitations'
-import type { Posture, PrayerId, PrayerSequence, Step, StepTiming, Voice } from './types'
+import { getLine, surahsByRakah, type RecitationId } from '@/content/recitations'
+import type { CueId, GroupId, Posture, PrayerId, PrayerSequence, Step, StepTiming, Voice } from './types'
 
 /**
  * Rough recitation time for a line: a calm, beginner-friendly pace with a
  * short breath between repetitions. Pace scaling happens at playback time.
  */
 export function estimateTiming(recitationId: string, repeat = 1): StepTiming {
-  const { transliteration } = getRecitation(recitationId)
+  const { transliteration } = getLine(recitationId)
   const syllables = Math.max(1, transliteration.replace(/[^aeiouāīū]/gi, '').length)
   const once = 650 + syllables * 330
   const expectedMs = Math.round((once * repeat + 400 * (repeat - 1)) / 50) * 50
@@ -17,14 +17,12 @@ export function estimateTiming(recitationId: string, repeat = 1): StepTiming {
 
 interface Block {
   posture: Posture
-  group: string
+  group: GroupId
   lines: readonly RecitationId[]
   repeat?: number
   voice?: Voice
-  cue?: string
+  cue?: CueId
 }
-
-const ordinal = (n: number) => ['first', 'second', 'third', 'fourth'][n - 1] ?? `${n}th`
 
 function rakahBlocks(prayer: PrayerId, rakah: number): Block[] {
   const info = PRAYER_BY_ID[prayer]
@@ -33,40 +31,40 @@ function rakahBlocks(prayer: PrayerId, rakah: number): Block[] {
   const blocks: Block[] = []
 
   if (rakah === 1) {
-    blocks.push({ posture: 'takbir', group: 'Opening takbir', lines: ['takbir'], voice: 'aloud', cue: 'Raise your hands and begin' })
-    blocks.push({ posture: 'qiyam', group: 'Opening', lines: ['thana-1', 'thana-2', 'taawwudh'], cue: 'Fold your hands' })
+    blocks.push({ posture: 'takbir', group: 'openingTakbir', lines: ['takbir'], voice: 'aloud', cue: 'begin' })
+    blocks.push({ posture: 'qiyam', group: 'opening', lines: ['thana-1', 'thana-2', 'taawwudh'], cue: 'fold' })
   }
 
   const surah = surahsByRakah[rakah]
   blocks.push({
     posture: 'qiyam',
-    group: 'Al-Fatiha',
+    group: 'fatiha',
     lines: ['fatiha-1', 'fatiha-2', 'fatiha-3', 'fatiha-4', 'fatiha-5', 'fatiha-6', 'fatiha-7'],
     voice: aloud,
-    cue: rakah === 1 ? undefined : `Allāhu Akbar · rise for the ${ordinal(rakah)} rak‘ah`,
+    cue: rakah === 1 ? undefined : 'rise',
   })
-  blocks.push({ posture: 'qiyam', group: 'Amin', lines: ['amin'], voice: aloud })
-  if (surah && rakah <= 2) blocks.push({ posture: 'qiyam', group: surah.name, lines: surah.lines, voice: aloud })
+  blocks.push({ posture: 'qiyam', group: 'amin', lines: ['amin'], voice: aloud })
+  if (surah && rakah <= 2) blocks.push({ posture: 'qiyam', group: surah.group, lines: surah.lines, voice: aloud })
 
-  blocks.push({ posture: 'ruku', group: 'Ruku', lines: ['ruku'], repeat: 3, cue: 'Allāhu Akbar · bow' })
-  blocks.push({ posture: 'itidal', group: "I'tidal", lines: ['tasmi', 'tahmid'], cue: 'Rise from bowing' })
-  blocks.push({ posture: 'sujud', group: 'Sujud', lines: ['sujud'], repeat: 3, cue: 'Allāhu Akbar · prostrate' })
-  blocks.push({ posture: 'jalsah', group: 'Jalsah', lines: ['jalsah'], repeat: 2, cue: 'Allāhu Akbar · sit up' })
-  blocks.push({ posture: 'sujud', group: 'Sujud', lines: ['sujud'], repeat: 3, cue: 'Allāhu Akbar · prostrate again' })
+  blocks.push({ posture: 'ruku', group: 'ruku', lines: ['ruku'], repeat: 3, cue: 'bow' })
+  blocks.push({ posture: 'itidal', group: 'itidal', lines: ['tasmi', 'tahmid'], cue: 'rising' })
+  blocks.push({ posture: 'sujud', group: 'sujud', lines: ['sujud'], repeat: 3, cue: 'prostrate' })
+  blocks.push({ posture: 'jalsah', group: 'jalsah', lines: ['jalsah'], repeat: 2, cue: 'sitUp' })
+  blocks.push({ posture: 'sujud', group: 'sujud', lines: ['sujud'], repeat: 3, cue: 'prostrateAgain' })
 
   const middleSitting = rakah === 2 && info.rakahs > 2
   if (middleSitting || last) {
     blocks.push({
       posture: 'tashahhud',
-      group: 'Tashahhud',
+      group: 'tashahhud',
       lines: ['tashahhud-1', 'tashahhud-2', 'tashahhud-3', 'tashahhud-4'],
-      cue: 'Allāhu Akbar · sit for tashahhud',
+      cue: 'sit',
     })
   }
   if (last) {
-    blocks.push({ posture: 'tashahhud', group: 'Salawat', lines: ['salawat-1', 'salawat-2', 'salawat-3', 'salawat-4'] })
-    blocks.push({ posture: 'salam-right', group: 'Salam', lines: ['salam'], voice: 'aloud', cue: 'Turn to your right' })
-    blocks.push({ posture: 'salam-left', group: 'Salam', lines: ['salam'], voice: 'aloud', cue: 'Turn to your left' })
+    blocks.push({ posture: 'tashahhud', group: 'salawat', lines: ['salawat-1', 'salawat-2', 'salawat-3', 'salawat-4'] })
+    blocks.push({ posture: 'salam-right', group: 'salam', lines: ['salam'], voice: 'aloud', cue: 'right' })
+    blocks.push({ posture: 'salam-left', group: 'salam', lines: ['salam'], voice: 'aloud', cue: 'left' })
   }
   return blocks
 }
@@ -83,7 +81,7 @@ export function buildSequence(prayer: PrayerId): PrayerSequence {
           id: `r${rakah}-${steps.length}-${recitationId}`,
           rakah,
           posture: block.posture,
-          pose: POSTURES[block.posture].pose,
+          pose: POSE_OF[block.posture],
           recitationId,
           group: block.group,
           groupIndex: i,

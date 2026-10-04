@@ -197,6 +197,13 @@ class VrmHumanoid implements Humanoid {
   }
 }
 
+function base64ToBuffer(text: string): ArrayBuffer {
+  const binary = atob(text.trim())
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes.buffer
+}
+
 export async function loadHumanoid(url: string): Promise<Humanoid> {
   const [{ GLTFLoader }, vrmModule] = await Promise.all([
     import('three/examples/jsm/loaders/GLTFLoader.js'),
@@ -204,7 +211,9 @@ export async function loadHumanoid(url: string): Promise<Humanoid> {
   ])
   const loader = new GLTFLoader()
   loader.register((parser) => new vrmModule.VRMLoaderPlugin(parser))
-  const gltf = await loader.loadAsync(url)
+  const gltf = url.endsWith('.b64.txt')
+    ? await loader.parseAsync(base64ToBuffer(await (await fetch(url)).text()), '')
+    : await loader.loadAsync(url)
   const vrm = gltf.userData.vrm as VRM | undefined
   if (vrm) {
     vrmModule.VRMUtils.removeUnnecessaryVertices(gltf.scene)

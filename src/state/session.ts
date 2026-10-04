@@ -1,17 +1,35 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { buildSequence, nextPoseChange } from '@/sequence/build'
+import { READS_ARABIC, type Locale } from '@/i18n/locales'
 import type { PoseClass, PrayerId, PrayerSequence, Step } from '@/sequence/types'
 
 export type Phase = 'ready' | 'praying' | 'complete'
 export type Pace = 'slow' | 'normal' | 'brisk'
-export type ArabicSize = 'm' | 'l' | 'xl'
+export type TextSize = 'm' | 'l' | 'xl'
 
 export interface Settings {
-  transliteration: boolean
-  translation: boolean
-  arabicSize: ArabicSize
+  /** 'auto' follows the browser language. */
+  locale: 'auto' | Locale
+  /** null = the default for the language (Arabic script only for those who read it). */
+  arabic: boolean | null
+  transliteration: boolean | null
+  translation: boolean | null
+  textSize: TextSize
   pace: Pace
+  /** Soft chime + haptic when hands-free follows a movement. */
+  sounds: boolean
+  characterId: string
+}
+
+/** What to show, after applying per-language defaults. */
+export function display(settings: Settings, locale: Locale) {
+  const readsArabic = READS_ARABIC.has(locale)
+  return {
+    arabic: settings.arabic ?? readsArabic,
+    transliteration: settings.transliteration ?? !readsArabic,
+    translation: settings.translation ?? locale !== 'ar',
+  }
 }
 
 export const PACE_FACTOR: Record<Pace, number> = { slow: 1.35, normal: 1, brisk: 0.75 }
@@ -26,6 +44,8 @@ interface SessionState {
   /** Timed guidance when hands-free is off. */
   autoplay: boolean
   handsFree: boolean
+  /** Hands-free driven by on-screen buttons instead of the camera. */
+  demo: boolean
   settings: Settings
 
   /** Follow the clock — ignored once the user has chosen, or while praying. */
@@ -38,6 +58,7 @@ interface SessionState {
   restart: () => void
   setAutoplay: (on: boolean) => void
   setHandsFree: (on: boolean) => void
+  setDemo: (on: boolean) => void
   updateSettings: (patch: Partial<Settings>) => void
   /** A stable pose reported by the hands-free engine. */
   onPose: (pose: PoseClass) => void
@@ -52,7 +73,17 @@ export const useSession = create<SessionState>()(
       prayerSource: 'auto',
       autoplay: false,
       handsFree: false,
-      settings: { transliteration: true, translation: true, arabicSize: 'l', pace: 'normal' },
+      demo: false,
+      settings: {
+        locale: 'auto',
+        arabic: null,
+        transliteration: null,
+        translation: null,
+        textSize: 'l',
+        pace: 'normal',
+        sounds: true,
+        characterId: 'yusuf',
+      },
 
       autoSelectPrayer: (id) => {
         const { prayerSource, phase, prayer } = get()
@@ -78,7 +109,8 @@ export const useSession = create<SessionState>()(
       },
       restart: () => set({ ...fresh(get().prayer) }),
       setAutoplay: (autoplay) => set({ autoplay }),
-      setHandsFree: (handsFree) => set({ handsFree, autoplay: false }),
+      setHandsFree: (handsFree) => set({ handsFree, autoplay: false, demo: handsFree && get().demo }),
+      setDemo: (demo) => set({ demo, handsFree: demo || get().handsFree, autoplay: false }),
       updateSettings: (patch) => set({ settings: { ...get().settings, ...patch } }),
 
       onPose: (pose) => {
@@ -95,7 +127,14 @@ export const useSession = create<SessionState>()(
     }),
     {
       name: 'prayalong:session',
+      version: 2,
       partialize: (s) => ({ settings: s.settings }),
+      // Older saves predate languages and companions; keep only what still fits.
+      migrate: (persisted) => persisted as { settings: Settings },
+      merge: (persisted, current) => ({
+        ...current,
+        settings: { ...current.settings, ...((persisted as { settings?: Partial<Settings> })?.settings ?? {}) },
+      }),
     },
   ),
 )

@@ -38,6 +38,8 @@ export function usePrayerClock() {
     setLocating(true)
     try {
       setPlace(await requestDevicePlace())
+    } catch {
+      /* declined or unavailable — keep the time-zone estimate */
     } finally {
       setLocating(false)
     }
