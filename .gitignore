@@ -21,3 +21,5 @@ public/avatars/_local/
 public/mediapipe/
 dist-artifact
 dist-packed
+__pycache__/
+*.pyc
