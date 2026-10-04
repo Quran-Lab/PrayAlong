@@ -1,0 +1,15 @@
+// Cloudflare Workers (static assets): Workers Builds runs `npm run build`
+// then `npx wrangler deploy` on every push to main.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "prayalong",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  "routes": [
+    { "pattern": "prayalong.me", "custom_domain": true },
+    { "pattern": "www.prayalong.me", "custom_domain": true }
+  ]
+}

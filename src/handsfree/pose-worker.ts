@@ -9,7 +9,7 @@
  *   out  labels             int64   [1,Q]
  *   out  keypoints          float32 [1,Q,17,2]     COCO-17 (x, y)
  */
-import type * as Ort from 'onnxruntime-web'
+import type * as Ort from 'onnxruntime-web/wasm'
 
 const SIZE = 640
 
@@ -34,10 +34,12 @@ async function load(url: string) {
   try {
     const head = await fetch(url, { method: 'HEAD' })
     if (!head.ok) return post({ type: 'missing' })
-    ort = await import('onnxruntime-web')
-    const providers = 'gpu' in navigator ? ['webgpu', 'wasm'] : ['wasm']
-    session = await ort.InferenceSession.create(url, { executionProviders: providers, graphOptimizationLevel: 'all' })
-    post({ type: 'ready', backend: providers[0]! })
+    // The WebAssembly-only runtime (14 MB) — the WebGPU builds are over
+    // Cloudflare's 25 MiB per-file limit. It runs multi-threaded when the
+    // page is cross-origin isolated (see public/_headers).
+    ort = await import('onnxruntime-web/wasm')
+    session = await ort.InferenceSession.create(url, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' })
+    post({ type: 'ready', backend: `wasm×${ort.env.wasm.numThreads ?? 1}` })
   } catch (err) {
     post({ type: 'error', message: err instanceof Error ? err.message : String(err) })
   }

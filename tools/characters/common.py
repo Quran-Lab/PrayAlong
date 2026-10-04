@@ -169,6 +169,19 @@ def elliptic_frustum(z0, z1, c0, c1, r0, r1, cap=0.0):
     return f
 
 
+def oval_tunnel(rx, rz, zc, y_max, x0=0.0):
+    """An elliptic cylinder along Y (a window cut through the front of a shape)
+    with cross-section radii (rx, rz) centred at (x0, zc), only in front of y_max."""
+    rx, rz, zc, x0, y_max = F32(rx), F32(rz), F32(zc), F32(x0), F32(y_max)
+    m = min(rx, rz)
+
+    def f(P):
+        q = np.sqrt(((P[:, 0] - x0) / rx) ** 2 + ((P[:, 2] - zc) / rz) ** 2)
+        return np.maximum((q - 1) * m, P[:, 1] - y_max)
+
+    return f
+
+
 def plane(n, p):
     """Half-space behind a plane: negative where (x - p)·n < 0."""
     n = _v(n) / np.linalg.norm(n)
