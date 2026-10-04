@@ -11,7 +11,7 @@ import { extname, join, relative } from 'node:path'
 execSync('npx vite build --outDir dist-packed --emptyOutDir', { stdio: 'inherit', env: { ...process.env, VITE_PACKED_ASSETS: '1' } })
 
 const OUT = 'dist-artifact'
-const SKIP = [/^mediapipe\//, /^models\//, /^avatars\/_local\//, /ort-wasm.*\.wasm$/, /\.map$/]
+const SKIP = [/^mediapipe\//, /^models\//, /^ort\//, /^avatars\/_local\//, /ort-wasm.*\.wasm$/, /\.map$/, /^_headers$/]
 const TYPES = {
   '.js': 'text/javascript',
   '.css': 'text/css',

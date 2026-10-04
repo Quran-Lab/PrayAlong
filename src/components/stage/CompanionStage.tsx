@@ -52,7 +52,7 @@ export function CompanionStage(props: StageProps) {
       <ContactShadows position={[0, RUG.top + 0.001, RUG.center]} scale={[RUG.width + 0.4, RUG.length + 0.4]} blur={2.4} far={1.4} opacity={0.55} resolution={512} color="#0b3328" />
       {quality === 'high' && (
         <EffectComposer multisampling={4}>
-          <N8AO halfRes aoRadius={0.35} intensity={2.2} distanceFalloff={0.6} color="#06140e" />
+          <N8AO halfRes aoRadius={0.3} intensity={1.4} distanceFalloff={0.6} color="#0b2018" />
           <Vignette offset={0.32} darkness={0.55} />
         </EffectComposer>
       )}
@@ -167,10 +167,10 @@ function Glow({ color }: { color: string }) {
 function StageLights({ ambient }: { ambient: string }) {
   return (
     <>
-      <hemisphereLight args={['#fff4e6', '#13241d', 0.55]} />
+      <hemisphereLight args={['#fff4e6', '#1d3a2f', 0.85]} />
       <directionalLight
         position={[-2.4, 4.6, 3.4]}
-        intensity={2.3}
+        intensity={2.6}
         color="#fff3e2"
         castShadow
         shadow-mapSize={[1024, 1024]}
@@ -181,7 +181,7 @@ function StageLights({ ambient }: { ambient: string }) {
         shadow-camera-top={2.2}
         shadow-camera-bottom={-1}
       />
-      <directionalLight position={[3, 1.8, 2.2]} intensity={0.45} color="#ffe9d2" />
+      <directionalLight position={[3, 1.8, 2.2]} intensity={0.7} color="#ffe9d2" />
       <directionalLight position={[1.4, 2.6, -3.2]} intensity={3.2} color={ambient} />
     </>
   )

@@ -22,14 +22,14 @@ export interface CharacterInfo {
   thumbnail?: string
 }
 
+const thumb = (id: string) => `${import.meta.env.BASE_URL}avatars/${id}.webp`
+
+/** Built in Blender from tools/characters/ (soft clay chibi style). */
 export const CHARACTERS: readonly CharacterInfo[] = [
-  {
-    id: 'mannequin',
-    name: 'Studio',
-    url: avatarUrl('mannequin.glb'),
-    credit: 'X Bot · Mixamo',
-    clay: true,
-  },
+  { id: 'yusuf', name: 'Yusuf', url: avatarUrl('yusuf.glb'), thumbnail: thumb('yusuf'), credit: 'PrayAlong' },
+  { id: 'maryam', name: 'Maryam', url: avatarUrl('maryam.glb'), thumbnail: thumb('maryam'), credit: 'PrayAlong' },
+  { id: 'ahmad', name: 'Ahmad', url: avatarUrl('ahmad.glb'), thumbnail: thumb('ahmad'), credit: 'PrayAlong' },
+  { id: 'aisha', name: 'Aisha', url: avatarUrl('aisha.glb'), thumbnail: thumb('aisha'), credit: 'PrayAlong' },
 ]
 
 export const DEFAULT_CHARACTER = CHARACTERS[0]!

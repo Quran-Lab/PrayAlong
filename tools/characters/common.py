@@ -182,6 +182,30 @@ def oval_tunnel(rx, rz, zc, y_max, x0=0.0):
     return f
 
 
+def loft(rings, cap=0.0):
+    """Vertical loft through elliptic rings [(z, cx, cy, rx, ry), ...] (any
+    order), interpolated with monotone cubics (no creases at the rings),
+    capped top and bottom. Approximate distance, fine for blending."""
+    from scipy.interpolate import PchipInterpolator
+
+    R = np.array(sorted(rings), dtype=np.float64)
+    z = R[:, 0]
+    curves = [PchipInterpolator(z, R[:, i], extrapolate=True) for i in range(1, 5)]
+    z0, z1 = F32(z[0]), F32(z[-1])
+
+    def f(P):
+        pz = np.clip(P[:, 2], z0, z1).astype(np.float64)
+        cx, cy, rx, ry = (cv(pz).astype(F32) for cv in curves)
+        c = np.stack([cx, cy], 1)
+        r = np.stack([rx, ry], 1)
+        q = (P[:, :2] - c) / r
+        side = (np.sqrt((q ** 2).sum(1)) - 1) * r.min(1)
+        zc = np.maximum(z0 - P[:, 2], P[:, 2] - z1)
+        return smax(side, zc, F32(cap))
+
+    return f
+
+
 def plane(n, p):
     """Half-space behind a plane: negative where (x - p)·n < 0."""
     n = _v(n) / np.linalg.norm(n)
@@ -1084,6 +1108,13 @@ def preview_setup(world=(0.045, 0.06, 0.055), rim=(0.55, 1.0, 0.8)):
     g.name = 'Ground'
     gm = material('Ground', '#14201b', roughness=0.9)
     assign(g, gm)
+    # An opaque prayer mat like the app's (it hides anything below z = 0).
+    s = 0.985 / 1.65  # app stage units → model units
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -0.05 - 0.38 * s, -0.006 * s))
+    m = bpy.context.active_object
+    m.name = 'Mat'
+    m.scale = (0.78 * s, 1.32 * s, 0.012 * s)
+    assign(m, material('Mat', '#3f7a64', roughness=0.9))
 
 
 def camera(name='Cam', loc=(0.0, -3.5, 0.6), target=(0, 0, 0.5), lens=85):

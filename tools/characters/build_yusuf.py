@@ -101,8 +101,8 @@ def kurta_sdf():
     torso = union(torso, skirt, k=0.05)
     sleeve = tube([(0.05, 0.008, 0.60), (0.192, 0.012, 0.60), (0.278, 0.008, 0.60), (0.293, 0.008, 0.60)], [0.042, 0.035, 0.0325, 0.0345])
     k = union(torso, mirror_x(sleeve), k=0.035)
-    collar = torus((0, 0.012, 0.639), 0.0395, 0.0088, R=rot(x=8))
-    k = union(k, collar, k=0.008)
+    collar = torus((0, 0.012, 0.637), 0.0395, 0.0088)
+    k = union(k, collar, k=0.011)
     placket = intersect(offset(torso, 0.0032), box((0, -0.09, 0.592), (0.0115, 0.06, 0.046), r=0.004), k=0.002)
     k = union(k, placket, k=0.0025)
     hem_cut = elliptic_frustum(0.265, 0.317, (0, 0.006), (0, 0.006), (0.106, 0.08), (0.103, 0.077))
@@ -136,7 +136,7 @@ def buttons_sdf(kurta):
 def build():
     reset_scene()
     mats = dict(
-        skin=material('Skin', COLORS['skin'], roughness=0.6, vertex_color=True, glow=0.07),
+        skin=material('Skin', COLORS['skin'], roughness=0.6, vertex_color=True, glow=0.1),
         hair=material('Hair', COLORS['hair'], roughness=0.55),
         kurta=material('Kurta', COLORS['kurta'], roughness=0.78, sheen=0.2, sheen_tint='#fff1dc'),
         trousers=material('Trousers', COLORS['trousers'], roughness=0.85, sheen=0.2, sheen_tint='#e8ecd8'),
@@ -152,12 +152,12 @@ def build():
 
     parts = []
     skull_w, head_w, neck_w = PLACE.sdf(HEAD['skull']), PLACE.sdf(HEAD['head']), PLACE.sdf(HEAD['neck'])
-    head = sdf_mesh('Head', head_w, voxel=0.0014, faces=3700, symmetric=True)
+    head = sdf_mesh('Head', head_w, voxel=0.0014, faces=3450, symmetric=True)
     finish_part('Head', head, mats['skin'], lambda P: head_weights(P, SK, skull_w, neck_w, field),
                 colors=blush_colors(get_verts(head), PLACE, COLORS['skin']))
     parts.append(head)
 
-    hair = sdf_mesh('Hair', PLACE.sdf(hair_sdf()), voxel=0.0013, faces=4600)
+    hair = sdf_mesh('Hair', PLACE.sdf(hair_sdf()), voxel=0.0013, faces=4300)
     finish_part('Hair', hair, mats['hair'], head_only)
     parts.append(hair)
 

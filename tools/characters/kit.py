@@ -220,6 +220,79 @@ def kid_body(knee_y=-0.012, hand_s=1.12, foot_s=1.08, shin_top=0.11):
     return sk, hand, foot
 
 
+def adult_body(knee_y=-0.015, hand_s=1.24, foot_s=1.28, shin_top=0.13, shoulder_x=0.125):
+    """The shared adult skeleton (Ahmad, Aisha): ~4.3 heads, about 1.18 tall."""
+    dx = shoulder_x - 0.125
+    wrist = (0.418 + dx, 0.01, 0.83)
+    ankle = (0.072, 0.012, 0.075)
+    hand, kn = mitten(wrist, s=hand_s)
+    foot, fj = bare_foot(ankle, s=foot_s, shin_top=shin_top)
+    sk = Skeleton(
+        hips=(0, 0.005, 0.6),
+        spine=(0, 0.004, 0.66),
+        spine1=(0, 0.006, 0.72),
+        spine2=(0, 0.008, 0.785),
+        neck=(0, 0.014, 0.87),
+        head=(0, 0.014, 0.935),
+        head_top=(0, 0.014, 1.17),
+        clavicle=(0.03, 0.01, 0.85),
+        shoulder=(0.125 + dx, 0.01, 0.83),
+        elbow=(0.275 + dx, 0.016, 0.83),
+        wrist=wrist,
+        hand_tip=kn['tip'],
+        index=kn['index'],
+        middle=kn['middle'],
+        pinky=kn['pinky'],
+        hip=(0.07, 0.006, 0.555),
+        knee=(0.074, knee_y, 0.305),
+        ankle=ankle,
+        toe=fj['toe'],
+        toe_tip=fj['toe_tip'],
+    )
+    return sk, hand, foot
+
+
+ADULT_PLACE = Place(centre=(0.0, 0.01, 1.042), scale=1.05)
+
+
+# ════════════════════════════════════════════════════════════ hijab (kid head space)
+
+
+@dataclass
+class HijabStyle:
+    face: tuple = (0.092, 0.09, 0.834)  # rx, rz, zc of the face opening
+    hood_c: tuple = (0, 0.012, 0.872)
+    hood_r: tuple = (0.141, 0.134, 0.118)
+    wrap: float = 0.0075
+    cape_z: tuple = (0.57, 0.80)  # hem, top
+    cape_r0: tuple = (0.172, 0.136)
+    cape_r1: tuple = (0.092, 0.087)
+    cape_rings: tuple | None = None  # [(z, cx, cy, rx, ry)] for a shaped (bell) cape
+    hem: float = 0.625  # hem plane height at the centre; front hangs lower
+    front_drop: float = 0.42
+    under_down: float = 0.045  # how far the cream under-scarf runs down the sides
+
+
+def hijab_parts(skull, st: HijabStyle = HijabStyle()):
+    rx, rz, zc = st.face
+    hood = ellipsoid(st.hood_c, st.hood_r)
+    wrap = offset(skull, st.wrap)  # guarantees the cheeks stay covered
+    chin_wrap = ellipsoid((0, -0.008, 0.79), (0.11, 0.104, 0.076))
+    h = union(hood, wrap, k=0.03)
+    h = union(h, chin_wrap, k=0.05)
+    if st.cape_rings:
+        cape = loft(st.cape_rings, cap=0.024)
+    else:
+        cape = elliptic_frustum(st.cape_z[0], st.cape_z[1], (0, 0.014), (0, 0.01), st.cape_r0, st.cape_r1, cap=0.024)
+    h = union(h, cape, k=0.055)
+    h = intersect(h, plane((0, st.front_drop, -1), (0, 0, st.hem)), k=0.03)
+    h = subtract(h, oval_tunnel(rx, rz, zc, y_max=-0.03), k=0.016)
+    band = intersect(offset(skull, 0.0045), oval_tunnel(rx + 0.006, rz + 0.006, zc, y_max=-0.03), k=0.003)
+    band = subtract(band, oval_tunnel(rx - 0.011, rz - 0.013, zc + 0.004, y_max=0.2), k=0.004)
+    under = intersect(band, plane((0, 0, -1), (0, 0, zc - st.under_down)), k=0.012)
+    return h, under
+
+
 def skin_colors(ob, skin):
     return np.tile(np.r_[srgb(skin)[:3], 1], (len(ob.data.vertices), 1))
 
@@ -229,31 +302,36 @@ def skin_colors(ob, skin):
 
 def body_field(sk: Skeleton, *, shoulder_bias=0.022, knee_bias=0.026, hip_back_bias=0.03, elbow_bias=0.018,
                wrist_shift=0.0, hip_width=0.032, hip_front_width=None, hip_front_bias=0.0, knee_width=0.017, arm_zone=None,
-               neck_shift=0.0):
-    """A left-side weight field (bone → weight) for points with x ≥ 0."""
+               neck_shift=0.0, scale=1.0):
+    """A left-side weight field (bone → weight) for points with x ≥ 0.
+    Widths and biases are in kid units; `scale` sizes them for bigger bodies."""
+    s = scale
+    shoulder_bias, knee_bias, hip_back_bias, elbow_bias, wrist_shift = (v * s for v in (shoulder_bias, knee_bias, hip_back_bias, elbow_bias, wrist_shift))
+    hip_width, knee_width, hip_front_bias, neck_shift = (v * s for v in (hip_width, knee_width, hip_front_bias, neck_shift))
+    hip_front_width = None if hip_front_width is None else hip_front_width * s
     hips, spine, spine1, spine2, neck, head = (np.array(v) for v in (sk.hips, sk.spine, sk.spine1, sk.spine2, sk.neck, sk.head))
     sh, el, wr = np.array(sk.shoulder), np.array(sk.elbow), np.array(sk.wrist)
     hip, kn, an, toe = np.array(sk.hip), np.array(sk.knee), np.array(sk.ankle), np.array(sk.toe)
     Z = (0, 0, 1)
     J = Joint
-    torso_j = [J(spine, Z, 0.03), J(spine1, Z, 0.03), J(spine2, Z, 0.03), J(neck + np.array([0, 0, neck_shift]), Z, 0.022), J(head, Z, 0.014)]
-    arm_j = [J(sh, (1, 0, 0), 0.026, outer=(0, 0, 1), bias=shoulder_bias),
-             J(el, (1, 0, 0), 0.02, outer=(0, 1, 0), bias=elbow_bias),
-             J(wr + np.array([wrist_shift, 0, 0]), (1, 0, 0), 0.012)]
+    torso_j = [J(spine, Z, 0.03 * s), J(spine1, Z, 0.03 * s), J(spine2, Z, 0.03 * s), J(neck + np.array([0, 0, neck_shift]), Z, 0.022 * s), J(head, Z, 0.014 * s)]
+    arm_j = [J(sh, (1, 0, 0), 0.026 * s, outer=(0, 0, 1), bias=shoulder_bias),
+             J(el, (1, 0, 0), 0.02 * s, outer=(0, 1, 0), bias=elbow_bias),
+             J(wr + np.array([wrist_shift, 0, 0]), (1, 0, 0), 0.012 * s)]
     leg_j = [J(hip, (0, 0, -1), hip_width, outer=(0, 1, 0), bias=hip_back_bias, inner_bias=hip_front_bias, inner_width=hip_front_width),
              J(kn, (0, 0, -1), knee_width, outer=(0, -1, 0), bias=knee_bias),
-             J(an + np.array([0, 0, 0.016]), (0, 0, -1), 0.014),
-             J(toe, (0, -1, 0), 0.012)]
-    armpit_z = sh[2] - 0.035
-    zone = arm_zone or (np.array([sh[0] - 0.016, 0, armpit_z]), np.array([1.0, 0, 1.1]))
+             J(an + np.array([0, 0, 0.016 * s]), (0, 0, -1), 0.014 * s),
+             J(toe, (0, -1, 0), 0.012 * s)]
+    armpit_z = sh[2] - 0.035 * s
+    zone = arm_zone or (np.array([sh[0] - 0.016 * s, 0, armpit_z]), np.array([1.0, 0, 1.1]))
 
     def field(P):
         torso = chain_weights(P, ['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck', 'Head'], torso_j)
         arm = chain_weights(P, ['Spine2', 'LeftArm', 'LeftForeArm', 'LeftHand'], arm_j)
         leg = chain_weights(P, ['Hips', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'LeftToeBase'], leg_j)
         n = zone[1] / np.linalg.norm(zone[1])
-        a = smoothstep(-0.008, 0.008, (P - zone[0]) @ n)
-        g = smoothstep(hip[2] + 0.015, hip[2] + 0.06, P[:, 2])
+        a = smoothstep(-0.008 * s, 0.008 * s, (P - zone[0]) @ n)
+        g = smoothstep(hip[2] + 0.015 * s, hip[2] + 0.06 * s, P[:, 2])
         W = {}
         add_into(W, leg, (1 - g) * (1 - a))
         add_into(W, torso, g * (1 - a))
@@ -263,11 +341,15 @@ def body_field(sk: Skeleton, *, shoulder_bias=0.022, knee_bias=0.026, hip_back_b
     return field
 
 
-def skirt_weights(P, field, knee_y, blend=0.05, back_share=0.5):
-    """Long skirts: no foot weights, and the back of the lower skirt keeps half
-    its shin weight on the thigh so it can't flip forward when sitting on the heels."""
+def skirt_weights(P, field, knee_y, blend=0.05, back_to=(('Leg', 0.5), ('UpLeg', 0.4), ('Hips', 0.1)), ramp=(-0.005, 0.045)):
+    """Long skirts. No foot weights, and the lower skirt behind the knee only
+    half follows the shin: fully shin-weighted, the back panel would swing up
+    in front of the knees when sitting on the heels (a 172° knee bend is close
+    to a point reflection, so a 50/50 shin/thigh split folds it into the knee
+    instead). A little pelvis weight tucks it under the thighs and drapes it
+    over the calves in sujud; more than ~10% makes a bustle in ruku."""
     W = sided(P, field, blend=blend)
-    frac = back_share * smoothstep(knee_y, knee_y + 0.07, P[:, 1])
+    frac = smoothstep(knee_y + ramp[0], knee_y + ramp[1], P[:, 1])
     for side in ('Left', 'Right'):
         for b in (f'{side}Foot', f'{side}ToeBase'):
             if b in W:
@@ -275,8 +357,29 @@ def skirt_weights(P, field, knee_y, blend=0.05, back_share=0.5):
         if f'{side}Leg' in W:
             moved = W[f'{side}Leg'] * frac
             W[f'{side}Leg'] = W[f'{side}Leg'] - moved
-            W[f'{side}UpLeg'] = W.get(f'{side}UpLeg', 0) + moved
+            for bone, share in back_to:
+                name = bone if bone == 'Hips' else side + bone
+                W[name] = W.get(name, 0) + moved * share
     return W
+
+
+def hijab_weights(P, field, z_lo, z_hi, base=0.35, arm_share=1.0):
+    """Hijabs and capes are nearly round about the neck, so letting the whole
+    drape follow the head a little (base at the hem, rising to rigid at the
+    chin) spreads a 70° head turn over the drape instead of shearing the neck."""
+    W = sided(P, field)
+    if arm_share < 1:  # let the arms slide under a wide cape rather than drag it
+        for side in ('Left', 'Right'):
+            for b in (f'{side}Arm', f'{side}ForeArm', f'{side}Hand'):
+                if b in W:
+                    moved = W[b] * (1 - arm_share)
+                    W[b] = W[b] - moved
+                    W['Spine2'] = W.get('Spine2', 0) + moved
+    h = base + (1 - base) * smoothstep(z_lo, z_hi, P[:, 2])
+    out = {}
+    add_into(out, W, 1 - h)
+    out['Head'] = out.get('Head', 0) + h
+    return out
 
 
 def blend_to_head(P, field, z0, z1):
@@ -352,6 +455,8 @@ def pose_relaxed(arm_ob, arm_down=72.0, elbow=18.0):
 
 def hero_renders(prefix, height=1.0, face_z=None, views=((0, 4), (30, 6), (-32, 6), (180, 6)), arm_ob=None):
     os.makedirs(os.path.dirname(prefix), exist_ok=True)
+    if bpy.data.objects.get('Mat'):
+        bpy.data.objects['Mat'].hide_render = True
     if arm_ob is not None:
         pose_relaxed(arm_ob)
     tgt = (0, 0, height * 0.5)
@@ -436,29 +541,46 @@ def apply_app_pose(arm_ob, name, arms=True):
         pose_relaxed(arm_ob, arm_down=70, elbow=30)
 
 
-def ground(arm_ob, mesh_ob):
-    """Move the armature so the posed mesh rests on z = 0 (for previews)."""
+POSE_CONTACTS = {'ruku': ('feet', 'toes'), 'kneel': ('knees', 'toes'), 'sujud': ('knees', 'toes'), 'jalsah': ('knees', 'toes', 'feet')}
+
+
+def ground(arm_ob, mesh_ob, contacts=('feet', 'toes'), height=0.985):
+    """Ground like performer.ts: the lowest of (foot - rest ankle height,
+    toe - rest toe height, knee - 3% of body height) sits on z = 0."""
     bpy.context.view_layer.update()
-    dg = bpy.context.evaluated_depsgraph_get()
-    ev = mesh_ob.evaluated_get(dg)
-    me = ev.to_mesh()
-    zs = [ (ev.matrix_world @ v.co).z for v in me.vertices]
-    ev.to_mesh_clear()
-    arm_ob.location.z -= min(zs)
+    pb, b = arm_ob.pose.bones, arm_ob.data.bones
+    pos = lambda n: (arm_ob.matrix_world @ pb[n].head).z  # noqa: E731
+    lows = []
+    for side in ('Left', 'Right'):
+        if 'feet' in contacts:
+            lows.append(pos(f'{side}Foot') - b[f'{side}Foot'].head_local.z)
+        if 'toes' in contacts:
+            lows.append(pos(f'{side}ToeBase') - b[f'{side}ToeBase'].head_local.z)
+        if 'knees' in contacts:
+            lows.append(pos(f'{side}Leg') - 0.03 * height)
+    arm_ob.location.z -= min(lows)
     bpy.context.view_layer.update()
 
 
-def pose_renders(prefix, arm_ob, mesh_ob, poses=('jalsah', 'kneel', 'sujud'), height=1.0):
-    """Render app postures (legs/spine) from a few angles for skinning checks."""
+APP_CAMERAS = {'ruku': (52, 10), 'kneel': (54, 14), 'sujud': (54, 14), 'jalsah': (34, 11.5)}
+
+
+def pose_renders(prefix, arm_ob, mesh_ob, poses=('jalsah', 'ruku', 'sujud'), height=0.985):
+    """Render app postures (legs/spine; arms hang) like the Pose Lab does:
+    floating mat, no floor, the app's camera angle plus a side view."""
+    g = bpy.data.objects.get('Ground')
+    if g:
+        g.hide_render = True
     outs = []
     for name in poses:
         arm_ob.location = (0, 0, 0)
         apply_app_pose(arm_ob, name)
-        ground(arm_ob, mesh_ob)
-        for az in (35, 90, 150):
-            orbit_camera(az, 14, 2.4 * height, (0, -0.05, 0.25 * height), lens=60)
-            out = f'{prefix}_{name}_{az:03d}.png'
-            render(out, res=(480, 400), samples=24)
+        ground(arm_ob, mesh_ob, POSE_CONTACTS[name], height)
+        az0, el = APP_CAMERAS[name]
+        for tag, az in (('app', az0), ('side', 90)):
+            orbit_camera(az, el, 1.9 * height, (0, -0.12, 0.2 * height), lens=55)
+            out = f'{prefix}_{name}_{tag}.png'
+            render(out, res=(480, 380), samples=20)
             outs.append(out)
     return outs
 
