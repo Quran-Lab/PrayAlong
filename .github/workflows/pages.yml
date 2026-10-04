@@ -1,6 +1,7 @@
-# Builds the app and publishes it to GitHub Pages (camera hands-free needs a
-# real HTTPS host). Enable once: Settings → Pages → Source: GitHub Actions.
-name: Deploy to GitHub Pages
+# Tests and builds every push; publishes `main` to GitHub Pages (camera
+# hands-free needs a real HTTPS host).
+# Enable once: Settings → Pages → Source: GitHub Actions.
+name: CI & Pages
 
 on:
   push:
@@ -33,6 +34,8 @@ jobs:
           path: dist
   deploy:
     needs: build
+    # GitHub Pages only accepts deployments from the default branch.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

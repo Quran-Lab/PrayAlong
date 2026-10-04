@@ -8,10 +8,12 @@ import { display, useSession, type TextSize } from '@/state/session'
 
 /** [hero, hero when long] sizes for the main line. */
 const HERO: Record<TextSize, [string, string]> = {
-  m: ['text-[1.6rem] sm:text-[2rem]', 'text-[1.3rem] sm:text-[1.6rem]'],
-  l: ['text-[1.9rem] sm:text-[2.45rem]', 'text-[1.45rem] sm:text-[1.85rem]'],
-  xl: ['text-[2.25rem] sm:text-[2.9rem]', 'text-[1.7rem] sm:text-[2.2rem]'],
+  m: ['text-[1.6rem] sm:text-[2rem] short:text-[1.5rem]', 'text-[1.3rem] sm:text-[1.6rem] short:text-[1.25rem]'],
+  l: ['text-[1.9rem] sm:text-[2.45rem] short:text-[1.75rem]', 'text-[1.45rem] sm:text-[1.85rem] short:text-[1.4rem]'],
+  xl: ['text-[2.25rem] sm:text-[2.9rem] short:text-[2rem]', 'text-[1.7rem] sm:text-[2.2rem] short:text-[1.6rem]'],
 }
+/** Reading from across the room (hands-free): one size up. */
+const LARGER: Record<TextSize, TextSize> = { m: 'l', l: 'xl', xl: 'xl' }
 const ARABIC: Record<TextSize, string> = {
   m: 'text-[1.5rem] sm:text-[1.8rem]',
   l: 'text-[1.75rem] sm:text-[2.15rem]',
@@ -28,10 +30,11 @@ const calm = { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
  * meaning beneath in the reader's language. Arabic script is opt-in (and on
  * by default only for people who read it).
  */
-export function Recitation({ step, timedMs }: { step: Step; timedMs: number | null }) {
+export function Recitation({ step, timedMs, distance = false }: { step: Step; timedMs: number | null; distance?: boolean }) {
   const t = useT()
   const locale = useLocale()
   const settings = useSession((s) => s.settings)
+  const size = distance ? LARGER[settings.textSize] : settings.textSize
   const show = display(settings, locale)
   const line = resolveLine(step.recitationId, locale)
   // With Arabic as the only script, it becomes the hero.
@@ -75,7 +78,7 @@ export function Recitation({ step, timedMs }: { step: Step; timedMs: number | nu
           )}
 
           {show.arabic && (
-            <p lang="ar" dir="rtl" className={cn('arabic text-balance text-ink', arabicHero ? HERO[settings.textSize][long ? 1 : 0] : ARABIC[settings.textSize])}>
+            <p lang="ar" dir="rtl" className={cn('arabic text-balance text-ink', arabicHero ? HERO[size][long ? 1 : 0] : ARABIC[size])}>
               {line.arabic}
             </p>
           )}
@@ -84,7 +87,7 @@ export function Recitation({ step, timedMs }: { step: Step; timedMs: number | nu
               lang="ar-Latn"
               className={cn(
                 'font-sans leading-tight font-semibold tracking-[-0.015em] text-balance text-ink',
-                HERO[settings.textSize][long ? 1 : 0],
+                HERO[size][long ? 1 : 0],
                 show.arabic && 'mt-1 text-ink-soft',
               )}
             >

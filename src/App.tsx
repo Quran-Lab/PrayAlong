@@ -101,7 +101,7 @@ export function App() {
         <RadixTooltip.Provider>
           <div className="relative flex h-full flex-col overflow-hidden bg-canvas">
             {/* Header */}
-            <header className="relative z-20 flex h-16 shrink-0 items-center gap-3 border-b border-line px-4 sm:h-[4.5rem] sm:px-6">
+            <header className="relative z-20 flex h-16 shrink-0 items-center gap-3 border-b border-line px-4 sm:h-[4.5rem] sm:px-6 short:h-12">
               <div className="flex flex-1 items-center">
                 <Logo compact={!wide} />
               </div>
@@ -115,8 +115,8 @@ export function App() {
             </header>
 
             {/* Stage */}
-            <main className="relative flex min-h-0 flex-1 flex-col">
-              <div className="relative min-h-0 flex-1">
+            <main className="relative flex min-h-0 flex-1 flex-col short:flex-row">
+              <div className="relative min-h-0 min-w-0 flex-1">
                 <Suspense>
                   <CompanionStage
                     posture={posture}
@@ -156,12 +156,12 @@ export function App() {
                 </div>
               </div>
 
-              <section className="relative z-10 flex min-h-[13rem] shrink-0 items-start justify-center pb-3 sm:min-h-[14rem]">
+              <section className="relative z-10 flex min-h-[13rem] shrink-0 items-start justify-center pb-3 sm:min-h-[14rem] short:min-h-0 short:w-[52%] short:items-center short:overflow-y-auto short:py-3">
                 <AnimatePresence mode="wait">
                   {phase === 'ready' && <ReadyPanel key="ready" clock={clock} handsFree={handsFree} onHandsFree={toggleHandsFree} />}
                   {phase === 'praying' && (
                     <motion.div key="praying" className="w-full" exit={{ opacity: 0 }}>
-                      <Recitation step={step} timedMs={timedMs} />
+                      <Recitation step={step} timedMs={timedMs} distance={following} />
                     </motion.div>
                   )}
                   {phase === 'complete' && <CompletePanel key="complete" clock={clock} />}
@@ -170,7 +170,7 @@ export function App() {
             </main>
 
             {/* Dock */}
-            <footer className="relative z-10 shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6">
+            <footer className="relative z-10 shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6 short:pb-2">
               <PostureDock following={following} />
             </footer>
           </div>

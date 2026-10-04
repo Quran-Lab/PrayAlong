@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Phones on their side: stage and words sit side by side. */
+@custom-variant short (@media (orientation: landscape) and (max-height: 540px));
+
 /*
  * PrayAlong design tokens. Dark, calm and warm: near-black with a green
  * undertone, one mint accent, and a per-prayer ambient hue (set at runtime
