@@ -109,7 +109,7 @@ def face_strokes(place: Place, skull_world, st: FaceStyle, mats):
                    place.r([0.0009, 0.0023, 0.0028, 0.0024, 0.0012]), sink=0.4)
         assign(e, mats['lash'])
         out.append(e)
-        flicks = [((0.0655, 0.8440), (0.0718, 0.8402)), ((0.0622, 0.8417), (0.0664, 0.8366))][: st.lashes]
+        flicks = [((0.0655, 0.8440), (0.0718, 0.8402)), ((0.0622, 0.8417), (0.0664, 0.8366)), ((0.0588, 0.8402), (0.0612, 0.8350))][: st.lashes]
         for a, b in flicks:
             l = stroke('lash', skull_world, place.xz([(s * a[0], a[1]), (s * (a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 0.0003), (s * b[0], b[1])]),
                        place.r([0.0012, 0.0009, 0.0004]), sink=0.4)
@@ -167,11 +167,11 @@ def mitten(wrist, s=1.0, curl=10.0):
     return h, knuckles
 
 
-def bare_foot(ankle, s=1.0):
+def bare_foot(ankle, s=1.0, shin_top=0.11):
     """Left bare foot standing flat on z = 0; ankle joint given."""
     a = np.asarray(ankle, float)
     p = lambda dx, dy, dz: (a[0] + s * dx, a[1] + s * dy, dz * s)  # noqa: E731
-    shin = capsule(p(0, 0.0, 0.11), p(0, 0.002, 0.045), 0.0255 * s)
+    shin = capsule(p(0, 0.0, shin_top), p(0, 0.002, 0.045), 0.0255 * s)
     body = ellipsoid(p(0.002, -0.03, 0.03), (0.034 * s, 0.062 * s, 0.03 * s), R=rot(z=-5))
     heel = sphere(p(-0.001, 0.012, 0.03), 0.03 * s)
     f = union(shin, heel, k=0.02 * s)
@@ -183,6 +183,45 @@ def bare_foot(ankle, s=1.0):
     f = intersect(f, plane((0, 0, -1), (0, 0, 0.0015)), k=0.012 * s)
     joints = dict(toe=p(0.004, -0.05, 0.02), toe_tip=p(0.004, -0.09, 0.02))
     return f, joints
+
+
+# ════════════════════════════════════════════════════════════ kid body
+
+
+def kid_body(knee_y=-0.012, hand_s=1.12, foot_s=1.08, shin_top=0.11):
+    """The shared child skeleton (Yusuf, Maryam) plus mitten hands and feet.
+    Feet stand on z = 0, the character faces -Y, about 0.985 tall with hair."""
+    wrist = (0.294, 0.008, 0.60)
+    ankle = (0.058, 0.008, 0.06)
+    hand, kn = mitten(wrist, s=hand_s)
+    foot, fj = bare_foot(ankle, s=foot_s, shin_top=shin_top)
+    sk = Skeleton(
+        hips=(0, 0.005, 0.43),
+        spine=(0, 0.004, 0.475),
+        spine1=(0, 0.006, 0.522),
+        spine2=(0, 0.008, 0.568),
+        neck=(0, 0.012, 0.642),
+        head=(0, 0.012, 0.702),
+        head_top=(0, 0.012, 0.93),
+        clavicle=(0.022, 0.008, 0.622),
+        shoulder=(0.088, 0.008, 0.60),
+        elbow=(0.192, 0.012, 0.60),
+        wrist=wrist,
+        hand_tip=kn['tip'],
+        index=kn['index'],
+        middle=kn['middle'],
+        pinky=kn['pinky'],
+        hip=(0.054, 0.005, 0.39),
+        knee=(0.057, knee_y, 0.22),
+        ankle=ankle,
+        toe=fj['toe'],
+        toe_tip=fj['toe_tip'],
+    )
+    return sk, hand, foot
+
+
+def skin_colors(ob, skin):
+    return np.tile(np.r_[srgb(skin)[:3], 1], (len(ob.data.vertices), 1))
 
 
 # ════════════════════════════════════════════════════════════ weights
@@ -222,6 +261,32 @@ def body_field(sk: Skeleton, *, shoulder_bias=0.022, knee_bias=0.026, hip_back_b
         return W
 
     return field
+
+
+def skirt_weights(P, field, knee_y, blend=0.05, back_share=0.5):
+    """Long skirts: no foot weights, and the back of the lower skirt keeps half
+    its shin weight on the thigh so it can't flip forward when sitting on the heels."""
+    W = sided(P, field, blend=blend)
+    frac = back_share * smoothstep(knee_y, knee_y + 0.07, P[:, 1])
+    for side in ('Left', 'Right'):
+        for b in (f'{side}Foot', f'{side}ToeBase'):
+            if b in W:
+                W[f'{side}Leg'] = W.get(f'{side}Leg', 0) + W.pop(b)
+        if f'{side}Leg' in W:
+            moved = W[f'{side}Leg'] * frac
+            W[f'{side}Leg'] = W[f'{side}Leg'] - moved
+            W[f'{side}UpLeg'] = W.get(f'{side}UpLeg', 0) + moved
+    return W
+
+
+def blend_to_head(P, field, z0, z1):
+    """Field weights below z0, rigid Head above z1 (hijabs, beards, caps)."""
+    W = sided(P, field)
+    h = smoothstep(z0, z1, P[:, 2])
+    out = {}
+    add_into(out, W, 1 - h)
+    out['Head'] = out.get('Head', 0) + h
+    return out
 
 
 def head_weights(P, sk: Skeleton, skull_world, neck_world, field):
@@ -267,18 +332,39 @@ def assemble(name, skel, parts, out_glb):
     return arm, body, tris
 
 
-def hero_renders(prefix, height=1.0, views=((0, 4), (32, 6), (-35, 6), (180, 6))):
+def pose_relaxed(arm_ob, arm_down=72.0, elbow=18.0):
+    """Pose the arms down for hero renders (the exported rest pose stays a T-pose)."""
+    import math
+    import mathutils
+
+    def pose_world(name, R):
+        pb = arm_ob.pose.bones[name]
+        bpy.context.view_layer.update()
+        h = pb.head.copy()
+        T = mathutils.Matrix.Translation(h)
+        pb.matrix = T @ R.to_4x4() @ T.inverted() @ pb.matrix
+        bpy.context.view_layer.update()
+
+    for side, s in (('Left', 1), ('Right', -1)):
+        pose_world(f'{side}Arm', mathutils.Matrix.Rotation(math.radians(s * arm_down), 3, 'Y') @ mathutils.Matrix.Rotation(math.radians(-8), 3, 'X'))
+        pose_world(f'{side}ForeArm', mathutils.Matrix.Rotation(math.radians(-elbow), 3, 'X'))
+
+
+def hero_renders(prefix, height=1.0, face_z=None, views=((0, 4), (30, 6), (-32, 6), (180, 6)), arm_ob=None):
     os.makedirs(os.path.dirname(prefix), exist_ok=True)
+    if arm_ob is not None:
+        pose_relaxed(arm_ob)
     tgt = (0, 0, height * 0.5)
     outs = []
     for az, el in views:
-        orbit_camera(az, el, 3.3 * height, tgt, lens=70)
+        orbit_camera(az, el, 2.55 * height, tgt, lens=70)
         out = f'{prefix}_{az:+04d}.png'
-        render(out, res=(560, 760), samples=40)
+        render(out, res=(600, 800), samples=40)
         outs.append(out)
-    # face close-up
-    orbit_camera(18, 4, 1.15 * height, (0, 0, height * 0.86), lens=85)
+    # Face close-up.
+    fz = face_z if face_z is not None else height * 0.83
+    orbit_camera(20, 3, 1.05 * height, (0, 0, fz), lens=85)
     out = f'{prefix}_face.png'
-    render(out, res=(560, 560), samples=40)
+    render(out, res=(600, 600), samples=40)
     outs.append(out)
     return outs

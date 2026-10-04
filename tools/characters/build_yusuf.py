@@ -54,7 +54,7 @@ SK = Skeleton(
 
 # ───────────────────────────────────────────────────────────── head & hair
 
-HEAD = head_parts(HeadStyle())
+HEAD = head_parts(HeadStyle(nose=1.2))
 PLACE = Place(centre=(0.0, 0.008, 0.818), scale=1.08)
 
 
@@ -161,7 +161,7 @@ def build(render_previews=True):
     finish_part('Hair', hair, mats['hair'], head_only)
     parts.append(hair)
 
-    for s in face_strokes(PLACE, skull_w, FaceStyle(), mats):
+    for s in face_strokes(PLACE, skull_w, FaceStyle(brow_thick=1.25), mats):
         finish_part(s.name, s, s.data.materials[0], head_only)
         parts.append(s)
 
@@ -189,7 +189,7 @@ def build(render_previews=True):
     arm, body, tris = assemble('Yusuf', SK, parts, OUT_GLB)
     if render_previews:
         preview_setup()
-        hero_renders(os.path.join(PREVIEW_DIR, NAME), height=0.985)
+        hero_renders(os.path.join(PREVIEW_DIR, NAME), height=0.985, face_z=0.83, arm_ob=arm)
     return tris
 
 
