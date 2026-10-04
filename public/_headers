@@ -1,0 +1,5 @@
+# Netlify / Cloudflare Pages: cross-origin isolation lets the pose models
+# run multi-threaded WebAssembly (everything is self-hosted, so it's safe).
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: credentialless

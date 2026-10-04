@@ -20,7 +20,7 @@ const browser = await chromium.launch({
 const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, permissions: ['camera'] })
 const page = await context.newPage()
 page.on('pageerror', (e) => console.log('pageerror', e.message))
-await page.goto(base + '/', { waitUntil: 'networkidle' })
+await page.goto(base + '/' + (process.env.ENGINE ? `?engine=${process.env.ENGINE}` : ''), { waitUntil: 'networkidle' })
 await page.waitForTimeout(4000)
 await page.keyboard.press('h') // hands-free on → setup sheet
 await page.waitForTimeout(1500)
