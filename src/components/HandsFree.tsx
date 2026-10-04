@@ -190,7 +190,7 @@ export function DemoBar({
         onClick={() => onAuto(!auto)}
         className={cn('flex h-11 cursor-pointer items-center gap-1.5 rounded-xl px-3 text-xs font-medium', auto ? 'bg-mint/15 text-mint' : 'text-ink-soft hover:bg-white/[0.07]')}
       >
-        {auto ? <Pause className="size-4 fill-current" /> : <Play className="size-4 fill-current rtl:-scale-x-100" />}
+        {auto ? <Pause className="size-4 fill-current" /> : <Play className="size-4 fill-current" />}
         <span className="hidden sm:inline">{auto ? t('demo.stop') : t('demo.auto')}</span>
       </button>
     </motion.div>

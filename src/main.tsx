@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/inter'
 import '@fontsource/amiri/400.css'
 import '@fontsource/amiri/700.css'
+// Arabic-script UI text (unicode-range: only downloaded when used).
+import '@fontsource-variable/noto-sans-arabic'
+import '@fontsource/noto-nastaliq-urdu/400.css'
 import './index.css'
 import { App } from './App'
 

@@ -19,12 +19,17 @@ export function classifyPose(kp: readonly Keypoint[], standingTorso?: number): R
   const shoulders = mid(p(KP.leftShoulder), p(KP.rightShoulder))
   const hips = mid(p(KP.leftHip), p(KP.rightHip))
   const knees = mid(p(KP.leftKnee), p(KP.rightKnee))
+  const ankles = mid(p(KP.leftAnkle), p(KP.rightAnkle))
   const nose = p(KP.nose)
   const torso = Math.max(dist(shoulders, hips), dist(p(KP.leftShoulder), p(KP.rightShoulder)) * 0.9, 1e-3)
 
   // 0° = upright, 90° = horizontal.
   const tilt = (Math.atan2(Math.abs(shoulders.x - hips.x), hips.y - shoulders.y) * 180) / Math.PI
   const kneeDrop = (knees.y - hips.y) / torso // how far the knees hang below the hips
+  // Standing, the ankles hang a shin below the knees; kneeling or sitting on
+  // the heels, they're tucked level with (or behind) the knees. This also
+  // works head-on, where kneeling knees come towards the camera.
+  const shinDrop = (ankles.y - knees.y) / torso
   const headDrop = (nose.y - hips.y) / torso // positive: head lower than the hips
   const foreshortened = standingTorso ? dist(shoulders, hips) / standingTorso : 1
 
@@ -37,9 +42,9 @@ export function classifyPose(kp: readonly Keypoint[], standingTorso?: number): R
   let pose: PoseClass | null = null
   if (headDrop > 0.15 && (tilt > 55 || foreshortened < 0.55)) pose = 'prostrating'
   else if (kneeDrop > 0.55 && ((tilt > 45 && tilt < 125) || (foreshortened < 0.62 && nose.y > shoulders.y - 0.1 * torso))) pose = 'bowing'
-  else if (tilt < 40 && kneeDrop < 0.42) pose = 'sitting'
+  else if (tilt < 40 && (kneeDrop < 0.42 || shinDrop < 0.35)) pose = 'sitting'
   else if (tilt < 32 && wristsUp) pose = 'hands-raised'
-  else if (tilt < 32 && kneeDrop > 0.55) pose = 'standing'
+  else if (tilt < 32 && kneeDrop > 0.55 && shinDrop > 0.5) pose = 'standing'
 
   // Salam: the nose swings past the ears. The camera sees a mirror image of
   // the worshipper, so their right is image-left.

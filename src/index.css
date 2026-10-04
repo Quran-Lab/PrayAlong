@@ -6,7 +6,7 @@
  * on :root as --ambient) used only for glows.
  */
 @theme {
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Inter Variable", "Noto Sans Arabic Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-arabic: "Amiri", "Noto Naskh Arabic", "Geeza Pro", serif;
 
   --color-canvas: #0a0d0c;
@@ -62,6 +62,12 @@ body {
   text-rendering: optimizeLegibility;
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Urdu reads in Nastaliq. */
+:lang(ur) {
+  font-family: "Noto Nastaliq Urdu", "Noto Sans Arabic Variable", var(--font-sans);
+  line-height: 2;
 }
 
 ::selection {

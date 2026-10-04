@@ -32,3 +32,20 @@ describe('detectPrayer', () => {
     expect(times.isha.getTime()).toBeGreaterThan(times.maghrib.getTime())
   })
 })
+
+describe('regional conventions', () => {
+  it('prays by Diyanet with Hanafi Asr in Türkiye, ISNA in North America, MWL elsewhere', async () => {
+    const { regionalMethod } = await import('./prayer-times')
+    expect(regionalMethod('Europe/Istanbul')).toEqual({ method: 'Turkey', hanafi: true })
+    expect(regionalMethod('Asia/Karachi')).toEqual({ method: 'Karachi', hanafi: true })
+    expect(regionalMethod('America/New_York').method).toBe('NorthAmerica')
+    expect(regionalMethod('America/Sao_Paulo').method).toBe('MuslimWorldLeague')
+    expect(regionalMethod('Europe/Copenhagen').method).toBe('MuslimWorldLeague')
+  })
+
+  it('puts Hanafi Asr later than the standard Asr', () => {
+    const lahore: Place = { latitude: 31.55, longitude: 74.34, source: 'gps' }
+    const day = at('2026-03-20T07:00:00Z')
+    expect(timesFor(lahore, day, 'Asia/Karachi').asr.getTime()).toBeGreaterThan(timesFor(lahore, day, 'Europe/Copenhagen').asr.getTime())
+  })
+})

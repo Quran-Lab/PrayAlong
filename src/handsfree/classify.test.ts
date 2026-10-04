@@ -33,6 +33,11 @@ describe('classifyPose', () => {
     expect(classifyPose(kp).pose).toBe(expected)
   })
 
+  it('recognises kneeling seen head-on, where the knees come towards the camera', () => {
+    const frontKneel = skeleton({ head: [0.5, 0.38], shoulder: [0.5, 0.45], hip: [0.5, 0.64], knee: [0.5, 0.74], ankle: [0.5, 0.75], wrist: [0.5, 0.68] })
+    expect(classifyPose(frontKneel).pose).toBe('sitting')
+  })
+
   it('recognises a bow seen head-on by torso foreshortening', () => {
     const frontBow = skeleton({ head: [0.5, 0.47], shoulder: [0.5, 0.42], hip: [0.5, 0.5], knee: [0.5, 0.7], ankle: [0.5, 0.9], wrist: [0.5, 0.66] })
     expect(classifyPose(frontBow, 0.25).pose).toBe('bowing')

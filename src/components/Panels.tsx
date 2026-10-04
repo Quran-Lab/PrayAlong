@@ -55,7 +55,7 @@ export function ReadyPanel({ clock, handsFree, onHandsFree }: { clock: PrayerClo
       </p>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
         <Button variant="primary" size="lg" onClick={begin}>
-          <Play className="size-4 fill-current rtl:-scale-x-100" />
+          <Play className="size-4 fill-current" />
           {t('ready.begin', { prayer: name })}
         </Button>
         {!handsFree && (

@@ -1,8 +1,172 @@
-export const de: Record<string, string> = {}
-export const fr: Record<string, string> = {}
-export const es: Record<string, string> = {}
-export const tr: Record<string, string> = {}
-export const id: Record<string, string> = {}
-export const nl: Record<string, string> = {}
-export const ur: Record<string, string> = {}
+/**
+ * Meanings of the prayer's supplications in other languages. These are
+ * PrayAlong translations of the Hisn al-Muslim meanings in `en.ts`, following
+ * each community's customary wording, and must be reviewed by qualified native
+ * speakers before release (see docs/content.md). Clause splits mirror `en.ts`
+ * exactly — each line is shown on its own.
+ *
+ * Arabic readers see the Arabic itself, so `ar` stays empty.
+ */
+
+export const de: Record<string, string> = {
+  takbir: 'Allah ist der Größte.',
+  'thana-1': 'Preis sei Dir, o Allah, und ich lobe Dich.',
+  'thana-2': 'Gesegnet ist Dein Name, erhaben ist Deine Majestät, und niemand verdient es, angebetet zu werden, außer Dir.',
+  taawwudh: 'Ich suche Zuflucht bei Allah vor dem verfluchten Satan.',
+  amin: 'O Allah, erhöre unser Bittgebet.',
+  ruku: 'Preis sei meinem Herrn, dem Allgewaltigen.',
+  tasmi: 'Möge Allah den erhören, der Ihn lobt.',
+  tahmid: 'Unser Herr, Dir gebührt alles Lob.',
+  sujud: 'Preis sei meinem Herrn, dem Allerhöchsten.',
+  jalsah: 'Mein Herr, vergib mir.',
+  'tashahhud-1': 'Alle Grüße, Gebete und guten Worte gebühren Allah.',
+  'tashahhud-2': 'Friede sei mit dir, o Prophet, und die Barmherzigkeit Allahs und Seine Segnungen.',
+  'tashahhud-3': 'Friede sei mit uns und mit den rechtschaffenen Dienern Allahs.',
+  'tashahhud-4': 'Ich bezeuge, dass niemand es verdient, angebetet zu werden, außer Allah, und ich bezeuge, dass Muhammad Sein Diener und Gesandter ist.',
+  'salawat-1': 'O Allah, sprich den Segen über Muhammad und die Familie Muhammads,',
+  'salawat-2': 'wie Du den Segen über Ibrahim und die Familie Ibrahims gesprochen hast. Du bist lobenswürdig und ruhmvoll.',
+  'salawat-3': 'O Allah, segne Muhammad und die Familie Muhammads,',
+  'salawat-4': 'wie Du Ibrahim und die Familie Ibrahims gesegnet hast. Du bist lobenswürdig und ruhmvoll.',
+  salam: 'Der Friede und die Barmherzigkeit Allahs seien mit euch.',
+  taqabbal: 'Möge Allah es von uns und von euch annehmen.',
+}
+
+export const fr: Record<string, string> = {
+  takbir: 'Allah est le Plus Grand.',
+  'thana-1': 'Gloire et pureté à Toi, ô Allah, et je Te loue.',
+  'thana-2': 'Béni est Ton nom, sublime est Ta majesté, et nul ne mérite d’être adoré en dehors de Toi.',
+  taawwudh: 'Je cherche refuge auprès d’Allah contre Satan le maudit.',
+  amin: 'Ô Allah, exauce notre invocation.',
+  ruku: 'Gloire et pureté à mon Seigneur, l’Immense.',
+  tasmi: 'Qu’Allah exauce celui qui Le loue.',
+  tahmid: 'Notre Seigneur, à Toi revient toute louange.',
+  sujud: 'Gloire et pureté à mon Seigneur, le Très-Haut.',
+  jalsah: 'Mon Seigneur, pardonne-moi.',
+  'tashahhud-1': 'Toutes les salutations, les prières et les bonnes paroles sont pour Allah.',
+  'tashahhud-2': 'Que la paix soit sur toi, ô Prophète, ainsi que la miséricorde d’Allah et Ses bénédictions.',
+  'tashahhud-3': 'Que la paix soit sur nous et sur les serviteurs vertueux d’Allah.',
+  'tashahhud-4': 'J’atteste que nul ne mérite d’être adoré en dehors d’Allah, et j’atteste que Muhammad est Son serviteur et Son Messager.',
+  'salawat-1': 'Ô Allah, prie sur Muhammad et sur la famille de Muhammad,',
+  'salawat-2': 'comme Tu as prié sur Ibrahim et sur la famille d’Ibrahim. Tu es Digne de louange et plein de gloire.',
+  'salawat-3': 'Ô Allah, bénis Muhammad et la famille de Muhammad,',
+  'salawat-4': 'comme Tu as béni Ibrahim et la famille d’Ibrahim. Tu es Digne de louange et plein de gloire.',
+  salam: 'Que la paix et la miséricorde d’Allah soient sur vous.',
+  taqabbal: 'Qu’Allah l’accepte de nous et de vous.',
+}
+
+export const es: Record<string, string> = {
+  takbir: 'Allah es el más Grande.',
+  'thana-1': 'Glorificado seas, oh Allah, y Te alabo.',
+  'thana-2': 'Bendito es Tu nombre, excelsa es Tu majestad, y nadie merece ser adorado excepto Tú.',
+  taawwudh: 'Me refugio en Allah de Satanás, el maldito.',
+  amin: 'Oh Allah, responde a nuestra súplica.',
+  ruku: 'Glorificado sea mi Señor, el Supremo.',
+  tasmi: 'Que Allah responda a quien Lo alaba.',
+  tahmid: 'Señor nuestro, a Ti pertenece toda alabanza.',
+  sujud: 'Glorificado sea mi Señor, el Altísimo.',
+  jalsah: 'Señor mío, perdóname.',
+  'tashahhud-1': 'Todos los saludos, las oraciones y las buenas palabras son para Allah.',
+  'tashahhud-2': 'La paz sea contigo, oh Profeta, así como la misericordia de Allah y Sus bendiciones.',
+  'tashahhud-3': 'La paz sea con nosotros y con los siervos justos de Allah.',
+  'tashahhud-4': 'Atestiguo que nadie merece ser adorado excepto Allah, y atestiguo que Muhammad es Su siervo y Su Mensajero.',
+  'salawat-1': 'Oh Allah, exalta a Muhammad y a la familia de Muhammad,',
+  'salawat-2': 'como exaltaste a Ibrahim y a la familia de Ibrahim. Tú eres digno de alabanza y lleno de majestad.',
+  'salawat-3': 'Oh Allah, bendice a Muhammad y a la familia de Muhammad,',
+  'salawat-4': 'como bendijiste a Ibrahim y a la familia de Ibrahim. Tú eres digno de alabanza y lleno de majestad.',
+  salam: 'Que la paz y la misericordia de Allah sean con ustedes.',
+  taqabbal: 'Que Allah lo acepte de nosotros y de ustedes.',
+}
+
+export const tr: Record<string, string> = {
+  takbir: 'Allah en büyüktür.',
+  'thana-1': 'Allah’ım, Sen her türlü eksiklikten uzaksın ve Sana hamd ederim.',
+  'thana-2': 'Adın mübarektir, şanın yücedir ve Senden başka ibadete layık ilah yoktur.',
+  taawwudh: 'Kovulmuş şeytandan Allah’a sığınırım.',
+  amin: 'Allah’ım, duamızı kabul et.',
+  ruku: 'Büyük olan Rabbim her türlü eksiklikten uzaktır.',
+  tasmi: 'Allah, Kendisine hamd edenin duasını kabul etsin.',
+  tahmid: 'Rabbimiz, bütün hamdler Sana mahsustur.',
+  sujud: 'En yüce olan Rabbim her türlü eksiklikten uzaktır.',
+  jalsah: 'Rabbim, beni bağışla.',
+  'tashahhud-1': 'Bütün selamlar, dualar ve güzel sözler Allah’a aittir.',
+  'tashahhud-2': 'Ey Peygamber, selam, Allah’ın rahmeti ve bereketleri senin üzerine olsun.',
+  'tashahhud-3': 'Selam bizim üzerimize ve Allah’ın salih kullarının üzerine olsun.',
+  'tashahhud-4': 'Şahitlik ederim ki Allah’tan başka ibadete layık ilah yoktur ve yine şahitlik ederim ki Muhammed O’nun kulu ve Resûlüdür.',
+  'salawat-1': 'Allah’ım, Muhammed’e ve Muhammed’in ailesine rahmet eyle,',
+  'salawat-2': 'İbrahim’e ve İbrahim’in ailesine rahmet eylediğin gibi. Sen övülmeye layıksın, şanı yücesin.',
+  'salawat-3': 'Allah’ım, Muhammed’e ve Muhammed’in ailesine bereket ver,',
+  'salawat-4': 'İbrahim’e ve İbrahim’in ailesine bereket verdiğin gibi. Sen övülmeye layıksın, şanı yücesin.',
+  salam: 'Allah’ın selamı ve rahmeti üzerinize olsun.',
+  taqabbal: 'Allah bizden ve sizden kabul etsin.',
+}
+
+export const id: Record<string, string> = {
+  takbir: 'Allah Maha Besar.',
+  'thana-1': 'Maha Suci Engkau, ya Allah, dan aku memuji-Mu.',
+  'thana-2': 'Maha Berkah nama-Mu, Maha Tinggi keagungan-Mu, dan tidak ada yang berhak disembah selain Engkau.',
+  taawwudh: 'Aku berlindung kepada Allah dari setan yang terkutuk.',
+  amin: 'Ya Allah, kabulkanlah doa kami.',
+  ruku: 'Maha Suci Tuhanku Yang Maha Agung.',
+  tasmi: 'Semoga Allah mengabulkan doa orang yang memuji-Nya.',
+  tahmid: 'Ya Tuhan kami, bagi-Mu segala puji.',
+  sujud: 'Maha Suci Tuhanku Yang Maha Tinggi.',
+  jalsah: 'Ya Tuhanku, ampunilah aku.',
+  'tashahhud-1': 'Segala penghormatan, selawat, dan ucapan yang baik adalah milik Allah.',
+  'tashahhud-2': 'Semoga keselamatan tercurah kepadamu, wahai Nabi, beserta rahmat Allah dan berkah-Nya.',
+  'tashahhud-3': 'Semoga keselamatan tercurah kepada kami dan kepada hamba-hamba Allah yang saleh.',
+  'tashahhud-4': 'Aku bersaksi bahwa tidak ada yang berhak disembah selain Allah, dan aku bersaksi bahwa Muhammad adalah hamba dan rasul-Nya.',
+  'salawat-1': 'Ya Allah, limpahkanlah selawat kepada Muhammad dan keluarga Muhammad,',
+  'salawat-2': 'sebagaimana Engkau telah melimpahkan selawat kepada Ibrahim dan keluarga Ibrahim. Engkau Maha Terpuji lagi Maha Mulia.',
+  'salawat-3': 'Ya Allah, limpahkanlah berkah kepada Muhammad dan keluarga Muhammad,',
+  'salawat-4': 'sebagaimana Engkau telah melimpahkan berkah kepada Ibrahim dan keluarga Ibrahim. Engkau Maha Terpuji lagi Maha Mulia.',
+  salam: 'Semoga keselamatan dan rahmat Allah tercurah kepada kalian.',
+  taqabbal: 'Semoga Allah menerimanya dari kami dan dari kalian.',
+}
+
+export const nl: Record<string, string> = {
+  takbir: 'Allah is de Grootste.',
+  'thana-1': 'Verheven bent U, o Allah, en ik prijs U.',
+  'thana-2': 'Gezegend is Uw naam, hoog is Uw majesteit, en niemand heeft het recht aanbeden te worden behalve U.',
+  taawwudh: 'Ik zoek mijn toevlucht bij Allah tegen de vervloekte Satan.',
+  amin: 'O Allah, verhoor onze smeekbede.',
+  ruku: 'Verheven is mijn Heer, de Grootse.',
+  tasmi: 'Moge Allah verhoren wie Hem prijst.',
+  tahmid: 'Onze Heer, aan U komt alle lof toe.',
+  sujud: 'Verheven is mijn Heer, de Allerhoogste.',
+  jalsah: 'Mijn Heer, vergeef mij.',
+  'tashahhud-1': 'Alle groeten, gebeden en goede woorden zijn voor Allah.',
+  'tashahhud-2': 'Vrede zij met u, o Profeet, en de genade van Allah en Zijn zegeningen.',
+  'tashahhud-3': 'Vrede zij met ons en met de rechtschapen dienaren van Allah.',
+  'tashahhud-4': 'Ik getuig dat niemand het recht heeft aanbeden te worden behalve Allah, en ik getuig dat Mohammed Zijn dienaar en Boodschapper is.',
+  'salawat-1': 'O Allah, eer Mohammed en de familie van Mohammed,',
+  'salawat-2': 'zoals U Ibrahim en de familie van Ibrahim hebt geëerd. U bent prijzenswaardig en glorierijk.',
+  'salawat-3': 'O Allah, zegen Mohammed en de familie van Mohammed,',
+  'salawat-4': 'zoals U Ibrahim en de familie van Ibrahim hebt gezegend. U bent prijzenswaardig en glorierijk.',
+  salam: 'Moge de vrede en de genade van Allah met jullie zijn.',
+  taqabbal: 'Moge Allah het van ons en van jullie aanvaarden.',
+}
+
+export const ur: Record<string, string> = {
+  takbir: 'اللہ سب سے بڑا ہے۔',
+  'thana-1': 'اے اللہ! تو پاک ہے، اور میں تیری حمد کرتا ہوں۔',
+  'thana-2': 'تیرا نام بابرکت ہے، تیری شان بلند ہے، اور تیرے سوا کوئی عبادت کے لائق نہیں۔',
+  taawwudh: 'میں شیطان مردود سے اللہ کی پناہ مانگتا ہوں۔',
+  amin: 'اے اللہ! ہماری دعا قبول فرما۔',
+  ruku: 'پاک ہے میرا رب جو عظمت والا ہے۔',
+  tasmi: 'اللہ اس کی سن لے جس نے اس کی حمد کی۔',
+  tahmid: 'اے ہمارے رب! سب تعریف تیرے لیے ہے۔',
+  sujud: 'پاک ہے میرا رب جو سب سے بلند ہے۔',
+  jalsah: 'اے میرے رب! مجھے بخش دے۔',
+  'tashahhud-1': 'سب آداب، نمازیں اور پاکیزہ کلمات اللہ کے لیے ہیں۔',
+  'tashahhud-2': 'اے نبی! آپ پر سلام ہو، اور اللہ کی رحمت اور اس کی برکتیں ہوں۔',
+  'tashahhud-3': 'سلام ہو ہم پر اور اللہ کے نیک بندوں پر۔',
+  'tashahhud-4': 'میں گواہی دیتا ہوں کہ اللہ کے سوا کوئی عبادت کے لائق نہیں، اور میں گواہی دیتا ہوں کہ محمد اس کے بندے اور رسول ہیں۔',
+  'salawat-1': 'اے اللہ! محمد اور آلِ محمد پر درود بھیج،',
+  'salawat-2': 'جیسے تو نے ابراہیم اور آلِ ابراہیم پر درود بھیجا۔ تو قابلِ تعریف اور بزرگی والا ہے۔',
+  'salawat-3': 'اے اللہ! محمد اور آلِ محمد پر برکت نازل فرما،',
+  'salawat-4': 'جیسے تو نے ابراہیم اور آلِ ابراہیم پر برکت نازل فرمائی۔ تو قابلِ تعریف اور بزرگی والا ہے۔',
+  salam: 'آپ پر اللہ کی سلامتی اور رحمت ہو۔',
+  taqabbal: 'اللہ ہم سے اور آپ سے قبول فرمائے۔',
+}
+
 export const ar: Record<string, string> = {}

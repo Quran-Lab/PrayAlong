@@ -2,6 +2,7 @@ import { Check, MapPin } from 'lucide-react'
 import { quranCredit } from '@/content/lines'
 import { detectLocale, LOCALES, useLocale, useT, type Locale } from '@/i18n'
 import { cn } from '@/lib/cn'
+import { methodLabel } from '@/lib/prayer-times'
 import type { PrayerClock } from '@/lib/use-prayer-clock'
 import { display, useSession, type Pace, type TextSize } from '@/state/session'
 import { CHARACTERS } from './stage/characters'
@@ -140,7 +141,7 @@ export function SettingsSheet({ open, onOpenChange, clock }: { open: boolean; on
               </button>
             )}
           </div>
-          <p className="text-xs text-ink-faint">{t('settings.method')}</p>
+          <p className="text-xs text-ink-faint">{t('settings.method', { method: methodLabel() })}</p>
         </Section>
 
         <div className="hidden flex-wrap gap-x-3 gap-y-1.5 border-t border-line pt-4 text-xs text-ink-muted md:flex">

@@ -124,12 +124,17 @@ export function useHandsFree({
           setFraming(framingOf(kp))
           if (kp) {
             const reading = classifyPose(kp, standingTorso)
+            // For tuning (and Raufa's CV work): the latest raw reading.
+            ;(window as unknown as { __handsFree?: unknown }).__handsFree = { engine: engine.id, keypoints: kp, reading, standingTorso }
             if (reading.pose === 'standing') {
               const len = torsoLength(kp)
               standingTorso = standingTorso ? standingTorso * 0.9 + len * 0.1 : len
             }
             emit(reading.pose, started)
-          } else emit(null, started)
+          } else {
+            ;(window as unknown as { __handsFree?: unknown }).__handsFree = { engine: engine.id, keypoints: null }
+            emit(null, started)
+          }
         } catch (err) {
           console.warn('[hands-free] frame failed', err)
         }

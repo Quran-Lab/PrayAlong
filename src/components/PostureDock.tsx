@@ -99,7 +99,7 @@ export function PostureDock({ following }: { following: boolean }) {
           </div>
         ) : (
           <IconButton label={autoplay ? t('dock.pause') : t('dock.guide')} onClick={() => setAutoplay(!autoplay)} active={autoplay} disabled={phase === 'complete'}>
-            {autoplay ? <Pause className="size-[18px] fill-current" /> : <Play className="size-[18px] fill-current rtl:-scale-x-100" />}
+            {autoplay ? <Pause className="size-[18px] fill-current" /> : <Play className="size-[18px] fill-current" />}
           </IconButton>
         )}
         <IconButton label={t('dock.next')} onClick={next} disabled={phase === 'complete'}>

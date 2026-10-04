@@ -6,9 +6,18 @@ const base = process.env.BASE_URL ?? 'http://127.0.0.1:5173'
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
-  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+  args: [
+    '--use-angle=swiftshader',
+    '--enable-unsafe-swiftshader',
+    '--ignore-gpu-blocklist',
+    // FAKE_CAMERA=1 (or a .y4m/.mjpeg path) gives the page a synthetic webcam.
+    ...(process.env.FAKE_CAMERA
+      ? ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', ...(process.env.FAKE_CAMERA !== '1' ? [`--use-file-for-fake-video-capture=${process.env.FAKE_CAMERA}`] : [])]
+      : []),
+  ],
 })
-const page = await browser.newPage({ viewport: { width: Number(w), height: Number(h) }, deviceScaleFactor: 1 })
+const context = await browser.newContext({ viewport: { width: Number(w), height: Number(h) }, deviceScaleFactor: 1, locale: process.env.LOCALE, permissions: process.env.FAKE_CAMERA ? ['camera'] : [] })
+const page = await context.newPage()
 const logs = []
 page.on('console', (m) => logs.push(`[${m.type()}] ${m.text()}`))
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`))

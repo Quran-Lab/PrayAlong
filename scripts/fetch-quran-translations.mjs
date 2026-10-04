@@ -16,7 +16,7 @@ const EDITIONS = {
   id: ['ind-indonesianislam', 'Kementerian Agama RI'],
   ur: ['urd-muhammadjunagar', 'Muhammad Junagarhi'],
   nl: ['nld-sofianssiregar', 'Sofian S. Siregar'],
-  ar: ['ara-quransimple', 'Quran (simple script)'],
+  ar: ['ara-quransimple', 'مصحف تنزيل'],
 }
 
 /** recitation id → [surah, ayah] */

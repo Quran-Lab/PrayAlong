@@ -83,7 +83,7 @@ export function Recitation({ step, timedMs }: { step: Step; timedMs: number | nu
             <p
               lang="ar-Latn"
               className={cn(
-                'leading-tight font-semibold tracking-[-0.015em] text-balance text-ink',
+                'font-sans leading-tight font-semibold tracking-[-0.015em] text-balance text-ink',
                 HERO[settings.textSize][long ? 1 : 0],
                 show.arabic && 'mt-1 text-ink-soft',
               )}
