@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { PACE_FACTOR, useSession } from '@/state/session'
 import { VoiceCore } from './core'
 import type { DriverAction, DriverMode, SessionView } from './driver'
 import { VoiceEngine, type VoiceEngineOptions } from './engine'
 import { targetWord } from './follower'
 import { latin } from './phonetic'
+import { download, recordingName, SessionRecorder, wavFromInt16 } from './recorder'
 import type { Evidence, FollowerEvent, VoiceError, VoiceStatus } from './types'
 
 export interface UseVoiceOptions {
@@ -23,6 +24,18 @@ export interface UseVoiceOptions {
   /** Raw decoder tokens (lab view). */
   onTokens?: (tokens: string[], at: number) => void
   engine?: VoiceEngineOptions
+  /**
+   * Opt-in: keep the microphone audio (16 kHz) and the full engine log in
+   * memory so `saveRecording()` can download them. Nothing is uploaded.
+   */
+  record?: boolean
+}
+
+export interface VoiceControls {
+  /** Recording is on and has audio to save. */
+  recording: boolean
+  /** Download `<name>.wav` (16 kHz mic) and `<name>.json` (engine log). Local only. */
+  saveRecording: () => Promise<void>
 }
 
 export interface VoiceState {
@@ -89,10 +102,11 @@ function voiceDebug() {
   }
 }
 
-export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
+export function useVoiceFollow(opts: UseVoiceOptions): VoiceState & VoiceControls {
   const [state, setState] = useState<VoiceState>({ status: 'idle', progress: 0, speaking: false, cursor: null, timerMs: null })
   const engineRef = useRef<VoiceEngine | null>(null)
   const coreRef = useRef<VoiceCore | null>(null)
+  const recRef = useRef<SessionRecorder | null>(null)
   const optsRef = useRef(opts)
   optsRef.current = opts
 
@@ -100,6 +114,7 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
     if (!opts.enabled) return
     const engine = new VoiceEngine()
     engineRef.current = engine
+    const rec = () => recRef.current
     const core = new VoiceCore(
       useSession.getState().sequence.steps,
       {
@@ -110,11 +125,13 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
         view,
         apply: applyAction,
         onEvent: (e, now) => {
+          rec()?.add('event', e)
           if (voiceDebug()) console.log('%c[voice] event', 'color:#7fd18b', e.kind, JSON.stringify(e), 'snapshot', JSON.stringify(core.follower.snapshot()))
           optsRef.current.onEvidence?.(toEvidence(e, now))
           optsRef.current.onEvent?.(e)
         },
         onAction: (a) => {
+          rec()?.add('action', a)
           // Every session move, and why: timer moves are the ones to question.
           if (!voiceDebug()) return
           const s = useSession.getState()
@@ -124,7 +141,12 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
       },
     )
     coreRef.current = core
+    let lastSession = ''
     const onSession = () => {
+      const s = useSession.getState()
+      const key = `${s.prayer}:${s.phase}:${s.index}`
+      if (key !== lastSession) rec()?.add('session', { prayer: s.prayer, phase: s.phase, index: s.index, line: s.sequence.steps[s.index]?.recitationId })
+      lastSession = key
       core.sync(performance.now())
       const timerMs = core.driver.timeoutMs(view())
       setState((st) => (st.timerMs === timerMs ? st : { ...st, timerMs }))
@@ -144,6 +166,11 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
       core.driver.cfg.mode = optsRef.current.mode
       switch (e.type) {
         case 'status':
+          if (e.status === 'listening' && optsRef.current.record) {
+            recRef.current = new SessionRecorder(useSession.getState().prayer)
+            engine.setRecording(true)
+            onSession()
+          }
           setState((st) => ({ ...st, status: e.status, error: e.error }))
           break
         case 'progress':
@@ -166,14 +193,17 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
             )
           }
           optsRef.current.onTokens?.(e.tokens, e.at)
+          rec()?.add('tokens', { tokens: e.tokens, segment: e.segment, decodeMs: e.decodeMs }, e.at)
           core.tokens(e.tokens, e.at, performance.now())
           cursor()
           break
         case 'endpoint':
+          rec()?.add('endpoint', { segment: e.segment }, e.at)
           core.endpoint(e.at, performance.now())
           cursor()
           break
         case 'level':
+          rec()?.level(e.speech, e.rms, e.at)
           core.level(e.speech, e.at, performance.now())
           setState((st) => (st.speaking === e.speech ? st : { ...st, speaking: e.speech }))
           cursor()
@@ -193,6 +223,7 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
       engine.stop()
       engineRef.current = null
       coreRef.current = null
+      recRef.current = null
       setState({ status: 'idle', progress: 0, speaking: false, cursor: null, timerMs: null })
     }
   }, [opts.enabled])
@@ -207,6 +238,7 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
     const core = coreRef.current
     const apply = (on: boolean) => {
       core?.companion(on, performance.now())
+      recRef.current?.add('companion', { on, gate: on && gateOn })
       if (gateOn || !on) engine?.setGate(on && gateOn)
     }
     if (speaking) return apply(true)
@@ -214,5 +246,27 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
     return () => window.clearTimeout(id)
   }, [speaking, gateOn, state.status])
 
-  return state
+  // Turning recording on while already listening starts it now.
+  useEffect(() => {
+    const engine = engineRef.current
+    if (!engine || state.status !== 'listening') return
+    if (opts.record && !recRef.current) {
+      recRef.current = new SessionRecorder(useSession.getState().prayer)
+      engine.setRecording(true)
+    } else if (!opts.record && recRef.current) {
+      engine.setRecording(false)
+    }
+  }, [opts.record, state.status])
+
+  const saveRecording = useCallback(async () => {
+    const engine = engineRef.current
+    const r = recRef.current
+    if (!engine || !r) return
+    const audio = await engine.takeRecording()
+    const name = recordingName(r.prayer, r.startedAt)
+    download(wavFromInt16(audio.pcm, audio.sampleRate), `${name}.wav`)
+    download(new Blob([JSON.stringify(r.file(audio.startAt, audio.sampleRate))], { type: 'application/json' }), `${name}.json`)
+  }, [])
+
+  return { ...state, recording: !!opts.record && state.status === 'listening', saveRecording }
 }

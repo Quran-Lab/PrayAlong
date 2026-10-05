@@ -63,6 +63,7 @@ export class VoiceEngine {
   private node: AudioWorkletNode | null = null
   private listeners = new Set<(e: EngineEvent) => void>()
   private pending = new Map<number, () => void>()
+  private recordings = new Map<number, (r: { pcm: Int16Array; sampleRate: number; startAt: number }) => void>()
   private nextId = 1
   private ready: Promise<void> | null = null
 
@@ -130,6 +131,10 @@ export class VoiceEngine {
           case 'level':
             this.emit({ type: 'level', rms: m.rms, speech: m.speech, at: m.at })
             break
+          case 'recording':
+            this.recordings.get(m.id)?.({ pcm: m.pcm, sampleRate: m.sampleRate, startAt: m.startAt })
+            this.recordings.delete(m.id)
+            break
           case 'ack':
           case 'finished':
             this.pending.get(m.id)?.()
@@ -189,6 +194,25 @@ export class VoiceEngine {
    */
   setGate(on: boolean) {
     this.worker?.postMessage({ type: 'gate', on })
+  }
+
+  /**
+   * Opt-in session recording: the worker keeps the raw microphone (before the
+   * companion gate) at 16 kHz. Nothing leaves the device; take it with
+   * takeRecording() and save it locally.
+   */
+  setRecording(on: boolean) {
+    this.worker?.postMessage({ type: 'record', on })
+  }
+
+  /** The audio recorded so far (16-bit PCM, 16 kHz) and the worker clock at its start. */
+  takeRecording(clear = false): Promise<{ pcm: Int16Array; sampleRate: number; startAt: number }> {
+    const id = this.nextId++
+    return new Promise((resolve) => {
+      if (!this.worker) return resolve({ pcm: new Int16Array(0), sampleRate: 16000, startAt: 0 })
+      this.recordings.set(id, resolve)
+      this.worker.postMessage({ type: 'take', id, clear })
+    })
   }
 
   /** Feed audio directly (lab replay, tests). Resolves once decoded. */

@@ -54,6 +54,7 @@ let recognizer = null;
 let stream = null;
 let initializing = null;
 let gate = false;
+let recording = null;
 let audioSec = 0;
 let segAudioSec = 0;
 let segment = 0;
@@ -92,6 +93,22 @@ self.onmessage = (event) => {
     case "gate":
       gate = !!m.on;
       break;
+    case "record":
+      // Opt-in session recording: the raw microphone (before the companion
+      // gate) at 16 kHz, kept in this worker until taken. Never uploaded.
+      recording = m.on ? { chunks: [], frac: 0, last: 0, startAt: audioSec } : recording;
+      if (!m.on && recording) recording.stopped = true;
+      break;
+    case "take": {
+      const r = recording;
+      const total = r ? r.chunks.reduce((s, c) => s + c.length, 0) : 0;
+      const pcm = new Int16Array(total);
+      let off = 0;
+      if (r) for (const c of r.chunks) pcm.set(c, (off += c.length) - c.length);
+      postMessage({ type: "recording", id: m.id, pcm, sampleRate: SAMPLE_RATE, startAt: r ? r.startAt : 0 }, [pcm.buffer]);
+      if (m.clear) recording = null;
+      break;
+    }
     case "finish":
       finish();
       postMessage({ type: "finished", id: m.id });
@@ -246,8 +263,32 @@ function observe(samples, rate) {
   levelSpeech = levelSpeech || speech;
 }
 
+/** Linear resampling to 16 kHz, continuous across batches, as 16-bit PCM. */
+function keepRecording(input, rate) {
+  const r = recording;
+  if (!r || r.stopped) return;
+  const step = rate / SAMPLE_RATE;
+  const out = [];
+  let pos = r.frac;
+  let prev = r.last;
+  while (pos < input.length) {
+    const i = Math.floor(pos);
+    const a = i === 0 ? prev : input[i - 1];
+    const b = input[i];
+    // pos is measured so that index -1 is the previous batch's last sample.
+    const t = pos - i;
+    const v = a + (b - a) * t;
+    out.push(Math.max(-32768, Math.min(32767, Math.round(v * 32767))));
+    pos += step;
+  }
+  r.frac = pos - input.length;
+  r.last = input[input.length - 1];
+  r.chunks.push(Int16Array.from(out));
+}
+
 function accept(input, rate) {
   if (!input || !input.length) return;
+  keepRecording(input, rate);
   const samples = gate ? new Float32Array(input.length) : input;
   const dur = samples.length / rate;
   observe(samples, rate);

@@ -97,6 +97,60 @@ export async function prepareReplay(p: ReplayParams): Promise<{ steps: Step[]; t
   return { steps, timeline, pcm: renderTimeline(timeline, pcm, { sampleRate: SR, gain: p.gain, snrDb: p.snrDb, seed: p.seed }) }
 }
 
+/**
+ * Run a recorded session (WAV from "Record this session") through the real
+ * worker, follower and driver for `prayer`, from the start of the prayer.
+ * `log` gets one line per follower event and session move.
+ */
+export async function replayRecording(file: Blob, prayer: PrayerId, log: (line: string) => void) {
+  const ctx = new OfflineAudioContext(1, SR, SR)
+  const pcm = (await ctx.decodeAudioData(await file.arrayBuffer())).getChannelData(0).slice()
+  const steps = buildSequence(prayer).steps
+  const sim = new SessionSim(steps)
+  let events = 0
+  let moves = 0
+  let timerMoves = 0
+  const core = new VoiceCore(
+    steps,
+    { mode: 'full', stepMs: (s) => Math.max(s.timing.minMs, s.timing.expectedMs) },
+    {
+      view: sim.view,
+      apply: sim.apply,
+      onEvent: (e, now) => {
+        events++
+        if (e.kind !== 'word') log(`${(now / 1000).toFixed(2)}s event ${e.kind} ${'step' in e ? `${e.step} ${e.lineId}` : ''} (${e.confidence})`)
+      },
+      onAction: (a, now) => {
+        moves++
+        if (a.type === 'goTo' && a.reason === 'timer') timerMoves++
+        log(`${(now / 1000).toFixed(2)}s MOVE ${a.type} ${'index' in a ? `${a.index} ${steps[a.index]?.recitationId}` : ''} (${a.reason})`)
+      },
+    },
+  )
+  core.sync(0)
+  const engine = new VoiceEngine()
+  engine.on((e) => {
+    if (e.type === 'tokens') core.tokens(e.tokens, e.at, e.at * 1000 + e.decodeMs)
+    else if (e.type === 'endpoint') core.endpoint(e.at, e.at * 1000)
+    else if (e.type === 'level') {
+      core.level(e.speech, e.at, e.at * 1000)
+      core.tick(e.at * 1000)
+    }
+  })
+  await engine.start({ mic: false })
+  if (engine.status !== 'listening') throw new Error(`engine ${engine.status}: ${engine.error}`)
+  const chunk = SR / 10
+  const inflight: Promise<void>[] = []
+  for (let off = 0; off < pcm.length; off += chunk) {
+    inflight.push(engine.feed(pcm.slice(off, off + chunk), SR))
+    if (inflight.length >= 16) await inflight.shift()
+  }
+  await Promise.all(inflight)
+  await engine.finish()
+  engine.stop()
+  return { phase: sim.phase, index: sim.index, events, moves, timerMoves }
+}
+
 export function wavOf(pcm: Float32Array) {
   return encodeWav(pcm, SR)
 }

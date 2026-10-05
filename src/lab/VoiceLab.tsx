@@ -4,7 +4,7 @@ import { PRAYERS } from '@/content/prayers'
 import type { PrayerId } from '@/sequence/types'
 import { currentStep, useSession } from '@/state/session'
 import type { DriverMode } from '@/voice/driver'
-import { prepareReplay, replayParams, runReplay, wavOf, type ReplayResult } from '@/voice/replay-run'
+import { prepareReplay, replayParams, replayRecording, runReplay, wavOf, type ReplayResult } from '@/voice/replay-run'
 import type { FollowerEvent } from '@/voice/types'
 import { useVoiceFollow } from '@/voice/use-voice'
 
@@ -51,9 +51,11 @@ function LivePanel() {
   const [transcript, setTranscript] = useState('')
   const [events, setEvents] = useState<{ t: number; text: string }[]>([])
   const t0 = useRef(performance.now())
+  const [record, setRecord] = useState(false)
   const voice = useVoiceFollow({
     enabled,
     mode,
+    record,
     onEvent: (e) => setEvents((ev) => [{ t: (performance.now() - t0.current) / 1000, text: fmt(e) }, ...ev].slice(0, 60)),
     onTokens: (tokens) => setTranscript((s) => (s + tokens.join('')).slice(-400)),
   })
@@ -83,6 +85,16 @@ function LivePanel() {
           <button className="rounded-md bg-raised px-3 py-1" onClick={() => session.restart()}>
             Restart
           </button>
+          <label className="flex items-center gap-1.5 rounded-md bg-raised px-2 py-1">
+            <input type="checkbox" checked={record} onChange={(e) => setRecord(e.target.checked)} />
+            Record this session
+          </label>
+          {voice.recording && (
+            <button className="rounded-md bg-raised px-3 py-1" onClick={() => void voice.saveRecording()}>
+              Save recording (wav + log)
+            </button>
+          )}
+          <WavReplay />
           <span id="voice-status" data-status={voice.status} className="text-ink-muted">
             {voice.status}
             {voice.status === 'loading' && ` ${Math.round(voice.progress * 100)}%`}
@@ -129,6 +141,35 @@ function LivePanel() {
         </section>
       </div>
     </div>
+  )
+}
+
+/**
+ * Replay a recorded session WAV (from "Record this session") through the real
+ * worker, follower and driver, against the prayer chosen above. Local only.
+ */
+function WavReplay() {
+  const prayer = useSession((s) => s.prayer)
+  const [out, setOut] = useState<string[]>([])
+  const run = async (file: File) => {
+    const lines: string[] = []
+    const log = (s: string) => {
+      lines.push(s)
+      setOut([...lines].slice(-80))
+    }
+    const r = await replayRecording(file, prayer, log)
+    log(`done: phase ${r.phase}, step ${r.index}, ${r.events} events, ${r.moves} moves (${r.timerMoves} by timer)`)
+  }
+  return (
+    <span className="relative">
+      <label className="cursor-pointer rounded-md bg-raised px-3 py-1">
+        Replay a recording
+        <input type="file" accept="audio/wav,.wav" className="hidden" onChange={(e) => e.target.files?.[0] && void run(e.target.files[0])} />
+      </label>
+      {out.length > 0 && (
+        <pre className="absolute top-8 left-0 z-10 max-h-96 w-[36rem] overflow-auto rounded-md bg-raised p-2 text-[11px]">{out.join('\n')}</pre>
+      )}
+    </span>
   )
 }
 
