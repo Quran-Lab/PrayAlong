@@ -51,4 +51,6 @@ export interface FollowStep {
   lineId: string
   repeat: number
   voice: 'aloud' | 'quiet'
+  /** The person says "Allahu akbar" while moving into this step (an optional takbir node before it). */
+  takbirBefore?: boolean
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import phonemeTable from '@/content/phonemes.json'
 import { buildSequence } from '@/sequence/build'
 import type { Step } from '@/sequence/types'
-import { SessionSim, VoiceCore } from './core'
+import { followSteps, SessionSim, VoiceCore } from './core'
 import { announcedBy, VoiceDriver, type DriverAction, type SessionView } from './driver'
 import type { FollowerEvent } from './types'
 
@@ -405,12 +405,13 @@ describe('VoiceCore: short surahs', () => {
   }
 })
 
-describe('SurahSpotter under decoder noise', () => {
+describe('Surah branches under decoder noise', () => {
   const SURAHS = ['asr', 'kawthar', 'kafirun', 'nasr', 'masad', 'ikhlas', 'falaq', 'nas'] as const
   const ALPHA = [...new Set(Object.values(LINES).flatMap((l) => l.words.flatMap((w) => [...w])))]
   it('never names the wrong surah, and names the right one in most noisy takes', async () => {
-    const { SurahSpotter } = await import('./follower')
-    const { skeletonChars } = await import('./phonetic')
+    const { Follower } = await import('./follower')
+    const steps = followSteps(buildSequence('fajr').steps)
+    const amin = steps.findIndex((s) => s.lineId === 'amin')
     let wrong = 0
     let right = 0
     let total = 0
@@ -419,20 +420,23 @@ describe('SurahSpotter under decoder noise', () => {
       const second = `${surah}-2`
       for (let seed = 1; seed <= 5; seed++) {
         const r = rng(seed * 31 + surah.length)
-        const sp = new SurahSpotter('kawthar', 12)
+        // The session is on amin of rak'ah 1 (planned: al-Kawthar).
+        const f = new Follower(steps)
+        f.setAnchor(amin)
         let got: string | null = null
-        const text = [...LINES[first]!.words.join(''), ...LINES[second]!.words.join('')]
-        let last = ''
-        for (const ch of text) {
-          const x = r()
-          const c = x < 0.05 ? '' : x < 0.1 ? ALPHA[Math.floor(r() * ALPHA.length)]! : ch
-          for (const s of skeletonChars(c)) {
-            if (s === last) continue
-            last = s
-            got = sp.push(s)?.surah ?? got
+        const text = [...LINES[first]!.words.slice((LINES[first] as { optional?: number }).optional ?? 0).join(''), ...LINES[second]!.words.join('')]
+        let at = 0
+        for (let c = 0; c < text.length; c += 2) {
+          let tok = ''
+          for (const ch of text.slice(c, c + 2)) {
+            const x = r()
+            tok += x < 0.05 ? '' : x < 0.1 ? ALPHA[Math.floor(r() * ALPHA.length)]! : ch
           }
+          at += 0.12
+          f.level(at, true)
+          for (const e of f.push([tok], at)) if (e.kind === 'surah' && !got) got = e.surah
         }
-        got = sp.confirm()?.surah ?? got
+        for (let k = 1; k <= 8; k++) for (const e of f.level(at + k * 0.1, false)) if (e.kind === 'surah' && !got) got = e.surah
         total++
         if (surah === 'kawthar') {
           if (got) wrong++
@@ -441,7 +445,7 @@ describe('SurahSpotter under decoder noise', () => {
         else if (got) wrong++
       }
     }
-    console.info(`surah spotter, 10% noise: right ${right}/${total}, wrong ${wrong}`)
+    console.info(`surah branches, 10% noise: right ${right}/${total}, wrong ${wrong}`)
     expect(wrong).toBe(0)
     expect(right / total).toBeGreaterThanOrEqual(0.8)
   })

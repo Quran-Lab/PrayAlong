@@ -1,12 +1,12 @@
 import type { SurahId } from '@/content/recitations'
 import { switchSurah } from '@/sequence/build'
 import type { PrayerId, Step } from '@/sequence/types'
-import { VoiceDriver, type DriverAction, type DriverConfig, type SessionView } from './driver'
+import { announcedBy, VoiceDriver, type DriverAction, type DriverConfig, type SessionView } from './driver'
 import { Follower, type FollowerOptions } from './follower'
 import type { FollowerEvent, FollowStep } from './types'
 
 export const followSteps = (steps: readonly Step[]): FollowStep[] =>
-  steps.map((s) => ({ lineId: s.recitationId, repeat: s.repeat, voice: s.voice }))
+  steps.map((s, i) => ({ lineId: s.recitationId, repeat: s.repeat, voice: s.voice, takbirBefore: announcedBy(steps, i) === 'takbir' }))
 
 export interface CoreHooks {
   /** Current session state. */
