@@ -30,6 +30,7 @@ import type { PrayerId, Step } from '@/sequence/types'
 import { PACE_FACTOR, currentStep, useSession } from '@/state/session'
 import { optionalWords, useBurstFollow } from '@/voice/burst'
 import { useVoiceFollow } from '@/voice/use-voice' // [voice]
+import { prefetchVoiceModelWhenIdle } from '@/voice/engine' // [voice]
 
 // The 3D stack is the heaviest part of the app; let the UI paint first.
 const CompanionStage = lazy(() => import('@/components/stage/CompanionStage').then((m) => ({ default: m.CompanionStage })))
@@ -117,6 +118,9 @@ export function App() {
     onEvidence: (e) => (e.kind === 'takbir' || e.kind === 'tasmi' || e.kind === 'salam') && hands.addEvidence({ kind: e.kind, confidence: e.confidence, at: e.at }),
   })
   const voiceDriving = voiceOn && voice.status === 'listening'
+  // [voice] Load the speech model while the page is idle (and again after listening
+  // stops), so Listen is ready at once and nothing said after Begin is lost to loading.
+  useEffect(() => (voiceOn ? undefined : prefetchVoiceModelWhenIdle()), [voiceOn])
   // Speech-burst follow: counts lines and repetitions from when you speak, for the
   // moments the phoneme follower loses you (short lines, garbled takbirs, tasbih x3).
   const onStep = voiceDriving && voice.cursor?.step === index ? voice.cursor : null

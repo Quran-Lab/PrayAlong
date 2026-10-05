@@ -1,9 +1,10 @@
 import type { VoiceError, VoiceStatus } from './types'
 
 /**
- * Microphone -> AudioWorklet -> ASR worker. Nothing here is loaded until
- * `start()`: the 12 MB runtime and the 68 MB model are fetched by the worker
- * on demand (and cached by it), never by the app bundle.
+ * Microphone -> AudioWorklet -> ASR worker. The 12 MB runtime and the 68 MB
+ * model are fetched by the worker (and cached by it), never by the app
+ * bundle: on `start()`, or earlier with `prefetchVoiceModel()` so the model
+ * is ready before the prayer begins.
  *
  * Audio flows worklet -> worker over a MessagePort, so a busy main thread
  * (the 3D stage) can never drop samples. The main thread only receives tokens.
@@ -48,6 +49,80 @@ export function voiceSupported(): boolean {
     !!navigator.mediaDevices?.getUserMedia &&
     typeof Worker === 'function'
   )
+}
+
+/** A worker loading (or holding) the model before anyone asked to listen. */
+interface Spare {
+  base: string
+  worker: Worker
+  ready: Promise<void>
+  isReady: boolean
+  progress: { loaded: number; total: number } | null
+}
+let spare: Spare | null = null
+const spareListeners = new Set<() => void>()
+
+/**
+ * [voice] Start downloading and compiling the speech model now (page open,
+ * idle time), so pressing Listen is instant and nothing said after Begin is
+ * lost to loading. The next VoiceEngine.start() with the same model adopts
+ * this worker. Cached: a second visit only compiles.
+ */
+export function prefetchVoiceModel(modelBase: string = DEFAULT_MODEL_BASE): Promise<void> | null {
+  if (!voiceSupported()) return null
+  const base = new URL(modelBase, document.baseURI).href
+  if (spare?.base === base) return spare.ready
+  spare?.worker.terminate()
+  const worker = new Worker(asset('voice/asr-worker.js'))
+  const entry: Spare = { base, worker, ready: Promise.resolve(), isReady: false, progress: null }
+  entry.ready = new Promise<void>((resolve, reject) => {
+    worker.addEventListener('message', (ev: MessageEvent) => {
+      const m = ev.data
+      if (m.type === 'progress') entry.progress = { loaded: m.loaded, total: m.total }
+      else if (m.type === 'ready') {
+        entry.isReady = true
+        resolve()
+        for (const l of spareListeners) l()
+      } else if (m.type === 'error') reject(Object.assign(new Error(m.message), { code: m.code as VoiceError }))
+    })
+    worker.addEventListener('error', (ev) => reject(Object.assign(new Error(ev.message || 'worker failed'), { code: 'engine-failed' as VoiceError })))
+  })
+  entry.ready.catch(() => {
+    // Start() will try again (and report the error) itself.
+    if (spare === entry) spare = null
+    worker.terminate()
+  })
+  worker.postMessage({ type: 'init', modelBase: base })
+  spare = entry
+  return entry.ready
+}
+
+/**
+ * Prefetch when the browser is idle, unless the person asked to save data or
+ * the device is short of memory (the model takes about 200 MB once loaded).
+ */
+export function prefetchVoiceModelWhenIdle(modelBase?: string): () => void {
+  const nav = navigator as Navigator & { connection?: { saveData?: boolean }; deviceMemory?: number }
+  if (nav.connection?.saveData || (nav.deviceMemory !== undefined && nav.deviceMemory < 2)) return () => {}
+  const run = () => void prefetchVoiceModel(modelBase)?.catch(() => {})
+  const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void }
+  if (w.requestIdleCallback) {
+    const id = w.requestIdleCallback(run, { timeout: 4000 })
+    return () => w.cancelIdleCallback?.(id)
+  }
+  const id = window.setTimeout(run, 1500)
+  return () => window.clearTimeout(id)
+}
+
+/** Whether a prefetched model is ready to listen with. */
+export function voiceModelPrefetched(): boolean {
+  return !!spare?.isReady
+}
+
+/** Called when a prefetched model becomes ready. */
+export function onVoiceModelReady(listener: () => void): () => void {
+  spareListeners.add(listener)
+  return () => spareListeners.delete(listener)
 }
 
 export class VoiceEngine {
@@ -112,9 +187,15 @@ export class VoiceEngine {
 
   private loadWorker(modelBase: string): Promise<void> {
     if (this.ready) return this.ready
-    const worker = new Worker(asset('voice/asr-worker.js'))
+    // A prefetched worker for this model: take it over (it may still be loading).
+    const base = new URL(modelBase, document.baseURI).href
+    const adopted = spare?.base === base ? spare : null
+    if (adopted) spare = null
+    const worker = adopted?.worker ?? new Worker(asset('voice/asr-worker.js'))
     this.worker = worker
+    if (adopted?.progress) this.emit({ type: 'progress', ...adopted.progress })
     this.ready = new Promise<void>((resolve, reject) => {
+      if (adopted) adopted.ready.then(resolve, reject)
       worker.onmessage = (ev: MessageEvent) => {
         const m = ev.data
         switch (m.type) {
@@ -150,7 +231,7 @@ export class VoiceEngine {
       }
       worker.onerror = (ev) => reject(Object.assign(new Error(ev.message || 'worker failed'), { code: 'engine-failed' as VoiceError }))
     })
-    worker.postMessage({ type: 'init', modelBase: new URL(modelBase, document.baseURI).href })
+    if (!adopted) worker.postMessage({ type: 'init', modelBase: base })
     return this.ready
   }
 
