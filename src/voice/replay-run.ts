@@ -47,6 +47,8 @@ export interface ReplayParams {
   late: number
   /** Compare: start listening late without the resync. */
   noResync: boolean
+  /** Movements made in silence (no "Allahu akbar" said). */
+  noTakbir: boolean
 }
 
 export const DEFAULT_REPLAY: ReplayParams = {
@@ -66,6 +68,7 @@ export const DEFAULT_REPLAY: ReplayParams = {
   amin: 'normal',
   late: 0,
   noResync: false,
+  noTakbir: false,
 }
 
 export function replayParams(q: URLSearchParams): ReplayParams {
@@ -87,6 +90,7 @@ export function replayParams(q: URLSearchParams): ReplayParams {
     amin: (['skip', 'pause', 'joined'] as const).find((a) => q.get('amin') === a) ?? 'normal',
     late: num('late', 0),
     noResync: q.has('noresync'),
+    noTakbir: q.has('notakbir'),
   }
 }
 
@@ -112,7 +116,7 @@ export async function prepareReplay(p: ReplayParams): Promise<{ steps: Step[]; t
   const companion = p.companion ? (manifest.voices?.[p.companion]?.lines as VoiceManifest | undefined) : undefined
   if (p.companion && !companion) throw new Error(`no audio for companion ${p.companion}`)
   const steps = buildSequence(p.prayer).steps
-  const timeline = buildTimeline(steps, lines, { seed: p.seed, quietGain: p.quietGain, perturb: p.perturb, joined: p.joined, amin: p.amin, ...(p.tight ? { repPause: [0, 0.08] as [number, number] } : {}) }, companion)
+  const timeline = buildTimeline(steps, lines, { seed: p.seed, quietGain: p.quietGain, perturb: p.perturb, joined: p.joined, amin: p.amin, transitionTakbir: !p.noTakbir, ...(p.tight ? { repPause: [0, 0.08] as [number, number] } : {}) }, companion)
   const pcm = new Map<string, Float32Array>()
   const keys = new Map(timeline.clips.map((c) => [c.key, c.key.replace(/^companion:/, '')]))
   await Promise.all([...keys].map(async ([key, src]) => pcm.set(key, await decodeClip(new URL(`audio/${src}`, document.baseURI).href))))

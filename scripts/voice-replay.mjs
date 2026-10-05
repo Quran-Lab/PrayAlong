@@ -140,11 +140,11 @@ async function serveAudio(page, c) {
 const MODEL = opt('model', null)
 const query = (c, extra = '') =>
   `?lab&voice&replay&run&prayer=${c.prayer}&speaker=${c.speaker}&seed=${c.seed}&gain=${c.gain}&quietGain=${c.quiet}` +
-  `${c.snr ? `&snr=${c.snr}` : ''}${c.perturb ? '&perturb' : ''}${c.companion ? `&companion=${c.companion}` : ''}${c.gate ? '&gate' : ''}${c.tight ? '&tight' : ''}${c.joined ? '&joined' : ''}${c.amin ? `&amin=${c.amin}` : ''}${c.late ? `&late=${c.late}` : ''}${flag('noresync') ? '&noresync' : ''}` +
+  `${c.snr ? `&snr=${c.snr}` : ''}${c.perturb ? '&perturb' : ''}${c.companion ? `&companion=${c.companion}` : ''}${c.gate ? '&gate' : ''}${c.tight ? '&tight' : ''}${c.joined ? '&joined' : ''}${c.amin ? `&amin=${c.amin}` : ''}${c.late ? `&late=${c.late}` : ''}${flag('noresync') ? '&noresync' : ''}${flag('notakbir') ? '&notakbir' : ''}` +
   `${MODEL ? `&model=${encodeURIComponent(MODEL)}` : ''}${extra}`
 const name = (c) =>
   `${c.prayer}-${c.speaker}-${c.snr ? `snr${c.snr}` : 'clean'}-g${c.gain}${c.quiet !== '1' ? `-q${c.quiet}` : ''}` +
-  `${c.perturb ? `-perturb${c.seed}` : ''}${c.companion ? `-companion-${c.gate ? 'gated' : 'open'}` : ''}${c.aug ? `-${c.aug}${c.seed}` : ''}${c.tight ? '-tight' : ''}${c.joined ? '-joined' : ''}${c.amin ? `-amin-${c.amin}` : ''}${c.late ? `-late${c.late}` : ''}${mic ? '-mic' : ''}`
+  `${c.perturb ? `-perturb${c.seed}` : ''}${c.companion ? `-companion-${c.gate ? 'gated' : 'open'}` : ''}${c.aug ? `-${c.aug}${c.seed}` : ''}${c.tight ? '-tight' : ''}${c.joined ? '-joined' : ''}${c.amin ? `-amin-${c.amin}` : ''}${c.late ? `-late${c.late}` : ''}${flag('notakbir') ? '-notakbir' : ''}${mic ? '-mic' : ''}`
 
 async function waitResult(page, label) {
   const t0 = Date.now()
