@@ -176,8 +176,8 @@ async function runOne(c) {
     })
     .filter((x) => x !== null)
   // Relative to the best value (the clocks' fixed offset): seconds behind.
-  const base = Math.min(...behind)
-  const rel = behind.map((x) => x - base).sort((a, b) => a - b)
+  const offset0 = Math.min(...behind)
+  const rel = behind.map((x) => x - offset0).sort((a, b) => a - b)
   result.decoderBehind = rel.length ? { p50: +rel[Math.floor(rel.length / 2)].toFixed(2), p95: +rel[Math.floor(rel.length * 0.95)].toFixed(2), max: +rel.at(-1).toFixed(2) } : null
   result.lowPowerLogs = logs.filter((l) => l.msg.includes('decoder lag')).map((l) => `${audioT(result, l.t).toFixed(1)} ${l.msg}`)
   result.score = score(result)
