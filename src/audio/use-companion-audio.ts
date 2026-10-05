@@ -26,28 +26,29 @@ function plan(step: Step, voice: string, locale: Locale, settings: Settings, lis
   if (!m) return null
   const line = m.lines[step.recitationId]
   if (!line) return null
-  // Listen mode: with "repeat after me" on, the companion recites each line once and then
-  // listens while you say it (the mic is muted only while it speaks). Off: it stays silent.
-  if (listen) {
-    if (!settings.repeatAfter) return null
-    const clips = [{ clip: line, gain: step.voice === 'quiet' ? QUIET_GAIN : 1, isLine: true, rep: 0 }]
-    return { clips, ms: line.dur * 1000 }
-  }
   const clips: { clip: Clip; gain: number; isLine: boolean; rep: number }[] = []
-  if (step.cue && TAKBIR_CUES.has(step.cue) && m.lines['takbir']) clips.push({ clip: m.lines['takbir'], gain: 1, isLine: false, rep: 0 })
+  // The takbir that announces a movement: in Listen mode you say it yourself.
+  if (!listen && step.cue && TAKBIR_CUES.has(step.cue) && m.lines['takbir']) clips.push({ clip: m.lines['takbir'], gain: 1, isLine: false, rep: 0 })
   if (settings.guide && step.cue && step.groupIndex === 0) {
-    // One instruction per movement; each salam gets its own side.
+    // One instruction per movement (how to bow, sit on the left foot, ...); each salam gets its own side.
     const key = step.posture === 'salam-right' ? 'salamRight' : step.posture === 'salam-left' ? 'salamLeft' : postureKey(step.posture)
     const g = m.guide[locale]?.[`voice.${key}`]
     if (g) clips.push({ clip: g, gain: 1, isLine: false, rep: 0 })
   }
+  // Listen mode: the movement guidance, then (with "repeat after me") the line once;
+  // you recite after it. The mic is muted only while the companion speaks.
+  if (listen) {
+    if (settings.repeatAfter) clips.push({ clip: line, gain: step.voice === 'quiet' ? QUIET_GAIN : 1, isLine: true, rep: 0 })
+    if (!clips.length) return null
+    const spoken = clips.reduce((t, c) => t + c.clip.dur * 1000, 0) + REPEAT_GAP * 1000 * (clips.length - 1)
+    return { clips, ms: spoken }
+  }
   const gain = step.voice === 'quiet' ? QUIET_GAIN : 1
-  // In Listen mode you recite: the companion only guides the movements.
-  if (!listen) for (let i = 0; i < step.repeat; i++) clips.push({ clip: line, gain, isLine: true, rep: i })
+  for (let i = 0; i < step.repeat; i++) clips.push({ clip: line, gain, isLine: true, rep: i })
   const spoken = clips.reduce((t, c) => t + c.clip.dur * 1000, 0) + REPEAT_GAP * 1000 * (clips.length - 1)
   // Pray at the user's pace, not the voice's: leave time to say the line
   // after the companion (repeat-after-me while learning, a breath otherwise).
-  const yours = listen ? 0 : settings.guide ? line.dur * 1000 * step.repeat * PACE_ROOM[settings.pace] : line.dur * 1000 * 0.35
+  const yours = settings.guide ? line.dur * 1000 * step.repeat * PACE_ROOM[settings.pace] : line.dur * 1000 * 0.35
   return { clips, ms: spoken + yours }
 }
 
