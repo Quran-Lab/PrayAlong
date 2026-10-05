@@ -18,6 +18,7 @@ import { Scenery } from '@/components/stage/Scenery'
 import type { PoseName } from '@/components/stage/rig/prayer-poses'
 import { Button } from '@/components/ui/primitives'
 import { PRAYER_BY_ID } from '@/content/prayers'
+import { getLine } from '@/content/recitations'
 import { isFollowing } from '@/handsfree/types'
 import { useHandsFree } from '@/handsfree/use-hands-free'
 import { LOCALES, useLocale, useT } from '@/i18n'
@@ -36,6 +37,8 @@ const CompanionStage = lazy(() => import('@/components/stage/CompanionStage').th
 const BODY_GRACE_MS = 6000
 /** Listen mode: after the line before a movement is done, how long to wait for its takbir. */
 const MOVE_GRACE_MS = 3000
+/** Listen mode: no progress after the last word of a line for this long: move on. */
+const STUCK_MS = 7000
 
 const stepMs = (step: Step, pace: keyof typeof PACE_FACTOR) => Math.max(step.timing.minMs, step.timing.expectedMs * PACE_FACTOR[pace])
 
@@ -99,6 +102,25 @@ export function App() {
     },
   })
   const voiceDriving = voiceOn && voice.status === 'listening'
+  // Listen mode safety net: the last word of the line is done (fill 1) but the follower has
+  // made no progress for a while (e.g. a repeated tasbih it fails to count): move on.
+  const cursorKey = voice.cursor ? `${voice.cursor.step}:${voice.cursor.rep}:${voice.cursor.wordIndex}:${voice.cursor.fill >= 0.99}` : ''
+  useEffect(() => {
+    if (!voiceDriving || phase !== 'praying' || !voice.cursor || voice.cursor.step !== index || voice.cursor.fill < 0.99) return
+    const s = useSession.getState()
+    const step = s.sequence.steps[index]
+    if (!step || voice.cursor.wordIndex < getLine(step.recitationId).arabic.split(/\s+/).filter(Boolean).length - 1) return
+    const at = index
+    const id = setTimeout(() => {
+      if (useSession.getState().index === at) {
+        if (localStorage.getItem('prayalong:voiceDebug') !== '0') console.log('[voice] stuck after last word, advancing', at)
+        useSession.getState().next()
+      }
+    }, STUCK_MS)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceDriving, phase, index, cursorKey])
+
   // Listen mode: the line before a movement is finished but "Allāhu Akbar" (or the tasmi') was
   // not heard: move on after a short pause rather than making anyone wait.
   useEffect(() => {

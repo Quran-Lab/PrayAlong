@@ -2,6 +2,7 @@ import { ArrowDownRight, Mic, Volume1, VolumeX } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useRef } from 'react'
 import { resolveLine } from '@/content/lines'
+import { getLine } from '@/content/recitations'
 import { useLocale, useT } from '@/i18n'
 import { cn } from '@/lib/cn'
 import type { Step } from '@/sequence/types'
@@ -116,6 +117,12 @@ function Words({
 const SCALE: Record<TextSize, number> = { m: 0.86, l: 1, xl: 1.16 }
 /** Reading from across the room (hands-free): one step up. */
 const LARGER: Record<TextSize, TextSize> = { m: 'l', l: 'xl', xl: 'xl' }
+
+/** The words that move the prayer on to `next`: its own opening line when that is what is said (tasmi', salam), otherwise the takbir. */
+function movePhrase(next: Step) {
+  if (next.recitationId === 'tasmi' || next.recitationId === 'salam') return getLine(next.recitationId).transliteration
+  return getLine('takbir').transliteration
+}
 
 const enter = { opacity: 0, y: 14, filter: 'blur(6px)' }
 const shown = { opacity: 1, y: 0, filter: 'blur(0px)' }
@@ -275,7 +282,7 @@ export function Recitation({
               className="mt-6 inline-flex items-center gap-2 rounded-full border border-[var(--you)]/40 bg-[color-mix(in_oklab,var(--you)_10%,transparent)] px-4 py-1.5 text-[length:var(--text-body)] font-medium text-[var(--you)]"
             >
               <Mic className="size-4" />
-              {t('line.thenSay')} {t(`cue.${next.cue}`, { n: next.rakah })}
+              {t('line.thenSay')} {movePhrase(next)}
             </motion.p>
           ) : upcoming && (
             <p className="mt-6 max-w-[40ch] truncate text-[length:var(--text-meta)] text-ink-faint max-sm:hidden short:hidden">
