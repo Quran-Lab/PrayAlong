@@ -7,6 +7,9 @@ export default defineConfig({
   // Relative asset URLs: the same build runs at a domain root, a GitHub Pages
   // subpath or inside a claude.ai artifact.
   base: './',
+  // Agent worktrees and evaluation data live inside the repo folder: never watch them
+  // (they made an idle dev server burn a core).
+  server: { watch: { ignored: ['**/.claude/**', '**/.eval/**', '**/shots/**', '**/screenshots/**'] } },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
