@@ -173,6 +173,8 @@ export const en = {
   'settings.voice': 'Recite with the companion’s voice',
   'settings.guide': 'Explain each movement aloud',
   'settings.repeatAfter': 'Repeat after me: the companion recites each line first',
+  'settings.record': 'Record my sessions on this device (to help fix problems)',
+  'listen.save': 'Save recording',
   'settings.ambience': 'Sounds of the hour from the window',
   'settings.volume': 'Volume',
   'settings.language': 'Language',

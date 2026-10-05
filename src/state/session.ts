@@ -32,6 +32,8 @@ export interface Settings {
   raiseHands: boolean
   /** Listen mode: the companion recites each line first, then you say it. */
   repeatAfter: boolean
+  /** Keep this session's microphone audio and voice log on this device, to save and send for debugging. */
+  recordSessions: boolean
 }
 
 /** What to show, after applying per-language defaults. */
@@ -101,6 +103,7 @@ export const useSession = create<SessionState>()(
         volume: 0.9,
         raiseHands: true,
         repeatAfter: true,
+        recordSessions: false,
       },
 
       autoSelectPrayer: (id) => {

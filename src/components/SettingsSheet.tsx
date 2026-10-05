@@ -66,6 +66,7 @@ export function SettingsSheet({ open, onOpenChange, clock }: { open: boolean; on
           <Switch label={t('settings.voice')} checked={settings.voice} onCheckedChange={(v) => update({ voice: v })} />
           <Switch label={t('settings.guide')} checked={settings.guide} onCheckedChange={(v) => update({ guide: v })} />
           <Switch label={t('settings.repeatAfter')} checked={settings.repeatAfter} onCheckedChange={(v) => update({ repeatAfter: v })} />
+          <Switch label={t('settings.record')} checked={settings.recordSessions} onCheckedChange={(v) => update({ recordSessions: v })} />
           <Switch label={t('settings.ambience')} checked={settings.ambience} onCheckedChange={(v) => update({ ambience: v })} />
           <label className="flex items-center justify-between gap-4 pt-1 text-sm text-ink-soft">
             {t('settings.volume')}

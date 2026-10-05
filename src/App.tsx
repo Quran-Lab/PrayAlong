@@ -97,6 +97,7 @@ export function App() {
     mode: following ? 'lines' : 'full',
     ignoreCompanion: true,
     companionSpeaking,
+    record: settings.recordSessions,
     onEvent: (e) => {
       if (e.kind === 'lineDone') setDoneStep(e.step)
     },
@@ -239,6 +240,12 @@ export function App() {
                 <Button variant="quiet" size="icon" aria-label={t('settings.title')} onClick={() => setSettingsOpen(true)}>
                   <Settings2 className="size-[18px]" />
                 </Button>
+                {voice.recording && (
+                  <Button variant="ghost" size="md" onClick={() => void voice.saveRecording()} aria-label={t('listen.save')}>
+                    <span className="size-2 rounded-full bg-red-400" />
+                    {wide && t('listen.save')}
+                  </Button>
+                )}
                 <ListenButton on={voiceOn} status={voice.status} error={voice.error} progress={voice.progress} onToggle={() => setListen((v) => !v)} compact={!wide} />
                 <HandsFreeButton on={handsFree} status={hands.status} onToggle={toggleHandsFree} compact={!wide} />
               </div>

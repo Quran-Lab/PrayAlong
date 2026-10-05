@@ -170,6 +170,8 @@ export const de: Messages = {
   'settings.voice': 'Mit der Stimme des Begleiters rezitieren',
   'settings.guide': 'Jede Bewegung laut erklären',
   'settings.repeatAfter': 'Nachsprechen: der Begleiter rezitiert jede Zeile zuerst',
+  'settings.record': 'Meine Sitzungen auf diesem Gerät aufnehmen (zur Fehlersuche)',
+  'listen.save': 'Aufnahme speichern',
   'settings.ambience': 'Geräusche der Tageszeit am Fenster',
   'settings.volume': 'Lautstärke',
   'settings.language': 'Sprache',
