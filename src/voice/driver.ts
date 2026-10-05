@@ -20,6 +20,9 @@ import type { FollowerEvent, KeywordKind } from './types'
  *    the line timers; posture changes get a little extra grace.
  */
 
+/** Listen mode: the least time an aloud line nobody has started waits before the timer moves on. */
+const UNSTARTED_MS = 8000
+
 export type DriverMode =
   /** Microphone only: voice leads lines and postures. */
   | 'full'
@@ -119,8 +122,13 @@ export class VoiceDriver {
   }
 
   onLevel(speech: boolean, now: number) {
+    if (speech && !this.speechNow) this.speechOnsetAt = now
+    this.speechNow = speech
     if (speech) this.lastSpeechAt = now
   }
+  private speechNow = false
+  /** When the current stretch of speech began (speech still running from the previous line is not a start). */
+  private speechOnsetAt = -Infinity
 
   private companionOn = false
   /**
@@ -275,8 +283,12 @@ export class VoiceDriver {
     }
     // Slower when the line is being followed but not done, and on an aloud
     // line nobody has started yet (a pause before reciting is not silence).
-    const notStarted = here.voice === 'aloud' && this.lastSpeechAt < this.arrivedAt
-    const expected = this.cfg.stepMs(here) * (this.wordsOnStep > 0 && !this.lineDone ? this.cfg.trackingSlack : notStarted ? 2 : 1)
+    // Nobody has started this aloud line: speech that began on an earlier line (its tail
+    // running on) does not count, and the wait is at least UNSTARTED_MS (a pause before
+    // "amin" is not silence).
+    const notStarted = here.voice === 'aloud' && this.speechOnsetAt < this.arrivedAt && this.wordsOnStep === 0
+    const base = this.cfg.stepMs(here) * (this.wordsOnStep > 0 && !this.lineDone ? this.cfg.trackingSlack : notStarted ? 2 : 1)
+    const expected = notStarted ? Math.max(base, UNSTARTED_MS) : base
     if (!after) return elapsed >= expected || (this.lineDone && now - this.lineDoneAt >= this.cfg.postureAfterDoneMs) ? { type: 'finish', reason: 'timer' } : null
     const samePosture = after.pose === here.pose && after.posture === here.posture
     if (samePosture || (mode === 'full' && after.pose === here.pose)) {

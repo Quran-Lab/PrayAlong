@@ -107,6 +107,17 @@ describe('VoiceDriver', () => {
     expect(d.tick(view(i), 2 * ms + 100)).toEqual({ type: 'goTo', index: i + 1, reason: 'timer' })
   })
 
+  it('does not take the tail of al-Fatiha for amin', () => {
+    const i = idx('amin')
+    const d = driver()
+    d.onLevel(true, -300) // still finishing the last verse
+    d.sync(view(i), 0)
+    d.onLevel(true, 200)
+    d.onLevel(false, 500)
+    expect(d.tick(view(i), 7900)).toBeNull()
+    expect(d.tick(view(i), 8100)).toEqual({ type: 'goTo', index: i + 1, reason: 'timer' })
+  })
+
   it('gives posture changes extra grace before timing out', () => {
     const last = idx('ruku') - 1
     const d = driver()

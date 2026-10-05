@@ -52,7 +52,7 @@ export interface BurstInput {
 /** Returns the repetitions counted by speech alone on the current step. */
 export function useBurstFollow({ enabled, index, speaking, follower, followerDone, log }: BurstInput) {
   const [reps, setReps] = useState(0)
-  const st = useRef({ step: -1, speechMs: 0, since: 0, done: false, onsetTimer: 0, silenceTimer: 0 })
+  const st = useRef({ step: -1, speechMs: 0, since: 0, carry: false, done: false, onsetTimer: 0, silenceTimer: 0 })
   const followerRef = useRef(follower)
   followerRef.current = follower
   const doneRef = useRef(followerDone)
@@ -63,7 +63,9 @@ export function useBurstFollow({ enabled, index, speaking, follower, followerDon
     const s = st.current
     window.clearTimeout(s.silenceTimer)
     window.clearTimeout(s.onsetTimer)
-    st.current = { step: index, speechMs: 0, since: speaking ? performance.now() : 0, done: false, onsetTimer: 0, silenceTimer: 0 }
+    // Speech already going when the step starts is the end of the previous line
+    // (e.g. the last verse of al-Fatiha running into amin): it never counts here.
+    st.current = { step: index, speechMs: 0, since: 0, carry: speaking, done: false, onsetTimer: 0, silenceTimer: 0 }
     setReps(0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, enabled])
@@ -96,6 +98,10 @@ export function useBurstFollow({ enabled, index, speaking, follower, followerDon
 
     // Speech just ended.
     window.clearTimeout(s.onsetTimer)
+    if (s.carry) {
+      s.carry = false
+      return
+    }
     if (s.since) s.speechMs += now - s.since
     s.since = 0
     const need = briskMs(step.recitationId)
