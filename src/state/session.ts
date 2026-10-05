@@ -104,7 +104,7 @@ export const useSession = create<SessionState>()(
         const { prayerSource, phase, prayer } = get()
         if (prayerSource === 'auto' && phase === 'ready' && prayer !== id) set(fresh(id))
       },
-      choosePrayer: (id) => set({ ...fresh(id), prayerSource: 'manual' }),
+      choosePrayer: (id) => set({ ...fresh(id), prayerSource: 'manual', autoplay: false }),
       begin: () => set({ phase: 'praying', index: 0 }),
       next: () => {
         const { phase, index, sequence } = get()
@@ -122,7 +122,7 @@ export const useSession = create<SessionState>()(
         const { sequence } = get()
         set({ phase: 'praying', index: Math.max(0, Math.min(index, sequence.steps.length - 1)) })
       },
-      restart: () => set({ ...fresh(get().prayer) }),
+      restart: () => set({ ...fresh(get().prayer), autoplay: false }),
       setAutoplay: (autoplay) => set({ autoplay }),
       setHandsFree: (handsFree) => set({ handsFree, autoplay: false, demo: handsFree && get().demo }),
       setDemo: (demo) => set({ demo, handsFree: demo || get().handsFree, autoplay: false }),

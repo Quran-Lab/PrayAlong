@@ -67,18 +67,23 @@ export function PostureDock({ following }: { following: boolean }) {
           const key = postureKey(seg.posture)
           const label = t(`posture.${key}`)
           return (
-            <li key={`${seg.rakah}-${seg.start}`} className="min-w-0" style={{ flex: `${weight(seg) / total} 1 0%` }}>
+            <li
+              key={`${seg.rakah}-${seg.start}`}
+              className={cn('min-w-0 transition-[flex-grow] duration-500', active && 'sm:min-w-max')}
+              // The current movement makes room for its name.
+              style={{ flex: `${weight(seg) / total + (active ? 0.35 : 0)} 1 0%` }}
+            >
               <Tooltip content={<span><span className="text-ink">{label}</span>: {t(`hint.${key}`)}</span>} side="top">
                 <button
                   onClick={() => goTo(seg.start)}
                   aria-current={active ? 'step' : undefined}
                   aria-label={label}
-                  className="group flex w-full cursor-pointer flex-col items-center gap-1.5 rounded-xl px-0.5 pt-1 focus-visible:outline-offset-4"
+                  className="group flex w-full cursor-pointer flex-col items-center gap-1.5 rounded-xl px-0.5 pt-1 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-4"
                 >
                   <span className={cn('flex items-center gap-1.5 transition-colors duration-300', active ? 'text-mint' : done ? 'text-ink-soft' : 'text-ink-muted group-hover:text-ink-soft')}>
                     <PostureIcon posture={seg.posture} className={cn('shrink-0 transition-transform duration-300', active ? 'size-7 sm:size-8' : 'size-5 sm:size-6')} />
                     {active && (
-                      <motion.span initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} className="truncate text-base font-semibold whitespace-nowrap max-sm:hidden">
+                      <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-base font-semibold whitespace-nowrap max-sm:hidden">
                         {label}
                       </motion.span>
                     )}
@@ -98,8 +103,8 @@ export function PostureDock({ following }: { following: boolean }) {
         })}
       </ol>
 
-      {/* Controls: back, lead/pause (or "following you"), forward. */}
-      <div className="flex shrink-0 items-center gap-1.5">
+      {/* Controls: back, lead/pause (or "following you"), forward. Only once the prayer has begun. */}
+      <div className={cn('flex shrink-0 items-center gap-1.5 transition-opacity duration-300', phase === 'ready' && 'pointer-events-none invisible opacity-0')}>
         <IconButton label={t('dock.previous')} onClick={prev} disabled={phase === 'ready' || (praying && index === 0)} className="max-sm:hidden">
           <ChevronLeft className="size-6 rtl:rotate-180" />
         </IconButton>

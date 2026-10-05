@@ -50,7 +50,7 @@ class Engine {
   private buffers = new Map<string, Promise<AudioBuffer | null>>()
   private speaking: { src: AudioBufferSourceNode; gain: GainNode }[] = []
   private ambience: { prayer: string; timer: number; sources: { src: AudioBufferSourceNode; gain: GainNode }[] } | null = null
-  private ambienceLevel = 0.32
+  private ambienceLevel = 0.85
 
   /** Must run inside a user gesture the first time (browsers block autoplay). */
   unlock() {
@@ -157,7 +157,7 @@ class Engine {
   /** Lower the room while the companion speaks. */
   private duck(on: boolean) {
     if (!this.ctx) return
-    this.ambienceBus.gain.setTargetAtTime(on ? this.ambienceLevel * 0.45 : this.ambienceLevel, this.ctx.currentTime, on ? 0.12 : 0.6)
+    this.ambienceBus.gain.setTargetAtTime(on ? this.ambienceLevel * 0.6 : this.ambienceLevel, this.ctx.currentTime, on ? 0.12 : 0.6)
   }
 
   /**

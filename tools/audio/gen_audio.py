@@ -114,7 +114,7 @@ def main():
         for i, src in enumerate(takes):
             rel = f'ambience/{prayer}/{i}.mp3'
             os.makedirs(os.path.join(OUT, 'ambience', prayer), exist_ok=True)
-            subprocess.run(['ffmpeg', '-v', 'quiet', '-y', '-i', src, '-af', 'loudnorm=I=-26:TP=-3:LRA=8', '-ac', '2', '-ar', '44100', '-b:a', '96k', os.path.join(OUT, rel)], check=True)
+            subprocess.run(['ffmpeg', '-v', 'quiet', '-y', '-i', src, '-af', 'loudnorm=I=-24:TP=-3:LRA=8', '-ac', '2', '-ar', '44100', '-b:a', '96k', os.path.join(OUT, rel)], check=True)
             manifest['ambience'][prayer].append(rel)
     json.dump(manifest, open(man_path, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     print('wrote', man_path)
