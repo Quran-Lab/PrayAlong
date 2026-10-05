@@ -40,7 +40,7 @@ export function Button({ variant = 'ghost', size = 'md', className, ...props }: 
         size === 'lg' && 'h-12 px-6 text-[15px]',
         size === 'icon' && 'size-10',
         variant === 'primary' &&
-          'bg-mint text-[#06231a] shadow-[0_8px_30px_-8px_oklch(0.86_0.12_166/0.6)] hover:bg-[oklch(0.9_0.11_166)]',
+          'bg-mint text-canvas shadow-[0_8px_30px_-8px_color-mix(in_oklab,var(--accent)_60%,transparent)] hover:brightness-110',
         variant === 'ghost' && 'glass text-ink hover:bg-white/[0.08]',
         variant === 'quiet' && 'text-ink-muted hover:bg-white/[0.06] hover:text-ink',
         className,

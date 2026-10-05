@@ -42,15 +42,13 @@ export function ReadyPanel({ clock, handsFree, onHandsFree }: { clock: PrayerClo
 
   return (
     <motion.div {...rise} className="mx-auto flex max-w-xl flex-col items-center px-5 text-center">
-      <div className="mb-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] font-medium tracking-[0.14em] text-ink-muted uppercase">
-        <span className="text-mint">{name}</span>
-        <span className="text-ink-faint">·</span>
+      <div className="mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[length:var(--text-meta)] text-ink-muted">
+        <span className="font-semibold text-mint">{name}</span>
         <span>{t('ready.rakahs', { n: info.rakahs })}</span>
-        <span className="text-ink-faint">·</span>
-        <span className="tracking-normal normal-case">{when}</span>
+        <span className="tabular">{when}</span>
       </div>
-      <h1 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-ink sm:text-[2.1rem]">{t('ready.title')}</h1>
-      <p className="mt-2 max-w-md text-[15px] leading-relaxed text-balance text-ink-soft">
+      <h1 className="text-[length:var(--text-hero-long)] leading-tight font-semibold tracking-[-0.02em] text-ink">{t('ready.title')}</h1>
+      <p className="mt-3 max-w-md font-serif text-[length:var(--text-body)] leading-relaxed text-balance text-ink-soft">
         {t('ready.body')} {handsFree ? t('ready.bodyHandsFree') : t('ready.bodyManual')}
       </p>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">

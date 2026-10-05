@@ -54,7 +54,7 @@ export function PrayerChips({ clock, onRequestSwitch }: { clock: PrayerClock; on
               {active ? (
                 <motion.span
                   layoutId="prayer-chip"
-                  className="absolute inset-0 rounded-xl border border-mint/50 bg-mint/[0.08] shadow-[0_0_24px_-6px_oklch(0.86_0.12_166/0.55)]"
+                  className="absolute inset-0 rounded-xl border border-mint/50 bg-mint/[0.08] shadow-[0_0_24px_-6px_color-mix(in_oklab,var(--accent)_55%,transparent)]"
                   transition={{ type: 'spring', bounce: 0.12, duration: 0.5 }}
                 />
               ) : (
@@ -89,7 +89,7 @@ export function PrayerMenu({ clock, onRequestSwitch }: { clock: PrayerClock; onR
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        <button className="flex h-10 min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-mint/45 bg-mint/[0.08] pr-2.5 pl-3.5 text-sm shadow-[0_0_24px_-8px_oklch(0.86_0.12_166/0.6)]">
+        <button className="flex h-10 min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-mint/45 bg-mint/[0.08] pr-2.5 pl-3.5 text-sm shadow-[0_0_24px_-8px_color-mix(in_oklab,var(--accent)_60%,transparent)]">
           <span className="font-medium">{t(`prayer.${selected}`)}</span>
           <span className="truncate text-[11.5px] text-mint">{sublabel(t, selected, clock, true)}</span>
           <ChevronDown className="size-4 shrink-0 text-ink-muted" />

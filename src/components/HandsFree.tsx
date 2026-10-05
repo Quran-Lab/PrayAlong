@@ -26,7 +26,7 @@ export function HandsFreeButton({ on, status, onToggle, compact }: { on: boolean
         className={cn(
           'relative flex h-10 cursor-pointer items-center gap-2.5 rounded-full border text-sm font-medium whitespace-nowrap transition-all duration-300',
           compact ? 'w-10 justify-center' : 'ps-4 pe-3.5',
-          on ? 'border-mint/50 bg-mint/[0.1] text-ink shadow-[0_0_26px_-8px_oklch(0.86_0.12_166/0.7)]' : 'glass text-ink-soft hover:text-ink',
+          on ? 'border-mint/50 bg-mint/[0.1] text-ink shadow-[0_0_26px_-8px_color-mix(in_oklab,var(--accent)_70%,transparent)]' : 'glass text-ink-soft hover:text-ink',
         )}
       >
         {!compact && <span>{t('hf.button')}</span>}

@@ -65,6 +65,7 @@ export const en = {
   'line.of': '{i} of {n}',
   'line.aloud': 'aloud',
   'line.quietly': 'quietly',
+  'line.next': 'Next',
   'line.say': 'Say',
   'line.times': '×{n}',
   'line.quran': 'Quran {ref}',

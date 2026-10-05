@@ -11,6 +11,7 @@ import { Recitation } from '@/components/Recitation'
 import { SettingsSheet } from '@/components/SettingsSheet'
 import { SetupSheet } from '@/components/SetupSheet'
 import { CHARACTERS, DEFAULT_CHARACTER } from '@/components/stage/characters'
+import { Scenery } from '@/components/stage/Scenery'
 import type { PoseName } from '@/components/stage/rig/prayer-poses'
 import { Button } from '@/components/ui/primitives'
 import { PRAYER_BY_ID } from '@/content/prayers'
@@ -38,6 +39,8 @@ export function App() {
   const { phase, prayer, settings, handsFree, demo, index, sequence } = session
   const step = currentStep(session)
   const wide = useMedia('(min-width: 1024px)')
+  const wideLayout = useMedia('(min-width: 1100px) and (min-aspect-ratio: 5/4)')
+  const short = useMedia('(orientation: landscape) and (max-height: 540px)')
   const reducedMotion = useReducedMotion()
   const character = CHARACTERS.find((c) => c.id === settings.characterId) ?? DEFAULT_CHARACTER
   const [stageReady, setStageReady] = useState(false)
@@ -57,6 +60,12 @@ export function App() {
     if (!s.demo) setSetupOpen(true)
   }, [])
 
+  // Deep link: /?prayer=maghrib opens that prayer.
+  useEffect(() => {
+    const p = new URLSearchParams(location.search).get('prayer') as PrayerId | null
+    if (p && p in PRAYER_BY_ID) useSession.getState().choosePrayer(p)
+  }, [])
+
   // Language and direction for the whole document.
   useEffect(() => {
     document.documentElement.lang = locale
@@ -65,7 +74,9 @@ export function App() {
 
   // Each prayer tints the room like its time of day.
   const ambient = PRAYER_BY_ID[prayer].ambient
-  useEffect(() => document.documentElement.style.setProperty('--ambient', ambient), [ambient])
+  useEffect(() => {
+    document.documentElement.dataset.prayer = prayer
+  }, [prayer])
 
   useWakeLock(phase === 'praying')
   const timedMs = useStepTimer(following)
@@ -101,7 +112,7 @@ export function App() {
         <RadixTooltip.Provider>
           <div className="relative flex h-full flex-col overflow-hidden bg-canvas">
             {/* Header */}
-            <header className="relative z-20 flex h-16 shrink-0 items-center gap-3 border-b border-line px-4 sm:h-[4.5rem] sm:px-6 short:h-12">
+            <header className="relative z-20 flex h-16 shrink-0 items-center gap-3 px-4 sm:h-[4.5rem] sm:px-6 short:h-12">
               <div className="flex flex-1 items-center">
                 <Logo compact={!wide} />
               </div>
@@ -115,13 +126,17 @@ export function App() {
             </header>
 
             {/* Stage */}
-            <main className="relative flex min-h-0 flex-1 flex-col short:flex-row">
-              <div className="relative min-h-0 min-w-0 flex-1">
+            <main className="relative flex min-h-0 flex-1 flex-col short:flex-row wide:flex-row">
+              {/* The room spans the page; on wide screens its window sits behind the companion. */}
+              {(wideLayout || short) && <Scenery prayer={prayer} windowX={wideLayout ? 26.5 : 24} />}
+              <div className="relative min-h-0 min-w-0 flex-1 wide:flex-[1.12]">
                 <Suspense>
                   <CompanionStage
                     posture={posture}
                     character={character}
                     ambient={ambient}
+                    prayer={prayer}
+                    scenery={!(wideLayout || short)}
                     reducedMotion={reducedMotion}
                     onLoaded={() => setStageReady(true)}
                   />
@@ -133,7 +148,7 @@ export function App() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-canvas to-transparent" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-canvas to-transparent wide:hidden" />
                 <div className="absolute end-3 top-3 z-10 sm:end-5 sm:top-4">
                   <AnimatePresence>
                     {handsFree && !setupOpen && (
@@ -156,12 +171,12 @@ export function App() {
                 </div>
               </div>
 
-              <section className="relative z-10 flex min-h-[13rem] shrink-0 items-start justify-center pb-3 sm:min-h-[14rem] short:min-h-0 short:w-[52%] short:items-center short:overflow-y-auto short:py-3">
+              <section className="relative z-10 flex min-h-[34%] shrink-0 items-start justify-center pb-3 short:min-h-0 short:w-[52%] short:items-center short:overflow-y-auto short:py-3 wide:min-h-0 wide:flex-1 wide:items-center wide:pe-[3vw] wide:ps-[1vw] wide:pb-0">
                 <AnimatePresence mode="wait">
                   {phase === 'ready' && <ReadyPanel key="ready" clock={clock} handsFree={handsFree} onHandsFree={toggleHandsFree} />}
                   {phase === 'praying' && (
                     <motion.div key="praying" className="w-full" exit={{ opacity: 0 }}>
-                      <Recitation step={step} timedMs={timedMs} distance={following} />
+                      <Recitation step={step} next={sequence.steps[index + 1]} timedMs={timedMs} distance={following} />
                     </motion.div>
                   )}
                   {phase === 'complete' && <CompletePanel key="complete" clock={clock} />}

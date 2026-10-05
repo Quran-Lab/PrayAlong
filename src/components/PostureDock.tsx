@@ -72,7 +72,7 @@ export function PostureDock({ following }: { following: boolean }) {
                     {active && (
                       <motion.span
                         layoutId="dock-active"
-                        className="absolute inset-0 rounded-2xl border border-mint/25 bg-mint/[0.09] shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_0_28px_-10px_oklch(0.86_0.12_166/0.8)]"
+                        className="absolute inset-0 rounded-2xl border border-mint/25 bg-mint/[0.09] shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_0_28px_-10px_color-mix(in_oklab,var(--accent)_80%,transparent)]"
                         transition={{ type: 'spring', bounce: 0.15, duration: 0.55 }}
                       />
                     )}

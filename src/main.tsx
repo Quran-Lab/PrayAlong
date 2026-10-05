@@ -1,6 +1,8 @@
 import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@fontsource-variable/inter'
+import '@fontsource-variable/figtree'
+import '@fontsource-variable/source-serif-4'
+import '@fontsource/amiri-quran/400.css'
 import '@fontsource/amiri/400.css'
 import '@fontsource/amiri/700.css'
 // Arabic-script UI text (unicode-range: only downloaded when used).
