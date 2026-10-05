@@ -23,6 +23,7 @@ declare global {
     __voiceResult?: ReplayResult | { error: string }
     __voiceProgress?: number
     __voiceWav?: () => Promise<string>
+    __voiceRender?: () => Promise<{ wav: string; timeline: import("@/voice/replay").Timeline }>
     __voiceRealBatch?: typeof runRealBatch
   }
 }
@@ -187,13 +188,16 @@ function ReplayPanel({ params }: { params: URLSearchParams }) {
   const started = useRef(false)
 
   useEffect(() => {
-    window.__voiceWav = async () => {
-      const { pcm } = await prepareReplay(p)
+    const render = async () => {
+      const { pcm, timeline } = await prepareReplay(p)
       const bytes = wavOf(pcm)
       let bin = ''
       for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
-      return btoa(bin)
+      return { wav: btoa(bin), timeline }
     }
+    window.__voiceWav = async () => (await render()).wav
+    // The live-App harness (scripts/voice-app.mjs) also needs the timeline.
+    window.__voiceRender = render
     if (!params.has('run') || started.current) return
     started.current = true
     runReplay(p, (a, total) => {
