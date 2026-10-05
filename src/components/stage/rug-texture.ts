@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { paletteScale, type Palette } from '@/lib/brand'
 
 /**
  * The rug's top, painted once to a canvas in a flat, modern style: a rounded
@@ -7,14 +8,20 @@ import * as THREE from 'three'
  * the qibla end.
  */
 
-export const RUG_COLORS = {
-  field: '#1f7560',
-  fieldDeep: '#17604f',
-  arch: '#2c8d73',
-  cream: '#f6eedc',
-  sun: '#f4c56b',
-  blush: '#f2a38a',
-  edge: '#15503f',
+export interface RugColors {
+  field: string
+  fieldDeep: string
+  arch: string
+  cream: string
+  sun: string
+  blush: string
+  edge: string
+}
+
+/** The rug in a brand palette (app.css, docs/DESIGN.md), with paper for the trim. */
+export function rugColors(palette: Palette): RugColors {
+  const p = paletteScale(palette)
+  return { field: p[700], fieldDeep: p[800], arch: p[600], cream: '#f1efea', sun: p[200], blush: p[300], edge: p[900] }
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -44,24 +51,13 @@ function crescent(ctx: CanvasRenderingContext2D, x: number, y: number, r: number
   ctx.fill()
 }
 
-function sparkle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
-  ctx.beginPath()
-  ctx.moveTo(x, y - r)
-  ctx.quadraticCurveTo(x, y, x + r, y)
-  ctx.quadraticCurveTo(x, y, x, y + r)
-  ctx.quadraticCurveTo(x, y, x - r, y)
-  ctx.quadraticCurveTo(x, y, x, y - r)
-  ctx.fill()
-}
-
-export function createRugTexture(width = 1024, height = 1740): THREE.CanvasTexture {
+export function createRugTexture(C: RugColors, width = 1024, height = 1740): THREE.CanvasTexture {
   const canvas = document.createElement('canvas')
   canvas.width = width
   canvas.height = height
   const ctx = canvas.getContext('2d')!
   const W = width
   const H = height
-  const C = RUG_COLORS
 
   ctx.fillStyle = C.field
   ctx.fillRect(0, 0, W, H)
@@ -116,11 +112,8 @@ export function createRugTexture(width = 1024, height = 1740): THREE.CanvasTextu
   ctx.stroke()
   ctx.setLineDash([])
 
-  // Crescent and sparkles inside the crown
+  // The crescent inside the crown: the PrayAlong mark's moon
   crescent(ctx, cx, top + H * 0.11, W * 0.06, C.sun, C.arch)
-  ctx.fillStyle = C.cream
-  sparkle(ctx, cx + W * 0.1, top + H * 0.075, W * 0.02)
-  sparkle(ctx, cx - W * 0.11, top + H * 0.16, W * 0.014)
 
   // Three soft dots under the arch
   for (let i = -1; i <= 1; i++) {

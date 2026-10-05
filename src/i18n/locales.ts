@@ -12,13 +12,20 @@ export const LOCALES = {
 
 export type Locale = keyof typeof LOCALES
 
+/**
+ * The languages offered for now. The others keep their files and come back once their texts
+ * (and the new al-Albani wording) are reviewed.
+ */
+export const OFFERED: readonly Locale[] = ['en', 'id', 'ar']
+
 /** Locales whose readers read Arabic script — they see it by default. */
 export const READS_ARABIC: ReadonlySet<Locale> = new Set(['ar', 'ur'])
 
 export function detectLocale(languages: readonly string[] = typeof navigator === 'undefined' ? [] : navigator.languages): Locale {
   for (const tag of languages) {
     const base = tag.toLowerCase().split('-')[0]!
-    if (base in LOCALES) return base as Locale
+    if (base === 'ms') return 'id'
+    if (OFFERED.includes(base as Locale)) return base as Locale
   }
   return 'en'
 }

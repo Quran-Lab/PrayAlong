@@ -1,6 +1,7 @@
 import * as THREE from 'three'
+import { GarmentDrape } from './garment'
 import type { Humanoid, HumanBone } from './humanoid'
-import { PRAYER_POSES, waypoints, type Dir3, type HandSpec, type PoseName, type PrayerPose } from './prayer-poses'
+import { prayerPose, waypoints, type Dir3, type HandSpec, type PoseName, type PrayerPose, type Waypoint } from './prayer-poses'
 
 /** Characters are scaled to this standing height so framing is consistent. */
 export const STAGE_HEIGHT = 1.65
@@ -83,12 +84,16 @@ export class Performer {
   readonly root = new THREE.Group()
   private readonly rig = new THREE.Group()
   private metrics!: Metrics
+  private drape: GarmentDrape
 
   private pose: PoseName = 'rest'
   private from: PoseName = 'rest'
-  private queue: PoseName[] = []
+  private queue: Waypoint[] = []
   private t = 1
   private duration = 1
+  /** Seconds left to stay in the pose just reached before moving on. */
+  private hold = 0
+  private holdNext = 0
 
   private fkCurrent = new Map<HumanBone, THREE.Quaternion>()
   private fkFrom = new Map<HumanBone, THREE.Quaternion>()
@@ -97,21 +102,29 @@ export class Performer {
   private eyesFrom = 0
   private clock = 0
 
-  constructor(private readonly humanoid: Humanoid) {
+  constructor(private readonly humanoid: Humanoid, private readonly compact = false) {
     this.rig.add(humanoid.scene)
     this.root.add(this.rig)
     humanoid.scene.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) {
         o.castShadow = true
         o.receiveShadow = true
+        const material = (o as THREE.Mesh).material
+        if (!Array.isArray(material) && material.name === 'Trousers') o.visible = false
       }
     })
     this.measure()
+    this.drape = new GarmentDrape(humanoid, this.root)
     this.jumpTo('rest')
   }
 
   get posture() {
     return this.pose
+  }
+
+  /** True while moving between postures (the stage renders at full rate). */
+  get moving() {
+    return this.t < 1 || this.hold > 0 || this.queue.length > 0
   }
 
   // ————————————————————————————————————————————— measuring the character
@@ -163,7 +176,7 @@ export class Performer {
     const chestFront = frontAt(chestY, 0.025 * H, 0.07 * H)
     const chestOffset = v().set(0, chestY, (Number.isFinite(chestFront) ? chestFront : spine.z + 0.1 * H) + 0.012 * H).sub(P(chestBone)!)
 
-    const foreheadY = head.y + headH * 0.55
+    const foreheadY = head.y + headH * 0.43
     const faceFront = frontAt(foreheadY, 0.02 * H, 0.05 * H)
     const foreheadOffset = v().set(0, foreheadY, Number.isFinite(faceFront) ? faceFront : head.z + 0.08 * H).sub(head)
 
@@ -217,24 +230,30 @@ export class Performer {
     this.pose = this.from = name
     this.queue = []
     this.t = 1
+    this.hold = 0
     this.fkCurrent.clear()
-    for (const [bone, deg] of Object.entries(PRAYER_POSES[name].fk) as [HumanBone, readonly number[]][])
+    this.fkFrom.clear()
+    for (const [bone, deg] of Object.entries(prayerPose(name, this.compact).fk) as [HumanBone, readonly number[]][])
       this.fkCurrent.set(bone, this.toQuat(deg))
     this.armFrom = null
-    this.eyes = PRAYER_POSES[name].eyesClosed
+    this.eyes = prayerPose(name, this.compact).eyesClosed
     this.update(0)
   }
 
   setPosture(name: PoseName) {
-    const last = this.queue.at(-1) ?? this.pose
+    const last = this.queue.at(-1)?.pose ?? this.pose
     if (name === last) return
-    this.queue = waypoints(last, name)
+    // Plan from the pose the body is in (or heading to) now.
+    this.queue = waypoints(this.pose, name)
+    this.hold = 0
     this.startNext()
   }
 
   private startNext() {
-    const next = this.queue.shift()
-    if (!next) return
+    const step = this.queue.shift()
+    if (!step) return
+    const next = step.pose
+    this.holdNext = step.hold
     this.fkFrom = new Map([...this.fkCurrent].map(([b, quat]) => [b, quat.clone()]))
     this.armFrom = this.t < 1 ? this.snapshotArms() : null
     this.eyesFrom = this.eyes
@@ -256,10 +275,11 @@ export class Performer {
     this.clock += dt
     if (this.t < 1) {
       this.t = Math.min(1, this.t + dt / this.duration)
-      if (this.t >= 1 && this.queue.length) this.startNext()
-    }
+      if (this.t >= 1) this.hold = this.holdNext
+    } else if (this.hold > 0) this.hold = Math.max(0, this.hold - dt)
+    if (this.t >= 1 && this.hold <= 0 && this.queue.length) this.startNext()
     const e = easeInOut(this.t)
-    const target = PRAYER_POSES[this.pose]
+    const target = prayerPose(this.pose, this.compact)
     const h = this.humanoid
 
     // 1. Forward kinematics: blend every authored bone towards the target.
@@ -272,7 +292,7 @@ export class Performer {
     for (const bone of Object.keys(h.raw) as HumanBone[]) h.setRotation(bone, this.fkCurrent.get(bone) ?? q())
 
     // Gentle breathing so the figure never looks frozen.
-    const breath = Math.sin(this.clock * 1.5) * 0.7 * DEG
+    const breath = this.pose === 'sujud' ? 0 : Math.sin(this.clock * 1.5) * 0.18 * DEG
     const chest = this.fkCurrent.get('chest') ?? q()
     h.setRotation('chest', chest.clone().multiply(q().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -breath)))
     h.applyPose()
@@ -283,21 +303,26 @@ export class Performer {
     const forehead = this.pose === 'sujud' ? e : this.from === 'sujud' ? 1 - e : 0
     if (forehead > 0) this.lowerForehead(target, forehead)
 
-    // 3. Hands.
+    // 3. Hands rest on the corrected lap, not the hidden leg surface.
+    this.drape.update()
     this.placeArms(target, e)
 
     // 4. Face.
     this.eyes = THREE.MathUtils.lerp(this.eyesFrom, target.eyesClosed, e)
     h.setExpression('blink', this.eyes)
     h.setExpression('relaxed', this.eyes * 0.6)
+    const points = (pose: PoseName) => pose === 'tashahhud' || pose === 'tawarruk' ? 1 : 0
+    h.setExpression('point', THREE.MathUtils.lerp(points(this.from), points(this.pose), e))
     h.finish(dt)
+    this.drape.update()
   }
 
   private ground(target: PrayerPose) {
     const h = this.humanoid
     const m = this.metrics
-    const contacts = new Set([...target.contacts, ...PRAYER_POSES[this.from].contacts])
+    const contacts = new Set([...target.contacts, ...prayerPose(this.from, this.compact).contacts])
     const P = (b: HumanBone) => worldPos(h.raw[b]!)
+    const origin = this.root.getWorldPosition(v())
     let lowest = Infinity
     for (const side of ['left', 'right'] as const) {
       if (contacts.has('feet')) lowest = Math.min(lowest, P(`${side}Foot`).y - m.footPad)
@@ -306,9 +331,9 @@ export class Performer {
     }
     // Keep the toes where they started — people pray on one spot.
     const anchor = h.raw.leftToes && h.raw.rightToes ? P('leftToes').add(P('rightToes')).multiplyScalar(0.5) : P('leftFoot').add(P('rightFoot')).multiplyScalar(0.5)
-    this.rig.position.x -= anchor.x - this.root.position.x
-    this.rig.position.z -= anchor.z - this.root.position.z
-    this.rig.position.y -= lowest - this.root.position.y
+    this.rig.position.x -= anchor.x - origin.x
+    this.rig.position.z -= anchor.z - origin.z
+    this.rig.position.y -= lowest - origin.y
     this.root.updateMatrixWorld(true)
   }
 
@@ -321,13 +346,16 @@ export class Performer {
     const m = this.metrics
     const X = new THREE.Vector3(1, 0, 0)
     let extra = 0
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 6; i++) {
+      // Keep the face facing the mat as the torso settles, not the crown.
+      const headGoal = q().setFromAxisAngle(X, Math.PI / 2).multiply(m.restWorld.get('head')!)
+      setWorldQuat(h.raw.head!, worldQuat(h.raw.head!).slerp(headGoal, weight))
       const head = worldPos(h.raw.head!)
       const headRot = worldQuat(h.raw.head!).multiply(m.restWorld.get('head')!.clone().invert())
       const forehead = head.add(m.foreheadOffset.clone().applyQuaternion(headRot))
       const hips = worldPos(h.raw.hips!)
       const reach = Math.max(0.15, Math.hypot(forehead.z - hips.z, forehead.x - hips.x))
-      const error = forehead.y - m.palmPad * 0.4
+      const error = forehead.y - this.root.getWorldPosition(v()).y - 0.003
       extra = THREE.MathUtils.clamp(extra + (error / reach) * weight, -0.4, 0.45)
       const bend = q().setFromAxisAngle(X, extra)
       const unbend = q().setFromAxisAngle(X, -extra)
@@ -337,6 +365,7 @@ export class Performer {
       h.applyPose()
       this.root.updateMatrixWorld(true)
       this.ground(target)
+      setWorldQuat(h.raw.head!, worldQuat(h.raw.head!).slerp(headGoal, weight))
     }
   }
 
@@ -380,13 +409,19 @@ export class Performer {
         // Upright thighs (kneeling): rest the hands on their front instead.
         if (top.lengthSq() < 0.09) top.set(0, 0, 1)
         top.normalize()
-        target = hip.lerp(knee, 0.55).addScaledVector(top, 0.05 * H)
+        target = hip.lerp(knee, 0.63).addScaledVector(top, 0.058 * H)
+        const local = this.root.worldToLocal(target.clone())
+        const cloth = this.drape.support(local.x, local.z + 0.045 * H)
+        if (cloth !== undefined) {
+          local.y = Math.max(local.y, cloth + 0.026 * H)
+          target = this.root.localToWorld(local)
+        }
         break
       }
       case 'ground': {
         const shoulder = P(`${side}UpperArm`)
         const forehead = P('head').add(m.foreheadOffset.clone().applyQuaternion(normalizedWorld('head')))
-        target = v().set(shoulder.x + s * 0.03 * H, m.palmPad, forehead.z - 0.06 * H)
+        target = v().set(shoulder.x + s * (this.compact ? 0.012 : 0.03) * H, this.root.getWorldPosition(v()).y + 0.028 * H, forehead.z - 0.075 * H)
         break
       }
     }
@@ -405,7 +440,7 @@ export class Performer {
       const world = worldQuat(h.raw[`${side}Hand`]!)
       // frame = world · rest⁻¹ · restFrame
       const frame = world.multiply(rest.quat.clone().invert()).multiply(rest.frame)
-      const spec = PRAYER_POSES[this.pose][side]
+      const spec = prayerPose(this.pose, this.compact)[side]
       return { target: this.root.worldToLocal(worldPos(h.raw[`${side}Hand`]!)), pole: vec(spec.pole).normalize(), frame }
     }
     return { left: snap('left'), right: snap('right') }
@@ -415,7 +450,7 @@ export class Performer {
     const h = this.humanoid
     for (const side of ['left', 'right'] as const) {
       const to = this.anchorFor(side, target[side])
-      const from = this.armFrom?.[side] ?? this.anchorFor(side, PRAYER_POSES[this.from][side])
+      const from = this.armFrom?.[side] ?? this.anchorFor(side, prayerPose(this.from, this.compact)[side])
       const goal = this.root.localToWorld(from.target.clone().lerp(to.target, e))
       const pole = from.pole.clone().lerp(to.pole, e).normalize()
       const frame = from.frame.clone().slerp(to.frame, e)
@@ -455,6 +490,7 @@ export class Performer {
   }
 
   dispose() {
+    this.drape.dispose()
     this.humanoid.dispose()
   }
 }

@@ -425,9 +425,40 @@ def finish_part(name, ob, mat, weight_fn, colors=None):
     return ob
 
 
+def prayer_hand_shape(body, skel):
+    """Right index points forward/up; the other fingers curl into the palm.
+    A continuous shape key preserves the watertight finger/palm junctions."""
+    body.shape_key_add(name='Basis')
+    key = body.shape_key_add(name='prayerPoint')
+    wx, wy, wz = skel.wrist
+    scale = (skel.index[0] - wx) / 0.062
+    for vert, dst in zip(body.data.vertices, key.data):
+        x, y, z = vert.co
+        outward = (-x - wx) / scale
+        dy = (y - wy) / scale
+        if outward < 0.048 or abs(dy) > 0.032 or abs(z - wz) > 0.035:
+            continue
+        # Separate the index from the other three fingers with a soft web.
+        index = 1 - float(smoothstep(-0.014, -0.010, np.array([dy]))[0])
+        d = max(0, outward - 0.057)
+        radius = 0.018
+        angle = min(d / radius, 2.7)
+        curl_x = 0.057 + radius * math.sin(angle)
+        curl_z = -radius * (1 - math.cos(angle))
+        raised_x = 0.057 + d * math.cos(math.radians(32))
+        raised_z = d * math.sin(math.radians(32))
+        fade = float(smoothstep(0.048, 0.065, np.array([outward]))[0])
+        new_x = curl_x * (1 - index) + raised_x * index
+        new_z = curl_z * (1 - index) + raised_z * index
+        dst.co.x += (outward - new_x) * scale * fade
+        dst.co.z += new_z * scale * fade
+
+
 def assemble(name, skel, parts, out_glb):
     arm = build_armature(skel)
     body = join(parts, name)
+    if name in ('Brother', 'Sister'):
+        prayer_hand_shape(body, skel)
     bind(body, arm)
     tris = triangulated_count(body)
     log(f'{name}: {len(body.data.vertices)} verts, {tris} triangles, {len(body.data.materials)} materials')
@@ -586,8 +617,8 @@ def pose_renders(prefix, arm_ob, mesh_ob, poses=('jalsah', 'ruku', 'sujud'), hei
 
 
 def previews(name, arm, body, height=0.985, face_z=0.83):
-    """NO_RENDER=1: none. POSES=1: posture checks only. Default: hero renders."""
-    if os.environ.get('NO_RENDER'):
+    """NO_RENDER=1: none. THUMB_ONLY=1: only the picker thumbnail. POSES=1: posture checks only. Default: hero renders."""
+    if os.environ.get('NO_RENDER') or os.environ.get('THUMB_ONLY'):
         return
     preview_setup()
     prefix = os.path.join(PREVIEW_DIR, name)
@@ -595,3 +626,130 @@ def previews(name, arm, body, height=0.985, face_z=0.83):
         pose_renders(prefix, arm, body, height=height)
     else:
         hero_renders(prefix, height=height, face_z=face_z, arm_ob=arm)
+
+
+# ════════════════════════════════════════════════════════════ tall adult (faceless)
+#
+# Brother and Sister: a stylised adult of about seven heads, after the brief's
+# pose sheet (slim, long-limbed, a small smooth oval face). Authored straight
+# in world space (no kid-head placement): about 0.965 to the crown, feet on
+# z = 0, facing -Y, T-pose.
+
+#: World space is the head space here.
+TALL_PLACE = Place(centre=tuple(HEAD_O), scale=1.0)
+
+
+def tall_head(ears=True):
+    """A smooth oval head with no features, chin at ~0.83 and crown at 0.965."""
+    cranium = ellipsoid((0, 0.012, 0.905), (0.0625, 0.067, 0.06))
+    face = ellipsoid((0, -0.004, 0.879), (0.0545, 0.056, 0.049))
+    jaw = ellipsoid((0, -0.008, 0.858), (0.047, 0.05, 0.03))
+    cheeks = mirror_x(sphere((0.03, -0.034, 0.87), 0.022))
+    chin = ellipsoid((0, -0.031, 0.84), (0.021, 0.022, 0.014))
+    skull = union(cranium, face, k=0.03)
+    skull = union(skull, jaw, k=0.025)
+    skull = union(skull, cheeks, k=0.025)
+    skull = union(skull, chin, k=0.02)
+    head = skull
+    if ears:
+        ears_ = mirror_x(ellipsoid((0.0612, 0.012, 0.888), (0.008, 0.0125, 0.0175), R=rot(y=-10, z=-28)))
+        cup = mirror_x(ellipsoid((0.0662, 0.006, 0.888), (0.004, 0.008, 0.011), R=rot(y=-10, z=-28)))
+        head = union(head, subtract(ears_, cup, k=0.003), k=0.007)
+    neck = capsule((0, 0.014, 0.76), (0, 0.01, 0.86), 0.0265)
+    head = union(head, neck, k=0.016)
+    return dict(skull=skull, head=head, neck=neck, cranium=cranium)
+
+
+def adult_hand(wrist, s=1.0):
+    """Left hand in a T-pose, palm down, thumb forward (-Y), relaxed fingers
+    held together (hard creases between them, soft into the palm)."""
+    w = np.asarray(wrist, float)
+    p = lambda dx, dy, dz: tuple(w + s * np.array([dx, dy, dz]))  # noqa: E731
+    cuff = capsule(p(-0.03, 0.0, 0.0), p(0.006, 0.0, -0.001), 0.0158 * s)
+    palm = ellipsoid(p(0.034, 0.0, -0.002), (0.034 * s, 0.0285 * s, 0.0118 * s))
+    knuck = []
+    fingers = []
+    for dy, length, r in ((-0.0185, 0.045, 0.0064), (-0.006, 0.05, 0.0066), (0.0065, 0.047, 0.0062), (0.0185, 0.037, 0.0055)):
+        b0 = p(0.062, dy, -0.001)
+        fingers.append(tube([b0, p(0.062 + length * 0.55, dy, -0.004), p(0.062 + length, dy, -0.011)], [r * s, r * 0.94 * s, r * 0.85 * s]))
+        knuck.append(b0)
+    thumb = tube([p(0.01, -0.02, -0.006), p(0.03, -0.036, -0.01), p(0.05, -0.046, -0.013)], [0.0105 * s, 0.0082 * s, 0.0068 * s])
+    h = union(cuff, palm, k=0.014 * s)
+    h = union(h, union(*fingers), k=0.009 * s)
+    h = union(h, thumb, k=0.01 * s)
+    joints = dict(index=knuck[0], middle=knuck[1], pinky=knuck[3], tip=p(0.112, -0.006, -0.011))
+    return h, joints
+
+
+def tall_body(knee_y=-0.012, hand_s=0.93, foot_s=1.0, shin_top=0.12, shoulder_x=0.11):
+    """Adult skeleton of ~7 heads plus hands and bare feet."""
+    dx = shoulder_x - 0.1
+    wrist = (0.418 + dx, 0.01, 0.785)
+    ankle = (0.06, 0.008, 0.045)
+    hand, kn = adult_hand(wrist, s=hand_s)
+    foot, fj = bare_foot(ankle, s=foot_s, shin_top=shin_top)
+    sk = Skeleton(
+        hips=(0, 0.004, 0.55),
+        spine=(0, 0.004, 0.6),
+        spine1=(0, 0.006, 0.655),
+        spine2=(0, 0.008, 0.715),
+        neck=(0, 0.012, 0.8),
+        head=(0, 0.012, 0.848),
+        head_top=(0, 0.012, 0.965),
+        clavicle=(0.02, 0.008, 0.79),
+        shoulder=(shoulder_x, 0.01, 0.785),
+        elbow=(0.278 + dx, 0.014, 0.785),
+        wrist=wrist,
+        hand_tip=kn['tip'],
+        index=kn['index'],
+        middle=kn['middle'],
+        pinky=kn['pinky'],
+        hip=(0.052, 0.004, 0.515),
+        knee=(0.056, knee_y, 0.285),
+        ankle=ankle,
+        toe=fj['toe'],
+        toe_tip=fj['toe_tip'],
+    )
+    return sk, hand, foot
+
+
+def tall_field(sk: Skeleton, **kw):
+    """Joint blends for long adult limbs (kid widths scaled up by 1.3)."""
+    base = dict(scale=1.3, hip_front_width=0.058)
+    base.update(kw)
+    return body_field(sk, **base)
+
+
+def mark_sdf(surface, centre_x, centre_z, height=0.03, lift=0.0004):
+    """The Quran Lab mark (five rounded bars, 14/32/48/32/14 of 48) in relief on
+    the front of `surface`, centred at (centre_x, centre_z). For the chest."""
+    u = height / 48
+    bars = []
+    for i, h in enumerate((14, 32, 48, 32, 14)):
+        x = centre_x + (i * 11 + 3.5 - 25.5) * u
+        r = 3.5 * u
+        top, bot = centre_z + (h / 2 - 3.5) * u, centre_z - (h / 2 - 3.5) * u
+        hit = raycast(surface, [(x, -0.4, (top + bot) / 2)], (0, 1, 0))[0]
+        y = float(hit[1]) + lift
+        bars.append(capsule((x, y, bot), (x, y, top), r))
+    return union(*bars)
+
+
+def thumbnail(name, arm, height=0.995):
+    """Square picker portrait on Quran Lab paper: public/avatars/<name>.avif.
+    Run with THUMB_ONLY=1 (it sets up its own lights and pose)."""
+    import subprocess
+
+    if os.environ.get('NO_RENDER') or not os.environ.get('THUMB_ONLY'):
+        return
+    paper = tuple(c ** 2.2 for c in (0.945, 0.937, 0.918))  # --surface, linear
+    preview_setup(world=paper, rim=(0.9, 0.92, 1.0), ground='#f1efea')
+    if bpy.data.objects.get('Mat'):
+        bpy.data.objects['Mat'].hide_render = True
+    pose_relaxed(arm)
+    orbit_camera(16, 4, 1.75 * height, (0, 0, height * 0.66), lens=72)
+    png = os.path.join(PREVIEW_DIR, f'{name}_thumb.png')
+    render(png, res=(480, 480), samples=40)
+    out = os.path.join(REPO, 'public', 'avatars', f'{name}.avif')
+    subprocess.run(['avifenc', '--speed', '6', '-q', '70', png, out], check=True, capture_output=True)
+    log('thumbnail', out, os.path.getsize(out) // 1024, 'KB')

@@ -42,9 +42,10 @@ const REQUIRED: HumanBone[] = [
   'leftUpperLeg', 'leftLowerLeg', 'leftFoot', 'rightUpperLeg', 'rightLowerLeg', 'rightFoot',
 ]
 
-export type Expression = 'blink' | 'happy' | 'relaxed'
+export type Expression = 'blink' | 'happy' | 'relaxed' | 'point'
 
 const MORPH_ALIASES: Record<Expression, string[]> = {
+  point: ['prayerPoint'],
   blink: ['eyeBlinkLeft', 'eyeBlinkRight', 'eyesClosed', 'EyesClosed', 'Blink', 'blink', 'Eye_Blink_L', 'Eye_Blink_R'],
   happy: ['mouthSmileLeft', 'mouthSmileRight', 'mouthSmile', 'Smile', 'smile'],
   relaxed: ['relaxed', 'Relaxed'],
@@ -93,7 +94,7 @@ function restoreBindPose(mesh: THREE.SkinnedMesh) {
 const sanitize = (name: string) => name.replace(/^mixamorig\d*[:_]?/i, '').replace(/[:.\s]/g, '')
 
 /** glTF with a Mixamo-style skeleton. Mirrors three-vrm's normalization. */
-class GltfHumanoid implements Humanoid {
+export class GltfHumanoid implements Humanoid {
   readonly raw: Partial<Record<HumanBone, THREE.Object3D>> = {}
   private normalized = new Map<HumanBone, THREE.Quaternion>()
   private restLocal = new Map<HumanBone, THREE.Quaternion>()
@@ -205,17 +206,19 @@ function base64ToBuffer(text: string): ArrayBuffer {
 }
 
 export async function loadHumanoid(url: string): Promise<Humanoid> {
+  // The VRM plugin (~140 kB) is only needed for .vrm characters.
+  const isVrm = /\.vrm(\.b64\.txt)?$/i.test(url)
   const [{ GLTFLoader }, vrmModule] = await Promise.all([
     import('three/examples/jsm/loaders/GLTFLoader.js'),
-    import('@pixiv/three-vrm'),
+    isVrm ? import('@pixiv/three-vrm') : Promise.resolve(null),
   ])
   const loader = new GLTFLoader()
-  loader.register((parser) => new vrmModule.VRMLoaderPlugin(parser))
+  if (vrmModule) loader.register((parser) => new vrmModule.VRMLoaderPlugin(parser))
   const gltf = url.endsWith('.b64.txt')
     ? await loader.parseAsync(base64ToBuffer(await (await fetch(url)).text()), '')
     : await loader.loadAsync(url)
   const vrm = gltf.userData.vrm as VRM | undefined
-  if (vrm) {
+  if (vrm && vrmModule) {
     vrmModule.VRMUtils.removeUnnecessaryVertices(gltf.scene)
     vrmModule.VRMUtils.combineSkeletons(gltf.scene)
     vrmModule.VRMUtils.rotateVRM0(vrm) // VRM 0.x faces -Z; normalize to +Z

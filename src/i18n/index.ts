@@ -1,28 +1,29 @@
-import { useSession } from '@/state/session'
-import { de } from './de'
+import { loadAdhkar } from '@/content/adhkar'
+import { loadQuran } from '@/content/lines'
 import { en, type MessageKey, type Messages } from './en'
-import { ar, es, fr, id, nl, tr, ur } from './more'
-import { detectLocale, type Locale } from './locales'
+import type { Locale } from './locales'
 
-const MESSAGES: Record<Locale, Messages> = { en, de, fr, es, tr, id, nl, ur, ar }
+/** English ships with the app; every other language loads when chosen. */
+const MESSAGES: Partial<Record<Locale, Messages>> = { en }
 
 export type { Locale, MessageKey }
-export { LOCALES, READS_ARABIC, detectLocale } from './locales'
+export { LOCALES, OFFERED, READS_ARABIC, detectLocale } from './locales'
+
+async function loadMessages(locale: Locale) {
+  if (MESSAGES[locale]) return
+  if (locale === 'de') MESSAGES.de = (await import('./de')).de
+  else {
+    const { ar, es, fr, id, nl, tr, ur } = await import('./more')
+    Object.assign(MESSAGES, { ar, es, fr, id, nl, tr, ur })
+  }
+}
+
+/** UI strings, Quran meanings and supplication meanings for one language. */
+export function loadLocale(locale: Locale): Promise<unknown> {
+  return Promise.all([loadMessages(locale), loadQuran(locale), loadAdhkar(locale)])
+}
 
 export function translate(locale: Locale, key: MessageKey, params?: Record<string, string | number>): string {
-  const template = MESSAGES[locale][key] ?? en[key]
+  const template = MESSAGES[locale]?.[key] ?? en[key]
   return params ? template.replace(/\{(\w+)\}/g, (_, k: string) => String(params[k] ?? '')) : template
 }
-
-/** The locale actually in use (the user's choice, or the browser's). */
-export function useLocale(): Locale {
-  const choice = useSession((s) => s.settings.locale)
-  return choice === 'auto' ? detectLocale() : choice
-}
-
-export function useT() {
-  const locale = useLocale()
-  return (key: MessageKey, params?: Record<string, string | number>) => translate(locale, key, params)
-}
-
-export type T = ReturnType<typeof useT>

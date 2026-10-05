@@ -23,3 +23,9 @@ dist-artifact
 dist-packed
 __pycache__/
 *.pyc
+
+# Backdrop originals from Pixabay (large); only encoded files are committed
+assets/backgrounds/*.jpg
+
+# Quran Lab ASR runtime and model (73 MB, gated licence): `npm run fetch:asr`
+public/asr/

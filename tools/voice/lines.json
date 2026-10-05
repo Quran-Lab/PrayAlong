@@ -1,0 +1,25 @@
+{
+  "note": "Sources and the silent gaps between their lines, read off `cut_lines.py check`. The dhikr recordings were supplied on 5 Oct 2026 (~/Downloads); the surahs are Sheikh Khalifah At-Tunaiji (mp3quran.net, de-reverbed), supplied as per-ayah clips and joined back before cutting. Tasyahud.mp3 holds the supplication between the prostrations.",
+  "recordings": [
+    { "src": ["~/Downloads/Prayer_Short_Surahs_Khalifa_Al_Tunaiji_Dereverbed/Al_Ikhlas/00_Basmalah.mp3", "~/Downloads/Prayer_Short_Surahs_Khalifa_Al_Tunaiji_Dereverbed/Al_Ikhlas/01_Ayah_1.mp3", "~/Downloads/Prayer_Short_Surahs_Khalifa_Al_Tunaiji_Dereverbed/Al_Ikhlas/02_Ayah_2.mp3", "~/Downloads/Prayer_Short_Surahs_Khalifa_Al_Tunaiji_Dereverbed/Al_Ikhlas/03_Ayah_3.mp3", "~/Downloads/Prayer_Short_Surahs_Khalifa_Al_Tunaiji_Dereverbed/Al_Ikhlas/04_Ayah_4.mp3"],
+      "folder": "tunaiji", "names": ["ikhlas-1", "ikhlas-2", "ikhlas-3", "ikhlas-4"],
+      "gaps": [[5.48, 6.03], [8.2, 8.77], [10.56, 11.13], [13.65, 14.19], [17.65, 18.29]] },
+    { "src": ["~/Downloads/Prayer_Short_Surahs_Khalifa_Al_Tunaiji_Dereverbed/Al_Falaq/00_Basmalah.mp3", "~/Downloads/Prayer_Short_Surahs_Khalifa_Al_Tunaiji_Dereverbed/Al_Falaq/01_Ayah_1.mp3", "~/Downloads/Prayer_Short_Surahs_Khalifa_Al_Tunaiji_Dereverbed/Al_Falaq/02_Ayah_2.mp3", "~/Downloads/Prayer_Short_Surahs_Khalifa_Al_Tunaiji_Dereverbed/Al_Falaq/03_Ayah_3.mp3", "~/Downloads/Prayer_Short_Surahs_Khalifa_Al_Tunaiji_Dereverbed/Al_Falaq/04_Ayah_4.mp3", "~/Downloads/Prayer_Short_Surahs_Khalifa_Al_Tunaiji_Dereverbed/Al_Falaq/05_Ayah_5.mp3"],
+      "folder": "tunaiji", "names": ["falaq-1", "falaq-2", "falaq-3", "falaq-4", "falaq-5"],
+      "gaps": [[5.45, 6.01], [8.84, 9.42], [12.19, 12.76], [17.01, 17.55], [22.35, 22.92], [27.09, 27.84]] },
+    { "src": "~/Downloads/Takbir.mp3", "folder": "dhikr", "names": ["takbir"], "gaps": [null, null] },
+    { "src": "~/Downloads/Istiftah.mp3", "folder": "dhikr", "names": ["thana-1", "thana-2"], "gaps": [null, [2.48, 3.03], null] },
+    { "src": "~/Downloads/Taawudz.mp3", "folder": "dhikr", "names": ["taawwudh"], "gaps": [null, null] },
+    { "src": "~/Downloads/Ruku.mp3", "folder": "dhikr", "names": ["ruku"], "gaps": [null, null] },
+    { "src": "~/Downloads/Sami'allah.mp3", "folder": "dhikr", "names": ["tasmi"], "gaps": [null, null] },
+    { "src": "~/Downloads/Rabbana walakal hamd.mp3", "folder": "dhikr", "names": ["tahmid"], "gaps": [null, null] },
+    { "src": "~/Downloads/Sujd.mp3", "folder": "dhikr", "names": ["sujud"], "gaps": [null, null] },
+    { "src": "~/Downloads/Tasyahud.mp3", "folder": "dhikr", "names": ["jalsah"], "gaps": [null, null] },
+    { "src": "~/Downloads/Tahiyat.mp3", "folder": "dhikr", "names": ["tashahhud-1", "tashahhud-2", "tashahhud-3", "tashahhud-4"], "gaps": [null, [4.09, 4.69], [8.05, 8.7], [12.02, 12.63], null] },
+    { "src": "~/Downloads/Shalawat Ibrahim.mp3", "folder": "dhikr", "names": ["salawat-1", "salawat-2", "salawat-3", "salawat-4"], "gaps": [null, [4.48, 5.08], [12.09, 13.27], [17.61, 18.22], null] },
+    { "src": "~/Downloads/Last Dua.mp3", "folder": "dhikr", "names": ["refuge-1", "refuge-2"], "gaps": [null, [6.04, 6.64], null] },
+    { "src": "~/Downloads/Assalamualaikum.mp3", "folder": "dhikr", "names": ["salam"], "gaps": [null, null] },
+    { "src": "~/Downloads/Astagfirullah.mp3", "folder": "dhikr", "names": ["istighfar"], "gaps": [null, null] },
+    { "src": "~/Downloads/Dua after salah.mp3", "folder": "dhikr", "names": ["antas-salam"], "gaps": [null, null] }
+  ]
+}

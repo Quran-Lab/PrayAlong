@@ -18,9 +18,9 @@ export const de: Record<string, string> = {
   tasmi: 'Möge Allah den erhören, der Ihn lobt.',
   tahmid: 'Unser Herr, Dir gebührt alles Lob.',
   sujud: 'Preis sei meinem Herrn, dem Allerhöchsten.',
-  jalsah: 'Mein Herr, vergib mir.',
+  jalsah: 'O Allah, vergib mir, erbarme Dich meiner, richte mich auf, erhöhe mich, schenke mir Wohlergehen und versorge mich.',
   'tashahhud-1': 'Alle Grüße, Gebete und guten Worte gebühren Allah.',
-  'tashahhud-2': 'Friede sei mit dir, o Prophet, und die Barmherzigkeit Allahs und Seine Segnungen.',
+  'tashahhud-2': 'Friede sei auf dem Propheten, und die Barmherzigkeit Allahs und Seine Segnungen.',
   'tashahhud-3': 'Friede sei mit uns und mit den rechtschaffenen Dienern Allahs.',
   'tashahhud-4': 'Ich bezeuge, dass niemand es verdient, angebetet zu werden, außer Allah, und ich bezeuge, dass Muhammad Sein Diener und Gesandter ist.',
   'salawat-1': 'O Allah, sprich den Segen über Muhammad und die Familie Muhammads,',
@@ -28,7 +28,6 @@ export const de: Record<string, string> = {
   'salawat-3': 'O Allah, segne Muhammad und die Familie Muhammads,',
   'salawat-4': 'wie Du Ibrahim und die Familie Ibrahims gesegnet hast. Du bist lobenswürdig und ruhmvoll.',
   salam: 'Der Friede und die Barmherzigkeit Allahs seien mit euch.',
-  taqabbal: 'Möge Allah es von uns und von euch annehmen.',
 }
 
 export const fr: Record<string, string> = {
@@ -41,9 +40,9 @@ export const fr: Record<string, string> = {
   tasmi: 'Qu’Allah exauce celui qui Le loue.',
   tahmid: 'Notre Seigneur, à Toi revient toute louange.',
   sujud: 'Gloire et pureté à mon Seigneur, le Très-Haut.',
-  jalsah: 'Mon Seigneur, pardonne-moi.',
+  jalsah: 'Ô Allah, pardonne-moi, fais-moi miséricorde, répare-moi, élève-moi, accorde-moi la santé et pourvois à mes besoins.',
   'tashahhud-1': 'Toutes les salutations, les prières et les bonnes paroles sont pour Allah.',
-  'tashahhud-2': 'Que la paix soit sur toi, ô Prophète, ainsi que la miséricorde d’Allah et Ses bénédictions.',
+  'tashahhud-2': 'Que la paix soit sur le Prophète, ainsi que la miséricorde d’Allah et Ses bénédictions.',
   'tashahhud-3': 'Que la paix soit sur nous et sur les serviteurs vertueux d’Allah.',
   'tashahhud-4': 'J’atteste que nul ne mérite d’être adoré en dehors d’Allah, et j’atteste que Muhammad est Son serviteur et Son Messager.',
   'salawat-1': 'Ô Allah, prie sur Muhammad et sur la famille de Muhammad,',
@@ -51,7 +50,6 @@ export const fr: Record<string, string> = {
   'salawat-3': 'Ô Allah, bénis Muhammad et la famille de Muhammad,',
   'salawat-4': 'comme Tu as béni Ibrahim et la famille d’Ibrahim. Tu es Digne de louange et plein de gloire.',
   salam: 'Que la paix et la miséricorde d’Allah soient sur vous.',
-  taqabbal: 'Qu’Allah l’accepte de nous et de vous.',
 }
 
 export const es: Record<string, string> = {
@@ -64,9 +62,9 @@ export const es: Record<string, string> = {
   tasmi: 'Que Allah responda a quien Lo alaba.',
   tahmid: 'Señor nuestro, a Ti pertenece toda alabanza.',
   sujud: 'Glorificado sea mi Señor, el Altísimo.',
-  jalsah: 'Señor mío, perdóname.',
+  jalsah: 'Oh Allah, perdóname, ten misericordia de mí, repárame, elévame, dame bienestar y provéeme.',
   'tashahhud-1': 'Todos los saludos, las oraciones y las buenas palabras son para Allah.',
-  'tashahhud-2': 'La paz sea contigo, oh Profeta, así como la misericordia de Allah y Sus bendiciones.',
+  'tashahhud-2': 'La paz sea con el Profeta, así como la misericordia de Allah y Sus bendiciones.',
   'tashahhud-3': 'La paz sea con nosotros y con los siervos justos de Allah.',
   'tashahhud-4': 'Atestiguo que nadie merece ser adorado excepto Allah, y atestiguo que Muhammad es Su siervo y Su Mensajero.',
   'salawat-1': 'Oh Allah, exalta a Muhammad y a la familia de Muhammad,',
@@ -74,7 +72,6 @@ export const es: Record<string, string> = {
   'salawat-3': 'Oh Allah, bendice a Muhammad y a la familia de Muhammad,',
   'salawat-4': 'como bendijiste a Ibrahim y a la familia de Ibrahim. Tú eres digno de alabanza y lleno de majestad.',
   salam: 'Que la paz y la misericordia de Allah sean con ustedes.',
-  taqabbal: 'Que Allah lo acepte de nosotros y de ustedes.',
 }
 
 export const tr: Record<string, string> = {
@@ -87,9 +84,9 @@ export const tr: Record<string, string> = {
   tasmi: 'Allah, Kendisine hamd edenin duasını kabul etsin.',
   tahmid: 'Rabbimiz, bütün hamdler Sana mahsustur.',
   sujud: 'En yüce olan Rabbim her türlü eksiklikten uzaktır.',
-  jalsah: 'Rabbim, beni bağışla.',
+  jalsah: 'Allah’ım, beni bağışla, bana merhamet et, eksiğimi gider, derecemi yükselt, bana afiyet ver ve beni rızıklandır.',
   'tashahhud-1': 'Bütün selamlar, dualar ve güzel sözler Allah’a aittir.',
-  'tashahhud-2': 'Ey Peygamber, selam, Allah’ın rahmeti ve bereketleri senin üzerine olsun.',
+  'tashahhud-2': 'Selam, Allah’ın rahmeti ve bereketleri Peygamber’in üzerine olsun.',
   'tashahhud-3': 'Selam bizim üzerimize ve Allah’ın salih kullarının üzerine olsun.',
   'tashahhud-4': 'Şahitlik ederim ki Allah’tan başka ibadete layık ilah yoktur ve yine şahitlik ederim ki Muhammed O’nun kulu ve Resûlüdür.',
   'salawat-1': 'Allah’ım, Muhammed’e ve Muhammed’in ailesine rahmet eyle,',
@@ -97,7 +94,6 @@ export const tr: Record<string, string> = {
   'salawat-3': 'Allah’ım, Muhammed’e ve Muhammed’in ailesine bereket ver,',
   'salawat-4': 'İbrahim’e ve İbrahim’in ailesine bereket verdiğin gibi. Sen övülmeye layıksın, şanı yücesin.',
   salam: 'Allah’ın selamı ve rahmeti üzerinize olsun.',
-  taqabbal: 'Allah bizden ve sizden kabul etsin.',
 }
 
 export const id: Record<string, string> = {
@@ -110,9 +106,9 @@ export const id: Record<string, string> = {
   tasmi: 'Semoga Allah mengabulkan doa orang yang memuji-Nya.',
   tahmid: 'Ya Tuhan kami, bagi-Mu segala puji.',
   sujud: 'Maha Suci Tuhanku Yang Maha Tinggi.',
-  jalsah: 'Ya Tuhanku, ampunilah aku.',
+  jalsah: 'Ya Allah, ampunilah aku, rahmatilah aku, cukupkanlah aku, angkatlah derajatku, berilah aku keselamatan, dan berilah aku rezeki.',
   'tashahhud-1': 'Segala penghormatan, selawat, dan ucapan yang baik adalah milik Allah.',
-  'tashahhud-2': 'Semoga keselamatan tercurah kepadamu, wahai Nabi, beserta rahmat Allah dan berkah-Nya.',
+  'tashahhud-2': 'Semoga keselamatan tercurah kepada Nabi, beserta rahmat Allah dan berkah-Nya.',
   'tashahhud-3': 'Semoga keselamatan tercurah kepada kami dan kepada hamba-hamba Allah yang saleh.',
   'tashahhud-4': 'Aku bersaksi bahwa tidak ada yang berhak disembah selain Allah, dan aku bersaksi bahwa Muhammad adalah hamba dan rasul-Nya.',
   'salawat-1': 'Ya Allah, limpahkanlah selawat kepada Muhammad dan keluarga Muhammad,',
@@ -120,7 +116,10 @@ export const id: Record<string, string> = {
   'salawat-3': 'Ya Allah, limpahkanlah berkah kepada Muhammad dan keluarga Muhammad,',
   'salawat-4': 'sebagaimana Engkau telah melimpahkan berkah kepada Ibrahim dan keluarga Ibrahim. Engkau Maha Terpuji lagi Maha Mulia.',
   salam: 'Semoga keselamatan dan rahmat Allah tercurah kepada kalian.',
-  taqabbal: 'Semoga Allah menerimanya dari kami dan dari kalian.',
+  'refuge-1': 'Ya Allah, aku berlindung kepada-Mu dari azab Jahanam dan dari azab kubur,',
+  'refuge-2': 'dari fitnah kehidupan dan kematian, dan dari keburukan fitnah Al-Masih Ad-Dajjal.',
+  istighfar: 'Aku memohon ampun kepada Allah.',
+  'antas-salam': 'Ya Allah, Engkaulah As-Salam dan dari-Mu keselamatan. Maha Berkah Engkau, wahai Pemilik keagungan dan kemuliaan.',
 }
 
 export const nl: Record<string, string> = {
@@ -133,9 +132,9 @@ export const nl: Record<string, string> = {
   tasmi: 'Moge Allah verhoren wie Hem prijst.',
   tahmid: 'Onze Heer, aan U komt alle lof toe.',
   sujud: 'Verheven is mijn Heer, de Allerhoogste.',
-  jalsah: 'Mijn Heer, vergeef mij.',
+  jalsah: 'O Allah, vergeef mij, wees mij genadig, herstel mij, verhef mij, schenk mij welzijn en voorzie in mijn levensonderhoud.',
   'tashahhud-1': 'Alle groeten, gebeden en goede woorden zijn voor Allah.',
-  'tashahhud-2': 'Vrede zij met u, o Profeet, en de genade van Allah en Zijn zegeningen.',
+  'tashahhud-2': 'Vrede zij met de Profeet, en de genade van Allah en Zijn zegeningen.',
   'tashahhud-3': 'Vrede zij met ons en met de rechtschapen dienaren van Allah.',
   'tashahhud-4': 'Ik getuig dat niemand het recht heeft aanbeden te worden behalve Allah, en ik getuig dat Mohammed Zijn dienaar en Boodschapper is.',
   'salawat-1': 'O Allah, eer Mohammed en de familie van Mohammed,',
@@ -143,7 +142,6 @@ export const nl: Record<string, string> = {
   'salawat-3': 'O Allah, zegen Mohammed en de familie van Mohammed,',
   'salawat-4': 'zoals U Ibrahim en de familie van Ibrahim hebt gezegend. U bent prijzenswaardig en glorierijk.',
   salam: 'Moge de vrede en de genade van Allah met jullie zijn.',
-  taqabbal: 'Moge Allah het van ons en van jullie aanvaarden.',
 }
 
 export const ur: Record<string, string> = {
@@ -156,9 +154,9 @@ export const ur: Record<string, string> = {
   tasmi: 'اللہ اس کی سن لے جس نے اس کی حمد کی۔',
   tahmid: 'اے ہمارے رب! سب تعریف تیرے لیے ہے۔',
   sujud: 'پاک ہے میرا رب جو سب سے بلند ہے۔',
-  jalsah: 'اے میرے رب! مجھے بخش دے۔',
+  jalsah: 'اے اللہ! مجھے بخش دے، مجھ پر رحم فرما، میری کمی پوری فرما، مجھے بلندی عطا فرما، مجھے عافیت دے اور مجھے رزق دے۔',
   'tashahhud-1': 'سب آداب، نمازیں اور پاکیزہ کلمات اللہ کے لیے ہیں۔',
-  'tashahhud-2': 'اے نبی! آپ پر سلام ہو، اور اللہ کی رحمت اور اس کی برکتیں ہوں۔',
+  'tashahhud-2': 'نبی پر سلام ہو، اور اللہ کی رحمت اور اس کی برکتیں ہوں۔',
   'tashahhud-3': 'سلام ہو ہم پر اور اللہ کے نیک بندوں پر۔',
   'tashahhud-4': 'میں گواہی دیتا ہوں کہ اللہ کے سوا کوئی عبادت کے لائق نہیں، اور میں گواہی دیتا ہوں کہ محمد اس کے بندے اور رسول ہیں۔',
   'salawat-1': 'اے اللہ! محمد اور آلِ محمد پر درود بھیج،',
@@ -166,7 +164,6 @@ export const ur: Record<string, string> = {
   'salawat-3': 'اے اللہ! محمد اور آلِ محمد پر برکت نازل فرما،',
   'salawat-4': 'جیسے تو نے ابراہیم اور آلِ ابراہیم پر برکت نازل فرمائی۔ تو قابلِ تعریف اور بزرگی والا ہے۔',
   salam: 'آپ پر اللہ کی سلامتی اور رحمت ہو۔',
-  taqabbal: 'اللہ ہم سے اور آپ سے قبول فرمائے۔',
 }
 
 export const ar: Record<string, string> = {}

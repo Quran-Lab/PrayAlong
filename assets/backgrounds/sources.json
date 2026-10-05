@@ -1,0 +1,11 @@
+{
+  "license": "Pixabay Content License (https://pixabay.com/service/license-summary/) — free to use, no attribution required. We credit the photographers anyway.",
+  "note": "Drop the full-size originals here as <prayer>.jpg (they are git-ignored) and run `npm run backgrounds`. Widths above the source width are skipped, so the 4K files appear only once the originals are in place.",
+  "photos": {
+    "fajr": { "page": "https://pixabay.com/photos/double-head-dawn-sunrise-3559321/", "by": "nagiori", "original": "7360×4907", "what": "Dawn over a still lake" },
+    "dhuhr": { "page": "https://pixabay.com/photos/landscape-large-green-sky-blue-2233373/", "by": "AnteKante", "original": "4608×2592", "what": "Green meadow under a midday sky" },
+    "asr": { "page": "https://pixabay.com/photos/rural-countryside-trees-golden-hour-8700837/", "by": "jplenio", "original": "6400×3680", "what": "Countryside in the afternoon light" },
+    "maghrib": { "page": "https://pixabay.com/photos/sunset-desert-dunes-sand-5978175/", "by": "ELG21", "original": "7087×4724", "what": "Desert dunes at sunset" },
+    "isha": { "page": "https://pixabay.com/photos/mountains-starry-sky-milky-way-8031511/", "by": "Kanenori", "original": "4500×3000", "what": "Night sky over the mountains" }
+  }
+}

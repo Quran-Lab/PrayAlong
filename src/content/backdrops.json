@@ -1,0 +1,152 @@
+{
+  "fajr": {
+    "width": 1280,
+    "height": 853,
+    "ratio": 1.5006,
+    "jxl": [
+      [
+        "fajr-960.jxl",
+        960
+      ],
+      [
+        "fajr-1280.jxl",
+        1280
+      ]
+    ],
+    "avif": [
+      [
+        "fajr-960.avif",
+        960
+      ],
+      [
+        "fajr-1280.avif",
+        1280
+      ]
+    ],
+    "fallback": "fajr-1280.webp",
+    "page": "https://pixabay.com/photos/double-head-dawn-sunrise-3559321/",
+    "by": "nagiori",
+    "original": "7360×4907",
+    "what": "Dawn over a still lake"
+  },
+  "dhuhr": {
+    "width": 1280,
+    "height": 720,
+    "ratio": 1.7778,
+    "jxl": [
+      [
+        "dhuhr-960.jxl",
+        960
+      ],
+      [
+        "dhuhr-1280.jxl",
+        1280
+      ]
+    ],
+    "avif": [
+      [
+        "dhuhr-960.avif",
+        960
+      ],
+      [
+        "dhuhr-1280.avif",
+        1280
+      ]
+    ],
+    "fallback": "dhuhr-1280.webp",
+    "page": "https://pixabay.com/photos/landscape-large-green-sky-blue-2233373/",
+    "by": "AnteKante",
+    "original": "4608×2592",
+    "what": "Green meadow under a midday sky"
+  },
+  "asr": {
+    "width": 1280,
+    "height": 736,
+    "ratio": 1.7391,
+    "jxl": [
+      [
+        "asr-960.jxl",
+        960
+      ],
+      [
+        "asr-1280.jxl",
+        1280
+      ]
+    ],
+    "avif": [
+      [
+        "asr-960.avif",
+        960
+      ],
+      [
+        "asr-1280.avif",
+        1280
+      ]
+    ],
+    "fallback": "asr-1280.webp",
+    "page": "https://pixabay.com/photos/rural-countryside-trees-golden-hour-8700837/",
+    "by": "jplenio",
+    "original": "6400×3680",
+    "what": "Countryside in the afternoon light"
+  },
+  "maghrib": {
+    "width": 1280,
+    "height": 853,
+    "ratio": 1.5006,
+    "jxl": [
+      [
+        "maghrib-960.jxl",
+        960
+      ],
+      [
+        "maghrib-1280.jxl",
+        1280
+      ]
+    ],
+    "avif": [
+      [
+        "maghrib-960.avif",
+        960
+      ],
+      [
+        "maghrib-1280.avif",
+        1280
+      ]
+    ],
+    "fallback": "maghrib-1280.webp",
+    "page": "https://pixabay.com/photos/sunset-desert-dunes-sand-5978175/",
+    "by": "ELG21",
+    "original": "7087×4724",
+    "what": "Desert dunes at sunset"
+  },
+  "isha": {
+    "width": 1280,
+    "height": 853,
+    "ratio": 1.5006,
+    "jxl": [
+      [
+        "isha-960.jxl",
+        960
+      ],
+      [
+        "isha-1280.jxl",
+        1280
+      ]
+    ],
+    "avif": [
+      [
+        "isha-960.avif",
+        960
+      ],
+      [
+        "isha-1280.avif",
+        1280
+      ]
+    ],
+    "fallback": "isha-1280.webp",
+    "page": "https://pixabay.com/photos/mountains-starry-sky-milky-way-8031511/",
+    "by": "Kanenori",
+    "original": "4500×3000",
+    "what": "Night sky over the mountains"
+  }
+}

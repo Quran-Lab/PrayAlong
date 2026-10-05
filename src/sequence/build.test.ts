@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { PRAYERS } from '@/content/prayers'
 import { getLine } from '@/content/recitations'
 import { resolveLine } from '@/content/lines'
-import { LOCALES, type Locale } from '@/i18n/locales'
+import { detectLocale, LOCALES, type Locale } from '@/i18n/locales'
 import { buildSequence, nextPoseChange, postureSegments } from './build'
 import schema from './schema.json'
 
@@ -28,13 +28,27 @@ describe('buildSequence', () => {
     expect(steps.at(-1)!.posture).toBe('salam-left')
   })
 
-  it('recites Al-Fatiha in every rak‘ah but a surah only in the first two', () => {
+  it('recites Al-Fatiha in every rak‘ah, then Al-Ikhlas in the first and Al-Falaq in the second', () => {
     const steps = buildSequence('isha').steps
-    for (let r = 1; r <= 4; r++) {
-      const lines = steps.filter((s) => s.rakah === r).map((s) => s.recitationId)
-      expect(lines).toContain('fatiha-1')
-      expect(lines.some((l) => l.startsWith('kawthar') || l.startsWith('ikhlas'))).toBe(r <= 2)
-    }
+    const surah = (r: number) => [...new Set(steps.filter((s) => s.rakah === r && /^(ikhlas|falaq|kawthar)-/.test(s.recitationId)).map((s) => s.group))]
+    for (let r = 1; r <= 4; r++) expect(steps.filter((s) => s.rakah === r).map((s) => s.recitationId)).toContain('fatiha-1')
+    expect([surah(1), surah(2), surah(3), surah(4)]).toEqual([['ikhlas'], ['falaq'], [], []])
+  })
+
+  it('says what to recite, so nobody has to read from the mat', () => {
+    const steps = buildSequence('maghrib').steps
+    const said = (id: string, r = 1) => steps.find((s) => s.rakah === r && s.recitationId === id)?.say
+    expect(said('thana-1')).toBe('sayOpening')
+    expect([said('fatiha-1', 1), said('fatiha-1', 3)]).toEqual(['sayFatiha', 'sayFatihaQuiet'])
+    expect([said('ikhlas-1', 1), said('falaq-1', 2)]).toEqual(['sayIkhlas', 'sayFalaq'])
+    expect([said('ruku'), said('tasmi'), said('tahmid')]).toEqual(['sayRuku', undefined, 'lower'])
+    expect(said('refuge-1', 3)).toBe('sayRefuge')
+  })
+
+  it('says the full supplication between the prostrations once', () => {
+    const jalsah = buildSequence('fajr').steps.filter((s) => s.recitationId === 'jalsah')
+    expect(jalsah.every((s) => s.repeat === 1)).toBe(true)
+    expect(getLine('jalsah').arabic).toContain('وَارْزُقْنِي')
   })
 
   it('has two prostrations per rak‘ah with a sitting between', () => {
@@ -69,6 +83,19 @@ describe('content', () => {
     }
   })
 
+  it('names a source for every line: the verse or the narration', () => {
+    const ids = new Set(PRAYERS.flatMap((p) => buildSequence(p.id).steps.map((s) => s.recitationId)))
+    for (const id of ids) expect(resolveLine(id, 'en').source?.refs.length, id).toBeGreaterThan(0)
+  })
+
+  it('follows al-Albani: "‘alan-nabiyy" in the tashahhud, refuge before the salam', () => {
+    expect(getLine('tashahhud-2').arabic).toContain('عَلَى النَّبِيِّ')
+    const last = buildSequence('dhuhr').steps.filter((s) => s.rakah === 4).map((s) => s.recitationId)
+    expect(last.indexOf('refuge-1')).toBeGreaterThan(last.indexOf('salawat-4'))
+    expect(last.indexOf('refuge-2')).toBeLessThan(last.indexOf('salam'))
+    expect(buildSequence('maghrib').steps.some((s) => s.rakah === 2 && s.recitationId === 'refuge-1')).toBe(false)
+  })
+
   it('uses Saheeh International for English Quran lines', () => {
     expect(resolveLine('fatiha-1', 'en')).toMatchObject({
       meaning: 'In the name of Allah, the Entirely Merciful, the Especially Merciful',
@@ -84,5 +111,14 @@ describe('nextPoseChange', () => {
     const qiyam = steps.findIndex((s) => s.posture === 'qiyam')
     const next = nextPoseChange(steps, qiyam)
     expect(steps[next]!.posture).toBe('ruku')
+  })
+})
+
+describe('languages', () => {
+  it('offers English, Indonesian and Arabic for now', () => {
+    expect(detectLocale(['de-DE', 'id-ID'])).toBe('id')
+    expect(detectLocale(['ms-MY'])).toBe('id')
+    expect(detectLocale(['ar-SA'])).toBe('ar')
+    expect(detectLocale(['fr-FR'])).toBe('en')
   })
 })

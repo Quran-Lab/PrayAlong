@@ -28,12 +28,20 @@ export type Voice = 'aloud' | 'quiet'
 
 /** Runs of lines, labelled in the UI via the `group.*` messages. */
 export type GroupId =
-  | 'openingTakbir' | 'opening' | 'fatiha' | 'amin' | 'kawthar' | 'ikhlas'
-  | 'ruku' | 'itidal' | 'sujud' | 'jalsah' | 'tashahhud' | 'salawat' | 'salam'
+  | 'openingTakbir' | 'opening' | 'fatiha' | 'amin' | 'kawthar' | 'ikhlas' | 'falaq'
+  | 'ruku' | 'itidal' | 'sujud' | 'jalsah' | 'tashahhud' | 'salawat' | 'refuge' | 'salam'
 
 /** Movement instructions, shown via the `cue.*` messages. */
 export type CueId =
   | 'begin' | 'fold' | 'rise' | 'bow' | 'rising' | 'prostrate' | 'sitUp' | 'prostrateAgain' | 'sit' | 'right' | 'left'
+
+/**
+ * Spoken only: what to recite now (or a small movement within a posture), so the learner knows
+ * what to do from the mat without reading the screen. Said after the line's movement cue.
+ */
+export type SayId =
+  | 'sayOpening' | 'sayFatiha' | 'sayFatihaQuiet' | 'sayAmin' | 'sayIkhlas' | 'sayFalaq'
+  | 'sayRuku' | 'lower' | 'saySujud' | 'sayJalsah' | 'sayTashahhud' | 'saySalawat' | 'sayRefuge'
 
 export interface StepTiming {
   /** How long a typical worshipper stays on this line, before pace scaling. */
@@ -60,6 +68,8 @@ export interface Step {
   voice: Voice
   /** Short instruction shown when this line starts a new movement. */
   cue?: CueId
+  /** Spoken instruction for what to recite, when this line starts it. */
+  say?: SayId
   timing: StepTiming
 }
 

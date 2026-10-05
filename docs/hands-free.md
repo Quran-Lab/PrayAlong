@@ -13,6 +13,10 @@ camera (15 fps) ──▶ pose engine ──▶ 17 COCO keypoints of the most pr
                    session.onPose(pose)
 ```
 
+Hands-free is **on by default**. The camera starts when the learner picks a
+mode on the start screen (one prompt for camera and microphone), never on page
+load; the header button turns it off, and the choice is remembered.
+
 The session only listens for the **next** movement in the prayer (from qiyam
 it waits for *bowing*, from ruku for *standing*, and so on), so a misread can
 never skip ahead. Lines within a posture advance on timing; the body decides
@@ -24,7 +28,7 @@ when to change posture. Video never leaves the device.
 | --- | --- |
 | GPU delegate fails | MediaPipe retries on the CPU |
 | Preferred engine fails | The other engine is tried |
-| Camera blocked / missing, or no engine starts | Prayer continues on timed guidance; the camera card explains why and offers **Try again** and **Use demo** |
+| Camera blocked / missing, or no engine starts | Prayer continues on timed guidance; the setup sheet offers **Continue without the camera** and **Try again**, the camera card **Try again** |
 | Person not fully in frame | "Step back so your whole body is in view" (setup sheet and camera card) |
 
 ## Engines
@@ -63,8 +67,8 @@ assets), Netlify and Cloudflare Pages.
 
 ## Testing
 
-- **Demo mode** (Settings → Demo mode): on-screen pose buttons, a
-  whole-prayer autopilot, and keys **1**–**5** on a keyboard.
+- **Demo mode** (developers only, `/?demo`; not offered in the app): on-screen
+  pose buttons, a whole-prayer autopilot, and keys **1**–**5** on a keyboard.
 - **End to end with a real engine**: feed any video as the webcam —
   ```bash
   npm run build && npx vite preview --port 4173 &

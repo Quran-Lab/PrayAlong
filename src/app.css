@@ -1,0 +1,433 @@
+/*
+ * PrayAlong's design system: a sibling of the Quran Lab system (quranlab-web/DESIGN.md).
+ * Same paper and ink, type, radii, motion and rules; its own mark (a crescent) and its own brand
+ * ink, plum, which the learner may swap for another palette. What differs and why: docs/DESIGN.md.
+ * Components use the semantic tokens below, never raw values or the --p-* scale. Light is the
+ * default; dark follows the system or the Appearance setting.
+ */
+
+/* Quran and every recited line: KFGQPC Uthman Taha Naskh, unmodified file. */
+@font-face {
+  font-family: "Uthman Taha Naskh";
+  src: url("./assets/fonts/UthmanTN1-Ver10.otf") format("opentype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+/*
+ * Palettes: the brand ink's scale, 50 to 950. Each has indigo's lightness and chroma (OKLCH) at
+ * its own hue, so every pairing keeps Quran Lab's contrast. Plum is PrayAlong's; the learner can
+ * pick another in Settings (`<html data-palette>`). src/lib/brand.ts reads these back for the rug
+ * and the favicon, so this is the only place the colours are written.
+ */
+:root,
+[data-palette="plum"] {
+  --p-50: #f6eef5;
+  --p-100: #eddceb;
+  --p-200: #ddb9da;
+  --p-300: #d492d0;
+  --p-400: #b66db6;
+  --p-500: #98499d;
+  --p-600: #7b3284;
+  --p-700: #662371;
+  --p-800: #4e1956;
+  --p-900: #3a1340;
+  --p-950: #270e27;
+}
+/* Quran Lab's own indigo. */
+[data-palette="indigo"] {
+  --p-50: #eef0fa;
+  --p-100: #dde1f5;
+  --p-200: #bcc4ee;
+  --p-300: #9aa6f4;
+  --p-400: #7584dc;
+  --p-500: #5263c4;
+  --p-600: #3a4ba6;
+  --p-700: #2a3b8f;
+  --p-800: #1f2c6e;
+  --p-900: #172152;
+  --p-950: #121634;
+}
+[data-palette="teal"] {
+  --p-50: #e8f3f8;
+  --p-100: #d0e6f1;
+  --p-200: #9ecfe5;
+  --p-300: #50bbe4;
+  --p-400: #039bc3;
+  --p-500: #027a97;
+  --p-600: #065f75;
+  --p-700: #034e5f;
+  --p-800: #003b49;
+  --p-900: #022c37;
+  --p-950: #001d27;
+}
+/* No colour: the brand is ink. */
+[data-palette="graphite"] {
+  --p-50: #faf9f6;
+  --p-100: #f1efea;
+  --p-200: #e9e6e0;
+  --p-300: #d6d2ca;
+  --p-400: #8b867f;
+  --p-500: #6f6a63;
+  --p-600: #4a4640;
+  --p-700: #2b2a27;
+  --p-800: #1c1b19;
+  --p-900: #121211;
+  --p-950: #0b0b0a;
+}
+
+:root {
+  /* Colour · light */
+  --paper: #faf9f6;
+  --surface: #f1efea;
+  --surface-hover: #e9e6e0;
+  --raised: #ffffff;
+  --line: #e4e1da;
+  --line-strong: #ccc8c0;
+  --ink: #1c1b19;
+  --ink-muted: #6f6a63;
+  --ink-faint: #aaa59d;
+  --brand: var(--p-700);
+  --brand-hover: var(--p-800);
+  --brand-pressed: var(--p-900);
+  --on-brand: #ffffff;
+  --brand-tint: color-mix(in srgb, var(--p-700) 12%, transparent);
+  --focus: var(--p-600);
+  --scrim: #1c1b1952;
+  --shadow-soft: #1c1b1914;
+  --shadow-strong: #1c1b1929;
+  --state-reading: color-mix(in srgb, var(--p-700) 17%, transparent);
+  --state-correct: #2e8a68;
+  --state-correct-tint: #2e8a6826;
+  --state-khafi: #a66c07;
+  --state-khafi-tint: #d9920a33;
+  /* The stage is a photograph in both themes; text on it sits on this. */
+  --on-photo: #faf9f6;
+  --photo-scrim: #12121161;
+  --photo-accent: var(--p-300);
+  --media: #121211;
+
+  /* Type */
+  --font-ui: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-ui-ar: "Noto Kufi Arabic Variable", "Noto Kufi Arabic", var(--font-ui);
+  --font-quran: "Uthman Taha Naskh", "KFGQPC Uthman Taha Naskh", "Geeza Pro", serif;
+
+  /* Distance type: read from the prayer mat, 2–7 steps from a laptop. */
+  --d-hero: clamp(30px, 3.6vw, 64px);
+  --d-hero-long: clamp(24px, 2.7vw, 46px);
+  --d-ar: clamp(34px, 4.4vw, 80px);
+  --d-ar-long: clamp(28px, 3.2vw, 58px);
+  --d-meaning: clamp(16px, 1.45vw, 26px);
+  --d-label: clamp(13px, 1.05vw, 18px);
+
+  /* Space, radius, motion, elevation */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --radius-inset: 4px;
+  --radius-word: 8px;
+  --radius-control: 10px;
+  --radius-surface: 16px;
+  --radius-container: 24px;
+  --radius-full: 999px;
+  --dur-instant: 100ms;
+  --dur-fast: 160ms;
+  --dur-standard: 240ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --shadow-2: 0 1px 2px var(--shadow-soft), 0 8px 24px var(--shadow-soft);
+  --shadow-3: 0 2px 6px var(--shadow-strong), 0 24px 64px var(--shadow-strong);
+  --gutter: 24px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121211;
+    --surface: #1c1b19;
+    --surface-hover: #262523;
+    --raised: #262523;
+    --line: #302f2c;
+    --line-strong: #3a3834;
+    --ink: #f1efea;
+    --ink-muted: #aaa59d;
+    --ink-faint: #6f6a63;
+    --brand: var(--p-300);
+    --brand-hover: var(--p-200);
+    --brand-pressed: var(--p-100);
+    --on-brand: var(--p-950);
+    --brand-tint: color-mix(in srgb, var(--p-300) 16%, transparent);
+    --focus: var(--p-300);
+    --scrim: #0000008f;
+    --shadow-soft: #00000066;
+    --shadow-strong: #00000099;
+    --state-reading: color-mix(in srgb, var(--p-300) 22%, transparent);
+    --state-correct: #52c394;
+    --state-correct-tint: #52c3942e;
+    --state-khafi: #f2a01a;
+    --state-khafi-tint: #f2a01a33;
+    --shadow-2: inset 0 0 0 1px var(--line), 0 8px 24px var(--shadow-soft);
+    --shadow-3: inset 0 0 0 1px var(--line), 0 24px 64px var(--shadow-strong);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121211;
+  --surface: #1c1b19;
+  --surface-hover: #262523;
+  --raised: #262523;
+  --line: #302f2c;
+  --line-strong: #3a3834;
+  --ink: #f1efea;
+  --ink-muted: #aaa59d;
+  --ink-faint: #6f6a63;
+  --brand: var(--p-300);
+  --brand-hover: var(--p-200);
+  --brand-pressed: var(--p-100);
+  --on-brand: var(--p-950);
+  --brand-tint: color-mix(in srgb, var(--p-300) 16%, transparent);
+  --focus: var(--p-300);
+  --scrim: #0000008f;
+  --shadow-soft: #00000066;
+  --shadow-strong: #00000099;
+  --state-reading: color-mix(in srgb, var(--p-300) 22%, transparent);
+  --state-correct: #52c394;
+  --state-correct-tint: #52c3942e;
+  --state-khafi: #f2a01a;
+  --state-khafi-tint: #f2a01a33;
+  --shadow-2: inset 0 0 0 1px var(--line), 0 8px 24px var(--shadow-soft);
+  --shadow-3: inset 0 0 0 1px var(--line), 0 24px 64px var(--shadow-strong);
+  color-scheme: dark;
+}
+
+@media (min-width: 768px) {
+  :root { --gutter: 32px; }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body,
+#app {
+  height: 100%;
+}
+html {
+  background: var(--paper);
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.6;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+:lang(ar) body,
+[lang="ar"] body {
+  font-family: var(--font-ui-ar);
+}
+/* Urdu reads in Nastaliq. */
+:root:lang(ur) body {
+  font-family: "Noto Nastaliq Urdu", var(--font-ui-ar);
+  line-height: 2;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+  text-wrap: balance;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+::selection {
+  background: var(--state-reading);
+}
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Quran and recited Arabic: its own font, regular, right to left, never styled. */
+.quran {
+  font-family: var(--font-quran);
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0;
+  direction: rtl;
+  unicode-bidi: isolate;
+  line-height: 1.9;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+.muted {
+  color: var(--ink-muted);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.flip-rtl:dir(rtl) {
+  transform: scaleX(-1);
+}
+
+/* Buttons: fill only, no border or shadow. Heights 40 / 48 / 56. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: var(--radius-control);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  background: var(--surface);
+  color: var(--ink);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.btn:hover {
+  background: var(--surface-hover);
+}
+.btn:active {
+  background: var(--line);
+}
+.btn.primary {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+.btn.primary:hover {
+  background: var(--brand-hover);
+}
+.btn.primary:active {
+  background: var(--brand-pressed);
+}
+.btn.quiet {
+  background: transparent;
+  color: var(--brand);
+  padding: 0 12px;
+}
+.btn.quiet:hover {
+  background: var(--surface);
+}
+.btn.sm {
+  height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+.btn.lg {
+  height: 56px;
+  padding: 0 28px;
+  font-size: 16px;
+}
+.btn.icon {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+.btn.icon.lg {
+  width: 48px;
+  height: 48px;
+}
+.btn[aria-pressed="true"] {
+  background: var(--brand-tint);
+  color: var(--brand);
+}
+.btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-word);
+  font-size: 13px;
+  line-height: 1.3;
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.tag.brand {
+  background: var(--brand-tint);
+  color: var(--brand);
+  font-weight: 600;
+}
+.tag.ok {
+  background: var(--state-correct-tint);
+  color: var(--state-correct);
+}
+.tag.warn {
+  background: var(--state-khafi-tint);
+  color: var(--state-khafi);
+}
+
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: var(--radius-inset);
+  background: var(--surface);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+/* Theme, colour and language changes crossfade (App.svelte). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 360ms;
+  animation-timing-function: var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
+  }
+}

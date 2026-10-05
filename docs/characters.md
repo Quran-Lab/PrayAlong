@@ -12,6 +12,13 @@ applied to whichever character is loaded:
 - **Sujud**: the torso pitches until the character's own forehead rests on
   the mat, whatever its proportions.
 
+- **Raising the hands** (Sifat Salat an-Nabi; al-Bukhari 735, 739): besides the opening takbir,
+  the hands go up to the ears before bowing, while rising from it ("sami‘allāhu liman ḥamidah")
+  and when standing up from the first tashahhud, then come down. These are waypoints with a short
+  hold (`waypoints()` in `prayer-poses.ts`, tested in `prayer-poses.test.ts`); hands-free counts
+  raised hands as standing when the learner rises.
+- **Ruku**: the back level, about 90° at the hips, the head in line with it and the legs straight.
+
 Tested on three unrelated third-party rigs (a Mixamo mannequin, a Ready
 Player Me avatar and a stylised cartoon character) with no per-character
 changes, and on the four PrayAlong companions below.
@@ -58,6 +65,24 @@ Pose Lab renders so they match the app's lighting.
 | Face | Eyes close during prayer if the asset has `eyeBlinkLeft`/`eyeBlinkRight` (ARKit) morph targets or a VRM `blink` expression. A gentle smile uses `mouthSmile*` / VRM `happy`. |
 | Budget | ≤ 30k triangles, ≤ 2 × 2048² textures, ≤ 6 MB. |
 | Clothing | Modest prayer clothing. Long garments (thobe, abaya, jilbab) work best skinned to the legs with a little extra hip/thigh weight so the hem follows when kneeling. |
+
+## The cast
+
+| Id | Look | Build |
+| --- | --- | --- |
+| `brother` | Adult, faceless (cream face and ears, short black hair at the temples): black kufi, long black thobe with a mandarin collar, three buttons, cuffs and the Quran Lab mark on the chest, bare feet | `tools/characters/build_brother.py` |
+| `sister` | Adult, faceless: black khimar falling like a bell to the waist, headband and niqab with a cream eye strip, slim black abaya to the floor, black socks | `tools/characters/build_sister.py` |
+
+Both follow the brief's pose sheet (`prayer_app_assets/images`, 32 steps): a slim, stylised adult
+of about seven heads, long arms, hands with fingers. They share the tall body in
+`tools/characters/kit.py` (`tall_body`, `tall_head`, `adult_hand`, `tall_field`, `mark_sdf`), and the
+khimar uses `hijab_weights` and the abaya `skirt_weights` from `main`. Brother 29.5k triangles,
+sister 31.7k (the khimar's thin hem needs the extra faces). Both pass `validate_glb.py`.
+Rebuild a GLB with `NO_RENDER=1 python3 tools/characters/build_sister.py`, and
+its picker thumbnail with `THUMB_ONLY=1` (needs `avifenc`).
+
+The companion is picked in Settings. Picking it from the camera is a placeholder for now; see
+[FEATURE-GAPS.md](FEATURE-GAPS.md#companion-matching-from-the-camera-a-placeholder-for-now).
 
 ## Getting the look from the mockup
 

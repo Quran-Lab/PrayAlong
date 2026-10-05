@@ -10,6 +10,7 @@
  *   out  keypoints          float32 [1,Q,17,2]     COCO-17 (x, y)
  */
 import type * as Ort from 'onnxruntime-web'
+import { stitchedRuntime } from './ort-runtime'
 
 const SIZE = 640
 
@@ -30,33 +31,6 @@ const ctx = canvas.getContext('2d', { willReadFrequently: true })!
 const input = new Float32Array(3 * SIZE * SIZE)
 
 const post = (msg: WorkerOut) => (self as unknown as Worker).postMessage(msg)
-
-/**
- * The WebGPU runtime is ~28 MB — over Cloudflare's 25 MiB per-file limit —
- * so production builds ship it in parts (scripts/split-large-assets.mjs)
- * and we stitch it back together here. Still fully self-hosted.
- */
-async function stitchedRuntime(): Promise<ArrayBuffer | undefined> {
-  if (!import.meta.env.PROD) return undefined
-  try {
-    const manifestUrl = new URL('../ort/manifest.json', self.location.href)
-    const res = await fetch(manifestUrl)
-    if (!res.ok) return undefined
-    const manifest = (await res.json()) as { files: { name: string; parts: string[] }[] }
-    const entry = manifest.files.find((f) => f.name.includes('jsep')) ?? manifest.files[0]
-    if (!entry) return undefined
-    const parts = await Promise.all(entry.parts.map((p) => fetch(new URL(p, manifestUrl)).then((r) => r.arrayBuffer())))
-    const out = new Uint8Array(parts.reduce((n, p) => n + p.byteLength, 0))
-    let offset = 0
-    for (const p of parts) {
-      out.set(new Uint8Array(p), offset)
-      offset += p.byteLength
-    }
-    return out.buffer
-  } catch {
-    return undefined
-  }
-}
 
 const zeros = () => ({
   images: new ort.Tensor('float32', new Float32Array(3 * SIZE * SIZE), [1, 3, SIZE, SIZE]),

@@ -1058,7 +1058,7 @@ def export_glb(path, arm_ob, mesh_obs):
         export_all_influences=False,
         export_influence_nb=4,
         export_def_bones=False,
-        export_morph=False,
+        export_morph=True,
         export_extras=False,
     )
     log('exported', path, f'{os.path.getsize(path) / 1024:.0f} KB')
@@ -1067,7 +1067,7 @@ def export_glb(path, arm_ob, mesh_obs):
 # ════════════════════════════════════════════════════════════ preview
 
 
-def preview_setup(world=(0.045, 0.06, 0.055), rim=(0.55, 1.0, 0.8)):
+def preview_setup(world=(0.045, 0.06, 0.055), rim=(0.55, 1.0, 0.8), ground='#14201b'):
     sc = bpy.context.scene
     sc.render.engine = 'CYCLES'
     sc.cycles.device = 'CPU'
@@ -1106,7 +1106,7 @@ def preview_setup(world=(0.045, 0.06, 0.055), rim=(0.55, 1.0, 0.8)):
     bpy.ops.mesh.primitive_plane_add(size=6, location=(0, 0, 0))
     g = bpy.context.active_object
     g.name = 'Ground'
-    gm = material('Ground', '#14201b', roughness=0.9)
+    gm = material('Ground', ground, roughness=0.9)
     assign(g, gm)
     # An opaque prayer mat like the app's (it hides anything below z = 0).
     s = 0.985 / 1.65  # app stage units → model units

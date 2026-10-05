@@ -25,6 +25,7 @@ const VERSES = {
   'fatiha-5': [1, 5], 'fatiha-6': [1, 6], 'fatiha-7': [1, 7],
   'kawthar-1': [108, 1], 'kawthar-2': [108, 2], 'kawthar-3': [108, 3],
   'ikhlas-1': [112, 1], 'ikhlas-2': [112, 2], 'ikhlas-3': [112, 3], 'ikhlas-4': [112, 4],
+  'falaq-1': [113, 1], 'falaq-2': [113, 2], 'falaq-3': [113, 3], 'falaq-4': [113, 4], 'falaq-5': [113, 5],
 }
 
 for (const [locale, [edition, credit]] of Object.entries(EDITIONS)) {

@@ -25,3 +25,27 @@ for (const name of await readdir('dist/assets')) {
   console.log(`split ${name} (${(bytes.length / 1e6).toFixed(1)} MB) → ${parts.length} parts`)
 }
 await writeFile('dist/ort/manifest.json', JSON.stringify({ files }, null, 2))
+
+// The Quran Lab ASR package (public/asr, ~73 MB model) gets the same treatment in place:
+// dist/asr/<file>.partN plus dist/asr/manifest.json, which the ASR worker reads.
+const asr = []
+try {
+  for (const name of await readdir('dist/asr')) {
+    const path = join('dist/asr', name)
+    if ((await stat(path)).size <= LIMIT) continue
+    const bytes = await readFile(path)
+    const parts = []
+    for (let i = 0, offset = 0; offset < bytes.length; i++, offset += PART) {
+      const part = `${name}.part${i}`
+      await writeFile(join('dist/asr', part), bytes.subarray(offset, offset + PART))
+      parts.push(part)
+    }
+    await rm(path)
+    asr.push({ name, parts })
+    console.log(`split asr/${name} (${(bytes.length / 1e6).toFixed(1)} MB) → ${parts.length} parts`)
+  }
+  await writeFile('dist/asr/manifest.json', JSON.stringify({ files: asr }, null, 2))
+} catch (e) {
+  if (e.code !== 'ENOENT') throw e
+  console.log('no ASR package in dist/asr (run `npm run fetch:asr` to include it)')
+}

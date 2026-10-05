@@ -22,22 +22,22 @@ const browser = await chromium.launch({
     `--use-file-for-fake-video-capture=${video}`,
   ],
 })
-const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, permissions: ['camera'] })
+const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, permissions: ['camera', 'microphone'] })
 const page = await context.newPage()
 page.on('pageerror', (e) => console.log('pageerror', e.message))
 page.on('console', (m) => /\[detrpose\]|\[hands-free\]/.test(m.text()) && console.log('console', m.text().slice(0, 200)))
 await page.goto(base + '/' + (process.env.ENGINE ? `?engine=${process.env.ENGINE}` : ''), { waitUntil: 'networkidle' })
 await page.waitForTimeout(4000)
-await page.keyboard.press('h') // hands-free on → setup sheet
+await page.getByRole('button', { name: /Practice/ }).click() // hands-free is on by default → setup sheet
 await page.waitForTimeout(1500)
-await page.keyboard.press('Escape') // close the sheet, keep following
+await page.keyboard.press('Escape') // close the sheet, keep following: raising the hands begins
 
 const t0 = Date.now()
 let last = ''
 while (Date.now() - t0 < Number(seconds) * 1000) {
   const state = await page.evaluate(() => {
     const active = document.querySelector('[aria-current="step"]')?.textContent?.trim() ?? '—'
-    const bubble = document.querySelector('.frosted')?.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+    const bubble = document.querySelector('.bubble')?.textContent?.replace(/\s+/g, ' ').trim() ?? ''
     const ready = document.body.innerText.includes('Ready when you are')
     const hf = window.__handsFree
     const kp = hf?.keypoints

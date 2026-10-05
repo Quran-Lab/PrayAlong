@@ -1,7 +1,7 @@
 import { POSE_OF } from '@/content/postures'
 import { PRAYER_BY_ID } from '@/content/prayers'
 import { getLine, surahsByRakah, type RecitationId } from '@/content/recitations'
-import type { CueId, GroupId, Posture, PrayerId, PrayerSequence, Step, StepTiming, Voice } from './types'
+import type { CueId, GroupId, Posture, PrayerId, PrayerSequence, SayId, Step, StepTiming, Voice } from './types'
 
 /**
  * Rough recitation time for a line: a calm, beginner-friendly pace with a
@@ -22,7 +22,11 @@ interface Block {
   repeat?: number
   voice?: Voice
   cue?: CueId
+  /** Spoken instruction per line (by index); usually only the first line has one. */
+  says?: readonly (SayId | undefined)[]
 }
+
+const SURAH_SAY: Partial<Record<GroupId, SayId>> = { ikhlas: 'sayIkhlas', falaq: 'sayFalaq' }
 
 function rakahBlocks(prayer: PrayerId, rakah: number): Block[] {
   const info = PRAYER_BY_ID[prayer]
@@ -32,7 +36,7 @@ function rakahBlocks(prayer: PrayerId, rakah: number): Block[] {
 
   if (rakah === 1) {
     blocks.push({ posture: 'takbir', group: 'openingTakbir', lines: ['takbir'], voice: 'aloud', cue: 'begin' })
-    blocks.push({ posture: 'qiyam', group: 'opening', lines: ['thana-1', 'thana-2', 'taawwudh'], cue: 'fold' })
+    blocks.push({ posture: 'qiyam', group: 'opening', lines: ['thana-1', 'thana-2', 'taawwudh'], cue: 'fold', says: ['sayOpening'] })
   }
 
   const surah = surahsByRakah[rakah]
@@ -42,14 +46,16 @@ function rakahBlocks(prayer: PrayerId, rakah: number): Block[] {
     lines: ['fatiha-1', 'fatiha-2', 'fatiha-3', 'fatiha-4', 'fatiha-5', 'fatiha-6', 'fatiha-7'],
     voice: aloud,
     cue: rakah === 1 ? undefined : 'rise',
+    says: [aloud === 'aloud' ? 'sayFatiha' : 'sayFatihaQuiet'],
   })
-  blocks.push({ posture: 'qiyam', group: 'amin', lines: ['amin'], voice: aloud })
-  if (surah && rakah <= 2) blocks.push({ posture: 'qiyam', group: surah.group, lines: surah.lines, voice: aloud })
+  blocks.push({ posture: 'qiyam', group: 'amin', lines: ['amin'], voice: aloud, says: ['sayAmin'] })
+  if (surah && rakah <= 2) blocks.push({ posture: 'qiyam', group: surah.group, lines: surah.lines, voice: aloud, says: [SURAH_SAY[surah.group]] })
 
-  blocks.push({ posture: 'ruku', group: 'ruku', lines: ['ruku'], repeat: 3, cue: 'bow' })
-  blocks.push({ posture: 'itidal', group: 'itidal', lines: ['tasmi', 'tahmid'], cue: 'rising' })
-  blocks.push({ posture: 'sujud', group: 'sujud', lines: ['sujud'], repeat: 3, cue: 'prostrate' })
-  blocks.push({ posture: 'jalsah', group: 'jalsah', lines: ['jalsah'], repeat: 2, cue: 'sitUp' })
+  blocks.push({ posture: 'ruku', group: 'ruku', lines: ['ruku'], repeat: 3, cue: 'bow', says: ['sayRuku'] })
+  // The hands go up while rising (sami‘allāhu liman hamidah) and down for "rabbanā wa lakal-hamd".
+  blocks.push({ posture: 'itidal', group: 'itidal', lines: ['tasmi', 'tahmid'], cue: 'rising', says: [undefined, 'lower'] })
+  blocks.push({ posture: 'sujud', group: 'sujud', lines: ['sujud'], repeat: 3, cue: 'prostrate', says: ['saySujud'] })
+  blocks.push({ posture: 'jalsah', group: 'jalsah', lines: ['jalsah'], cue: 'sitUp', says: ['sayJalsah'] })
   blocks.push({ posture: 'sujud', group: 'sujud', lines: ['sujud'], repeat: 3, cue: 'prostrateAgain' })
 
   const middleSitting = rakah === 2 && info.rakahs > 2
@@ -59,10 +65,12 @@ function rakahBlocks(prayer: PrayerId, rakah: number): Block[] {
       group: 'tashahhud',
       lines: ['tashahhud-1', 'tashahhud-2', 'tashahhud-3', 'tashahhud-4'],
       cue: 'sit',
+      says: ['sayTashahhud'],
     })
   }
   if (last) {
-    blocks.push({ posture: 'tashahhud', group: 'salawat', lines: ['salawat-1', 'salawat-2', 'salawat-3', 'salawat-4'] })
+    blocks.push({ posture: 'tashahhud', group: 'salawat', lines: ['salawat-1', 'salawat-2', 'salawat-3', 'salawat-4'], says: ['saySalawat'] })
+    blocks.push({ posture: 'tashahhud', group: 'refuge', lines: ['refuge-1', 'refuge-2'], says: ['sayRefuge'] })
     blocks.push({ posture: 'salam-right', group: 'salam', lines: ['salam'], voice: 'aloud', cue: 'right' })
     blocks.push({ posture: 'salam-left', group: 'salam', lines: ['salam'], voice: 'aloud', cue: 'left' })
   }
@@ -89,6 +97,7 @@ export function buildSequence(prayer: PrayerId): PrayerSequence {
           repeat,
           voice: block.voice ?? 'quiet',
           cue: i === 0 ? block.cue : undefined,
+          say: block.says?.[i],
           timing: estimateTiming(recitationId, repeat),
         })
       })

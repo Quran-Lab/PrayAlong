@@ -1,8 +1,10 @@
 # PrayAlong
 
 A calm, hands-free Salah companion. PrayAlong picks the prayer that's due,
-shows a 3D companion moving through each posture on a prayer mat, and puts
-the Arabic, transliteration and translation of every line right beneath it.
+shows a faceless 3D companion (a brother or a sister, matched on this device)
+moving through each posture on a prayer mat over a photograph of the time of
+day, and puts the Arabic (KFGQPC Uthman Taha Naskh), transliteration and
+translation of every line right beneath it.
 With **Hands-Free** on, the camera follows your body and the prayer moves on
 by itself — no touching the laptop mid-sujud.
 
@@ -22,7 +24,7 @@ Useful URLs while developing:
 | URL | What |
 | --- | --- |
 | `/` | The app |
-| `/?simulate` | Hands-free without a camera: turn on Hands-Free, then keys **1** hands raised · **2** standing · **3** bowing · **4** prostrating · **5** sitting |
+| `/?demo` | Hands-free without a camera (developers): pick a mode, then keys **1** hands raised · **2** standing · **3** bowing · **4** prostrating · **5** sitting |
 | `/?lab&pose=sujud` | Pose Lab (dev only): inspect any posture; add `&az=1.57` for a side view, `&character=/avatars/x.glb` to try a character |
 
 Keyboard: **Space / →** next line · **←** back · **P** timed guidance · **H** hands-free.
@@ -32,29 +34,57 @@ Keyboard: **Space / →** next line · **←** back · **P** timed guidance · *
 ```
 src/
   content/        Prayers, postures and every recited line (Arabic · transliteration · translation)
+                  backdrops.json — the per-prayer photographs (written by `npm run backgrounds`)
   sequence/       buildSequence(prayer) → ordered steps with posture, pose and timing
                   schema.json is the JSON Schema for that output
-  state/          Zustand session store: phase, current step, hands-free logic
-  lib/            Prayer-time detection (adhan), location, wake lock, hooks
-  components/     UI: header chips, recitation, dock, panels, settings
-    stage/        3D stage (React Three Fiber): lighting, mat, camera, character
+  state/          Session store (Svelte runes): phase, current step, settings
+  i18n/           English built in; Indonesian and Arabic load when chosen (others kept, not offered yet)
+  lib/            Prayer-time detection (adhan), location, wake lock, brand (palettes, crescent)
+  components/     UI (Svelte 5, PrayAlong design system): header, recitation, dock, panels, sheets
+    stage/        3D stage (plain three.js): photo backdrop, lighting, rug, camera, character
       rig/        humanoid.ts   — adapts any VRM / Mixamo-style rig to one normalized skeleton
                   prayer-poses.ts — the postures, authored once for every character
                   performer.ts  — blends postures, grounds the body, IK hands, forehead contact
-  handsfree/      Camera → DETRPose (Web Worker) → pose class → stable pose changes
+  handsfree/      Camera → MediaPipe / DETRPose (Web Worker) → pose class → stable pose changes
+  voice/          voice.svelte.ts — qari clips, the voice coach, and the microphone listener
+    asr/          Quran Lab ASR client, phoneme targets per line, word-by-word follow
 ```
 
-**Stack:** Vite · React 19 · TypeScript · Tailwind CSS v4 · Motion · Radix UI ·
-React Three Fiber + drei + postprocessing · @pixiv/three-vrm · onnxruntime-web ·
-adhan · Zustand · Vitest.
+**Stack:** Vite · Svelte 5 · TypeScript · three.js · @pixiv/three-vrm (VRM only) ·
+onnxruntime-web · MediaPipe · sherpa-onnx (ASR) · adhan · Vitest. Design: PrayAlong's own sibling of
+the Quran Lab design system: paper and ink, Plus Jakarta Sans, a crescent mark and a plum accent
+the learner can change ([docs/DESIGN.md](docs/DESIGN.md)).
+
+## Backdrops
+
+Five Pixabay photographs, one per prayer (dawn, midday, afternoon, sunset,
+night), encoded as JPEG XL and AVIF at 960–3840 px with a WebP fallback.
+Sources and photographers are in `assets/backgrounds/sources.json`; drop the
+full-size originals there and run `npm run backgrounds` (needs `cjxl`,
+`avifenc` and `cwebp`).
 
 ## Characters
 
-Four companions ship with the app — **Yusuf**, **Maryam**, **Ahmad** and
-**Aisha** — soft clay chibi characters built in Blender from the scripts in
-`tools/characters/`. The stage is character-agnostic: any humanoid VRM, or
-GLB with a Mixamo-style skeleton, plays every posture with no
-per-character tuning. See [docs/characters.md](docs/characters.md).
+The stage is character-agnostic: any humanoid VRM, or GLB with a
+Mixamo-style skeleton, plays every posture with no per-character tuning.
+See [docs/characters.md](docs/characters.md) for the asset spec and how to
+add one. The two companions, a brother (kufi and thobe) and a sister (khimar,
+niqab and abaya), are faceless, about seven heads tall after the brief's pose
+sheet, and built from code: `tools/characters/build_brother.py` and
+`build_sister.py`. The chibi companions from `main` (Yusuf, Maryam, Ahmad,
+Aisha) are still in `public/avatars/` but not in the picker, because they have
+faces.
+
+## Voice
+
+The qari (Sheikh Khalifah At-Tunaiji) recites each verse of Al-Fātiḥah before the learner's turn,
+a voice coach (Inflect-Nano-v2, rendered at build time) says each movement, and the Quran Lab ASR
+can follow the learner's recitation word by word on the device. See [docs/voice.md](docs/voice.md).
+
+```bash
+npm run voice        # re-render the coach's lines (needs sherpa-onnx)
+npm run fetch:asr    # copy the ASR package into public/asr (not in git)
+```
 
 ## Hands-free
 
