@@ -13,7 +13,7 @@
 // Usage: node scripts/fetch-voice-model.mjs
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -23,8 +23,8 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // --chunk 24 (480 ms, shipped), 16 (320 ms) or 8 (160 ms).
 const VARIANTS = {
   24: { revision: 'v31-slim-int8-preopt-1', sha: '168a9430e7ce21d9bc52c9dae4f580e230134cf6a8f0b6ffca675d893dc0d704', rel: 'quran-lab-app-wasm/tools/asr-wasm/out/v31_static_slim_int8.preopt_ext.onnx', out: 'public/voice/model' },
-  16: { revision: 'v31-slim-int8-preopt-c16-1', sha: 'bd24ac1e70ba04a6575ebdb3a60e057f3645aa79e63cf40ebde114909162f4b5', rel: 'quran-lab-app-wasm/tools/asr-wasm/out/chunk-variants/v31_static_slim_int8.preopt_ext.c16.onnx', out: 'public/voice/model-c16' },
-  8: { revision: 'v31-slim-int8-preopt-c8-1', sha: 'e3007fcd2aa4f1f50d9d76ff04a8058201ea2724e8076cd71c9ce1d5f5f39b2c', rel: 'quran-lab-app-wasm/tools/asr-wasm/out/chunk-variants/v31_static_slim_int8.preopt_ext.c8.onnx', out: 'public/voice/model-c8' },
+  16: { revision: 'v31-slim-int8-preopt-c16-1', sha: 'bd24ac1e70ba04a6575ebdb3a60e057f3645aa79e63cf40ebde114909162f4b5', rel: 'quran-lab-app-wasm/tools/asr-wasm/out/chunk-variants/v31_static_slim_int8.preopt_ext.c16.onnx', out: 'public/voice/model/c16-1' },
+  8: { revision: 'v31-slim-int8-preopt-c8-1', sha: 'e3007fcd2aa4f1f50d9d76ff04a8058201ea2724e8076cd71c9ce1d5f5f39b2c', rel: 'quran-lab-app-wasm/tools/asr-wasm/out/chunk-variants/v31_static_slim_int8.preopt_ext.c8.onnx', out: 'public/voice/model/c8-1' },
 }
 const chunkArg = process.argv.includes('--chunk') ? Number(process.argv[process.argv.indexOf('--chunk') + 1]) : 24
 const VARIANT = VARIANTS[chunkArg]
@@ -70,7 +70,11 @@ for (const [name, buf, want] of [['model', model, MODEL_SHA], ['tokens', tokens,
   if (got !== want) throw new Error(`${name} sha256 ${got} != pinned ${want}`)
 }
 
-await rm(OUT, { recursive: true, force: true })
+// Only this variant's own files: the 480 ms folder holds the others (c16-1/, c8-1/).
+await mkdir(OUT, { recursive: true })
+for (const name of await readdir(OUT)) {
+  if (/^(manifest\.json|tokens\.txt|zipformer2-ctc\.onnx(\.part\d+)?)$/.test(name)) await rm(join(OUT, name), { force: true })
+}
 await mkdir(OUT, { recursive: true })
 const files = []
 for (const [name, buf] of [['zipformer2-ctc.onnx', model], ['tokens.txt', tokens]]) {
