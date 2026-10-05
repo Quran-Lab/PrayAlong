@@ -147,6 +147,14 @@ export const fr: Messages = {
 
   // Settings
   'settings.title': 'Réglages',
+  'listen.off': 'Écouter',
+  'listen.on': 'À l’écoute',
+  'listen.loading': 'Préparation {p} %',
+  'listen.failed': 'Micro indisponible',
+  'listen.hint': 'Suivre ma récitation au micro, sans caméra',
+  'nav.home': 'Retour au début',
+  'ambience.mute': 'Couper les sons de la pièce',
+  'ambience.unmute': 'Activer les sons de la pièce',
   'settings.practice': 'Pratique',
   'settings.raiseHands': 'Lever les mains au rukū‘ et en se relevant',
   'settings.raiseHandsNote': 'Pratiqué chez les chaféites et hanbalites ; pas chez les hanafites ni chez la plupart des malikites. Suivez ce qu’on vous a enseigné.',
@@ -336,6 +344,14 @@ export const es: Messages = {
 
   // Settings
   'settings.title': 'Ajustes',
+  'listen.off': 'Escuchar',
+  'listen.on': 'Escuchando',
+  'listen.loading': 'Preparando {p} %',
+  'listen.failed': 'Micrófono no disponible',
+  'listen.hint': 'Seguir mi recitación por micrófono, sin cámara',
+  'nav.home': 'Volver al inicio',
+  'ambience.mute': 'Silenciar los sonidos del ambiente',
+  'ambience.unmute': 'Activar los sonidos del ambiente',
   'settings.practice': 'Práctica',
   'settings.raiseHands': 'Levantar las manos en el ruku y al incorporarse',
   'settings.raiseHandsNote': 'Se hace en las escuelas shafi‘í y hanbalí; no en la hanafí ni en la mayoría de los malikíes. Sigue lo que te enseñaron.',
@@ -525,6 +541,14 @@ export const tr: Messages = {
 
   // Settings
   'settings.title': 'Ayarlar',
+  'listen.off': 'Dinle',
+  'listen.on': 'Dinliyor',
+  'listen.loading': 'Hazırlanıyor %{p}',
+  'listen.failed': 'Mikrofon kullanılamıyor',
+  'listen.hint': 'Okuyuşumu mikrofonla takip et, kamera gerekmez',
+  'nav.home': 'Başa dön',
+  'ambience.mute': 'Ortam seslerini kapat',
+  'ambience.unmute': 'Ortam seslerini aç',
   'settings.practice': 'Uygulama',
   'settings.raiseHands': 'Rükûya giderken ve doğrulurken elleri kaldır',
   'settings.raiseHandsNote': 'Şâfiî ve Hanbelî mezheplerinde yapılır; Hanefî ve çoğu Mâlikî uygulamasında yapılmaz. Öğrendiğine göre seç.',
@@ -714,6 +738,14 @@ export const id: Messages = {
 
   // Settings
   'settings.title': 'Pengaturan',
+  'listen.off': 'Dengarkan',
+  'listen.on': 'Mendengarkan',
+  'listen.loading': 'Menyiapkan {p}%',
+  'listen.failed': 'Mikrofon tidak tersedia',
+  'listen.hint': 'Ikuti bacaan saya lewat mikrofon, tanpa kamera',
+  'nav.home': 'Kembali ke awal',
+  'ambience.mute': 'Matikan suara suasana',
+  'ambience.unmute': 'Nyalakan suara suasana',
   'settings.practice': 'Praktik',
   'settings.raiseHands': 'Angkat tangan saat rukuk dan bangkit',
   'settings.raiseHandsNote': 'Dilakukan dalam mazhab Syafi‘i dan Hanbali; tidak dalam mazhab Hanafi dan kebanyakan Maliki. Ikuti yang diajarkan kepadamu.',
@@ -903,6 +935,14 @@ export const nl: Messages = {
 
   // Settings
   'settings.title': 'Instellingen',
+  'listen.off': 'Luisteren',
+  'listen.on': 'Luistert',
+  'listen.loading': 'Voorbereiden {p}%',
+  'listen.failed': 'Microfoon niet beschikbaar',
+  'listen.hint': 'Volg mijn recitatie via de microfoon, zonder camera',
+  'nav.home': 'Terug naar het begin',
+  'ambience.mute': 'Omgevingsgeluid dempen',
+  'ambience.unmute': 'Omgevingsgeluid afspelen',
   'settings.practice': 'Praktijk',
   'settings.raiseHands': 'Handen heffen bij de ruku‘ en het opkomen',
   'settings.raiseHandsNote': 'Zo in de sjafi‘itische en hanbalitische school; niet in de hanafitische en meestal niet in de malikitische. Volg wat je geleerd hebt.',
@@ -1092,6 +1132,14 @@ export const ur: Messages = {
 
   // Settings
   'settings.title': 'ترتیبات',
+  'listen.off': 'سنیں',
+  'listen.on': 'سن رہا ہے',
+  'listen.loading': 'تیاری {p}%',
+  'listen.failed': 'مائیک دستیاب نہیں',
+  'listen.hint': 'مائیک سے میری تلاوت کے ساتھ چلیں، کیمرے کی ضرورت نہیں',
+  'nav.home': 'شروع پر واپس',
+  'ambience.mute': 'ماحول کی آواز بند کریں',
+  'ambience.unmute': 'ماحول کی آواز چلائیں',
   'settings.practice': 'طریقہ',
   'settings.raiseHands': 'رکوع میں جاتے اور اٹھتے وقت ہاتھ اٹھائیں',
   'settings.raiseHandsNote': 'شافعی اور حنبلی مسلک میں ایسا کیا جاتا ہے؛ حنفی اور اکثر مالکی طریقے میں نہیں۔ جو آپ نے سیکھا ہے اسی پر عمل کریں۔',
@@ -1281,6 +1329,14 @@ export const ar: Messages = {
 
   // Settings
   'settings.title': 'الإعدادات',
+  'listen.off': 'استماع',
+  'listen.on': 'يستمع',
+  'listen.loading': 'جارٍ التجهيز {p}٪',
+  'listen.failed': 'الميكروفون غير متاح',
+  'listen.hint': 'تتبّع تلاوتي عبر الميكروفون دون كاميرا',
+  'nav.home': 'العودة إلى البداية',
+  'ambience.mute': 'كتم أصوات المكان',
+  'ambience.unmute': 'تشغيل أصوات المكان',
   'settings.practice': 'الصفة',
   'settings.raiseHands': 'رفع اليدين عند الركوع والرفع منه',
   'settings.raiseHandsNote': 'يفعله الشافعية والحنابلة، ولا يفعله الحنفية وأكثر المالكية. اتبع ما تعلّمته.',

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 /**
  * PrayAlong's sound: the companion's voice and the room's ambience.
  *
@@ -29,6 +30,8 @@ export interface Manifest {
 }
 
 const BASE = `${import.meta.env.BASE_URL}audio/`
+/** Crossfade between ambience takes and between prayers (seconds). */
+const FADE_S = 6
 
 let manifest: Manifest | null = null
 let manifestLoad: Promise<Manifest | null> | null = null
@@ -42,15 +45,30 @@ export function loadManifest(): Promise<Manifest | null> {
 }
 export const getManifest = () => manifest
 
+type Listener = (speaking: boolean) => void
+
 class Engine {
+  private listeners = new Set<Listener>()
+  /** True while the companion's voice is playing (the mic follower ignores it). */
+  speaking = false
+  onSpeaking(fn: Listener) {
+    this.listeners.add(fn)
+    return () => void this.listeners.delete(fn)
+  }
+  private setSpeaking(on: boolean) {
+    if (this.speaking === on) return
+    this.speaking = on
+    for (const fn of this.listeners) fn(on)
+  }
+
   private ctx: AudioContext | null = null
   private master!: GainNode
   private voiceBus!: GainNode
   private ambienceBus!: GainNode
   private buffers = new Map<string, Promise<AudioBuffer | null>>()
-  private speaking: { src: AudioBufferSourceNode; gain: GainNode }[] = []
+  private playing: { src: AudioBufferSourceNode; gain: GainNode }[] = []
   private ambience: { prayer: string; timer: number; sources: { src: AudioBufferSourceNode; gain: GainNode }[] } | null = null
-  private ambienceLevel = 0.85
+  private ambienceLevel = 0.42
 
   /** Must run inside a user gesture the first time (browsers block autoplay). */
   unlock() {
@@ -84,6 +102,12 @@ class Engine {
   /** Seconds between scheduling a sound and hearing it (Bluetooth can add a lot). */
   get latency() {
     return (this.ctx?.outputLatency ?? 0) + (this.ctx?.baseLatency ?? 0)
+  }
+
+  /** Quieter once the prayer begins, so the room stays in the background. */
+  setAmbienceLevel(level: number) {
+    this.ambienceLevel = level
+    if (this.ctx) this.ambienceBus.gain.setTargetAtTime(level, this.ctx.currentTime, 1.2)
   }
 
   setVolume(v: number) {
@@ -120,6 +144,7 @@ class Engine {
     if (token !== this.token || !this.ctx) return
     let t = this.ctx.currentTime + 0.06
     this.duck(true)
+    this.setSpeaking(true)
     const ends: Promise<void>[] = []
     buffers.forEach((buf, i) => {
       if (!buf) return
@@ -131,18 +156,21 @@ class Engine {
       src.start(t)
       const startAt = t
       if (onClip) setTimeout(() => token === this.token && onClip(i, startAt), Math.max(0, (startAt - this.ctx!.currentTime) * 1000))
-      this.speaking.push({ src, gain })
+      this.playing.push({ src, gain })
       ends.push(new Promise((res) => (src.onended = () => res())))
       t += buf.duration + gapS
     })
     await Promise.all(ends)
-    if (token === this.token) this.duck(false)
+    if (token === this.token) {
+      this.duck(false)
+      this.setSpeaking(false)
+    }
   }
   private token = {}
 
   stopSpeaking() {
     this.token = {}
-    for (const s of this.speaking) {
+    for (const s of this.playing) {
       try {
         s.gain.gain.setTargetAtTime(0, this.ctx!.currentTime, 0.04)
         s.src.stop(this.ctx!.currentTime + 0.2)
@@ -150,8 +178,9 @@ class Engine {
         /* already stopped */
       }
     }
-    this.speaking = []
+    this.playing = []
     this.duck(false)
+    this.setSpeaking(false)
   }
 
   /** Lower the room while the companion speaks. */
@@ -167,33 +196,42 @@ class Engine {
   async startAmbience(prayer: string, takes: string[]) {
     if (!this.ctx || !takes.length) return
     if (this.ambience?.prayer === prayer) return
-    this.stopAmbience(2.5)
     const state = { prayer, timer: 0, sources: [] as { src: AudioBufferSourceNode; gain: GainNode }[] }
-    this.ambience = state
     const order = [...takes].sort(() => Math.random() - 0.5)
+    // Have the first take ready before fading the old room out, so switching
+    // prayers is a true crossfade rather than a dip.
+    const first = await this.load(order[0]!)
+    if (!this.ctx || !first) return
+    this.stopAmbience(FADE_S)
+    this.ambience = state
     let n = 0
-    const fade = 4
-    const playNext = async (at: number) => {
+    const playNext = (buf: AudioBuffer, at: number) => {
       if (this.ambience !== state || !this.ctx) return
-      const buf = await this.load(order[n++ % order.length]!)
-      if (this.ambience !== state || !this.ctx || !buf) return
+      n++
       const src = this.ctx.createBufferSource()
       src.buffer = buf
       const gain = this.ctx.createGain()
       const start = Math.max(at, this.ctx.currentTime + 0.05)
+      const end = start + buf.duration
       gain.gain.setValueAtTime(0, start)
-      gain.gain.linearRampToValueAtTime(1, start + fade)
-      gain.gain.setValueAtTime(1, start + buf.duration - fade)
-      gain.gain.linearRampToValueAtTime(0, start + buf.duration)
+      gain.gain.linearRampToValueAtTime(1, start + FADE_S)
+      gain.gain.setValueAtTime(1, end - FADE_S)
+      gain.gain.linearRampToValueAtTime(0, end)
       src.connect(gain).connect(this.ambienceBus)
       src.start(start)
-      src.stop(start + buf.duration + 0.1)
+      src.stop(end + 0.1)
       state.sources.push({ src, gain })
       src.onended = () => (state.sources = state.sources.filter((s) => s.src !== src))
-      const nextAt = start + buf.duration - fade
-      state.timer = window.setTimeout(() => void playNext(nextAt), Math.max(0, (nextAt - this.ctx.currentTime - 1.5) * 1000))
+      // Fetch the next take now, then start it exactly as this one fades out.
+      const nextAt = end - FADE_S
+      const nextSrc = order[n % order.length]!
+      void this.load(nextSrc).then((next) => {
+        if (this.ambience !== state || !this.ctx) return
+        const wait = Math.max(0, (nextAt - this.ctx.currentTime - 2) * 1000)
+        state.timer = window.setTimeout(() => playNext(next ?? buf, nextAt), wait)
+      })
     }
-    await playNext(this.ctx.currentTime)
+    playNext(first, this.ctx.currentTime)
   }
 
   stopAmbience(fadeS = 1.5) {
@@ -214,3 +252,10 @@ class Engine {
 }
 
 export const audio = new Engine()
+
+/** React: whether the companion is speaking right now. */
+export function useCompanionSpeaking() {
+  const [on, setOn] = useState(audio.speaking)
+  useEffect(() => audio.onSpeaking(setOn), [])
+  return on
+}

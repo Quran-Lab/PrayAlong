@@ -25,3 +25,6 @@ __pycache__/
 *.pyc
 shots/
 .claude/
+
+# Voice model parts (68 MB): staged by scripts/fetch-voice-model.mjs
+public/voice/model/

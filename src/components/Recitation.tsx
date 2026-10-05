@@ -148,7 +148,6 @@ export function Recitation({
           {show.translation && line.meaning && (
             <p className="mt-4 max-w-[38ch] font-serif leading-[1.45] text-balance text-ink-soft" style={{ fontSize: `calc(var(--text-meaning) * ${k})` }}>
               <Words text={line.meaning} range={al?.m?.length ? litRange(word, al.m, count(line.meaning), arabicWords) : null} />
-              {line.credit && <span className="ms-2 font-sans text-[length:var(--text-meta)] whitespace-nowrap text-ink-faint">({line.credit})</span>}
             </p>
           )}
 

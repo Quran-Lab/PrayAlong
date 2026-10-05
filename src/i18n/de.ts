@@ -146,6 +146,14 @@ export const de: Messages = {
 
   // Settings
   'settings.title': 'Einstellungen',
+  'listen.off': 'Zuhören',
+  'listen.on': 'Hört zu',
+  'listen.loading': 'Wird vorbereitet {p}%',
+  'listen.failed': 'Mikrofon nicht verfügbar',
+  'listen.hint': 'Meiner Rezitation über das Mikrofon folgen, ohne Kamera',
+  'nav.home': 'Zurück zum Anfang',
+  'ambience.mute': 'Raumklang stummschalten',
+  'ambience.unmute': 'Raumklang abspielen',
   'settings.practice': 'Praxis',
   'settings.raiseHands': 'Hände heben beim Ruku und Aufrichten',
   'settings.raiseHandsNote': 'So in der schafiitischen und hanbalitischen Schule; nicht in der hanafitischen und meist nicht in der malikitischen. Folge dem, was du gelernt hast.',

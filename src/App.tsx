@@ -1,9 +1,11 @@
-import { Settings2 } from 'lucide-react'
+import { Settings2, Wind } from 'lucide-react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { AlertDialog, Direction, Tooltip as RadixTooltip } from 'radix-ui'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { CameraBubble, DemoBar, HandsFreeButton } from '@/components/HandsFree'
+import { ListenButton } from '@/components/ListenButton'
 import { Logo } from '@/components/Logo'
+import { useCompanionSpeaking } from '@/audio/engine'
 import { useCompanionAudio } from '@/audio/use-companion-audio'
 import { CompletePanel, ReadyPanel } from '@/components/Panels'
 import { PostureDock } from '@/components/PostureDock'
@@ -25,6 +27,7 @@ import { usePrayerClock } from '@/lib/use-prayer-clock'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import type { PrayerId, Step } from '@/sequence/types'
 import { PACE_FACTOR, currentStep, useSession } from '@/state/session'
+import { useVoiceFollow } from '@/voice/use-voice' // [voice]
 
 // The 3D stack is the heaviest part of the app; let the UI paint first.
 const CompanionStage = lazy(() => import('@/components/stage/CompanionStage').then((m) => ({ default: m.CompanionStage })))
@@ -33,6 +36,16 @@ const CompanionStage = lazy(() => import('@/components/stage/CompanionStage').th
 const BODY_GRACE_MS = 6000
 
 const stepMs = (step: Step, pace: keyof typeof PACE_FACTOR) => Math.max(step.timing.minMs, step.timing.expectedMs * PACE_FACTOR[pace])
+
+/** Wind with a slash: ambience muted. */
+function WindOff({ className }: { className?: string }) {
+  return (
+    <span className={`relative inline-grid ${className ?? ''}`}>
+      <Wind className="size-full" />
+      <span className="absolute top-1/2 left-1/2 h-[2px] w-[120%] -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded bg-current" />
+    </span>
+  )
+}
 
 export function App() {
   const t = useT()
@@ -56,6 +69,15 @@ export function App() {
 
   const hands = useHandsFree({ enabled: handsFree, demo, facingMode, onPose: session.onPose })
   const following = handsFree && isFollowing(hands.status)
+
+  // [voice] begin: microphone engine (src/voice, docs/voice.md). Mic only: the
+  // voice leads lines and postures; with the camera following: lines only.
+  // Turned on from the Listen button (a click, so the microphone can start).
+  const [voiceOn, setVoiceOn] = useState(() => new URLSearchParams(location.search).has('voice'))
+  const companionSpeaking = useCompanionSpeaking()
+  const voice = useVoiceFollow({ enabled: voiceOn, mode: following ? 'lines' : 'full', ignoreCompanion: true, companionSpeaking })
+  const voiceDriving = voiceOn && voice.status === 'listening'
+  // [voice] end
 
   const toggleHandsFree = useCallback(() => {
     const s = useSession.getState()
@@ -84,15 +106,17 @@ export function App() {
 
   useWakeLock(phase === 'praying')
   const { speaking, audioMs } = useCompanionAudio({ phase, step, next: sequence.steps[index + 1], prayer, voice: character.id, locale, settings })
-  const timedMs = useStepTimer(following, audioMs)
+  // [voice] while voice leads, the slider shows its timer fallback.
+  const appTimedMs = useStepTimer(following, audioMs, voiceDriving)
+  const timedMs = voiceDriving ? voice.timerMs : appTimedMs
 
   // Praying behind the companion: when it recites, it leads (pause any time).
   const leadOnBegin = useRef(phase)
   useEffect(() => {
     const s = useSession.getState()
-    if (leadOnBegin.current === 'ready' && phase === 'praying' && settings.voice && !s.handsFree) s.setAutoplay(true)
+    if (leadOnBegin.current === 'ready' && phase === 'praying' && settings.voice && !s.handsFree && !voiceDriving) s.setAutoplay(true)
     leadOnBegin.current = phase
-  }, [phase, settings.voice])
+  }, [phase, settings.voice, voiceDriving])
   useKeyboard(toggleHandsFree)
 
   // A soft chime when PrayAlong follows a movement, so nobody has to look up.
@@ -127,13 +151,29 @@ export function App() {
             {/* Header */}
             <header className="relative z-20 flex h-16 shrink-0 items-center gap-3 px-4 sm:h-[4.5rem] sm:px-6 short:h-12">
               <div className="flex flex-1 items-center">
-                <Logo compact={!wide} />
+                <button
+                  onClick={() => useSession.getState().restart()}
+                  aria-label={t('nav.home')}
+                  className="cursor-pointer rounded-xl focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-4"
+                >
+                  <Logo compact={!wide} />
+                </button>
               </div>
               {wide ? <PrayerChips clock={clock} onRequestSwitch={setPendingSwitch} /> : <PrayerMenu clock={clock} onRequestSwitch={setPendingSwitch} />}
               <div className="flex flex-1 items-center justify-end gap-1.5 sm:gap-2">
+                <Button
+                  variant="quiet"
+                  size="icon"
+                  aria-label={settings.ambience ? t('ambience.mute') : t('ambience.unmute')}
+                  aria-pressed={!settings.ambience}
+                  onClick={() => session.updateSettings({ ambience: !settings.ambience })}
+                >
+                  {settings.ambience ? <Wind className="size-[18px]" /> : <WindOff className="size-[18px] opacity-60" />}
+                </Button>
                 <Button variant="quiet" size="icon" aria-label={t('settings.title')} onClick={() => setSettingsOpen(true)}>
                   <Settings2 className="size-[18px]" />
                 </Button>
+                <ListenButton on={voiceOn} status={voice.status} progress={voice.progress} onToggle={() => setVoiceOn((v) => !v)} compact={!wide} />
                 <HandsFreeButton on={handsFree} status={hands.status} onToggle={toggleHandsFree} compact={!wide} />
               </div>
             </header>
@@ -233,11 +273,12 @@ export function App() {
  * Hands-free without a working camera falls back to timed guidance.
  * Returns the current line's duration so the UI can show a gentle timer.
  */
-function useStepTimer(following: boolean, audioMs: number | null): number | null {
+function useStepTimer(following: boolean, audioMs: number | null, voiceDriving = false): number | null {
   const { phase, index, sequence, autoplay, handsFree, settings, next } = useSession()
   const step = sequence.steps[index]!
   const after = sequence.steps[index + 1]
-  const timed = phase === 'praying' && (autoplay || handsFree)
+  // [voice] the voice driver keeps its own (speech-aware) timers.
+  const timed = phase === 'praying' && (autoplay || handsFree) && !voiceDriving
   const waitForBody = following && after !== undefined && after.pose !== step.pose
   // When the companion recites, never cut it short; leave a breath after.
   const ms = audioMs !== null ? Math.max(audioMs + 700, step.timing.minMs) : stepMs(step, settings.pace)

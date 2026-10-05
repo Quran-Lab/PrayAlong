@@ -149,6 +149,14 @@ export const en = {
 
   // Settings
   'settings.title': 'Settings',
+  'listen.off': 'Listen',
+  'listen.on': 'Listening',
+  'listen.loading': 'Getting ready {p}%',
+  'listen.failed': 'Mic unavailable',
+  'listen.hint': 'Follow my recitation by microphone, no camera needed',
+  'nav.home': 'Back to start',
+  'ambience.mute': 'Mute the room sounds',
+  'ambience.unmute': 'Play the room sounds',
   'settings.practice': 'Practice',
   'settings.raiseHands': 'Raise hands for ruku and rising',
   'settings.raiseHandsNote': 'Done in the Shafi‘i and Hanbali schools; not in the Hanafi and most Maliki practice. Follow what you were taught.',

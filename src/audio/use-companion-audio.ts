@@ -69,6 +69,7 @@ export function useCompanionAudio(opts: { phase: string; step: Step; next?: Step
   }, [unlocked])
 
   useEffect(() => audio.setVolume(settings.volume), [settings.volume, unlocked])
+  useEffect(() => audio.setAmbienceLevel(phase === 'praying' ? 0.07 : 0.42), [phase, unlocked])
 
   // The room: ambience of the hour.
   const takes = ready ? getManifest()?.ambience[prayer] : undefined
