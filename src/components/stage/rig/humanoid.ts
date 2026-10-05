@@ -53,6 +53,8 @@ const MORPH_ALIASES: Record<Expression, string[]> = {
 
 export interface Humanoid {
   readonly scene: THREE.Object3D
+  /** Animations that came with the character: its prayer postures, one per clip. */
+  readonly clips: readonly THREE.AnimationClip[]
   /** The asset's own bones (after the adapter has written the pose into them). */
   readonly raw: Partial<Record<HumanBone, THREE.Object3D>>
   /** Set a normalized local rotation. Bones the asset lacks are ignored. */
@@ -102,7 +104,7 @@ export class GltfHumanoid implements Humanoid {
   private morphs: { mesh: THREE.Mesh; index: number; expression: Expression }[] = []
   private tmp = new THREE.Quaternion()
 
-  constructor(readonly scene: THREE.Object3D) {
+  constructor(readonly scene: THREE.Object3D, readonly clips: readonly THREE.AnimationClip[] = []) {
     const byName = new Map<string, THREE.Object3D>()
     let skin: THREE.SkinnedMesh | null = null
     scene.updateMatrixWorld(true)
@@ -161,6 +163,7 @@ export class GltfHumanoid implements Humanoid {
 class VrmHumanoid implements Humanoid {
   readonly raw: Partial<Record<HumanBone, THREE.Object3D>> = {}
   readonly scene: THREE.Object3D
+  readonly clips: readonly THREE.AnimationClip[] = []
 
   constructor(private vrm: VRM) {
     this.scene = vrm.scene
@@ -208,11 +211,13 @@ function base64ToBuffer(text: string): ArrayBuffer {
 export async function loadHumanoid(url: string): Promise<Humanoid> {
   // The VRM plugin (~140 kB) is only needed for .vrm characters.
   const isVrm = /\.vrm(\.b64\.txt)?$/i.test(url)
-  const [{ GLTFLoader }, vrmModule] = await Promise.all([
+  const [{ GLTFLoader }, { MeshoptDecoder }, vrmModule] = await Promise.all([
     import('three/examples/jsm/loaders/GLTFLoader.js'),
+    // The companions are meshopt-compressed (tools/characters: about a third of the size).
+    import('three/examples/jsm/libs/meshopt_decoder.module.js'),
     isVrm ? import('@pixiv/three-vrm') : Promise.resolve(null),
   ])
-  const loader = new GLTFLoader()
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
   if (vrmModule) loader.register((parser) => new vrmModule.VRMLoaderPlugin(parser))
   const gltf = url.endsWith('.b64.txt')
     ? await loader.parseAsync(base64ToBuffer(await (await fetch(url)).text()), '')
@@ -224,5 +229,5 @@ export async function loadHumanoid(url: string): Promise<Humanoid> {
     vrmModule.VRMUtils.rotateVRM0(vrm) // VRM 0.x faces -Z; normalize to +Z
     return new VrmHumanoid(vrm)
   }
-  return new GltfHumanoid(gltf.scene)
+  return new GltfHumanoid(gltf.scene, gltf.animations)
 }

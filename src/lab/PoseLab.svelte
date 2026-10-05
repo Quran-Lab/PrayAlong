@@ -1,6 +1,6 @@
 <script lang="ts">
   import { CHARACTERS, type CharacterInfo } from '@/components/stage/characters'
-  import { PRAYER_POSES, type PoseName } from '@/components/stage/rig/prayer-poses'
+  import { POSE_NAMES, type PoseName } from '@/components/stage/rig/prayer-poses'
   import Stage from '@/components/stage/Stage.svelte'
   import type { PrayerId } from '@/sequence/types'
 
@@ -17,8 +17,8 @@
 <div class="lab">
   <Stage {prayer} posture={pose} {character} reducedMotion={params.has('still')} azimuth={params.has('az') ? Number(params.get('az')) : undefined} />
   <div class="poses" id="lab-status">
-    {#each Object.keys(PRAYER_POSES) as p (p)}
-      <button type="button" class="btn sm" aria-pressed={p === pose} onclick={() => (pose = p as PoseName)}>{p}</button>
+    {#each POSE_NAMES as p (p)}
+      <button type="button" class="btn sm" aria-pressed={p === pose} onclick={() => (pose = p)}>{p}</button>
     {/each}
   </div>
 </div>

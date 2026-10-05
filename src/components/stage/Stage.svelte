@@ -14,6 +14,7 @@
     posture,
     character,
     palette = 'plum',
+    outfit = '',
     reducedMotion = false,
     azimuth,
     children,
@@ -23,6 +24,8 @@
     character: CharacterInfo
     /** The rug is woven in the brand palette. */
     palette?: Palette
+    /** The colour of the companion's clothes (CSS hex). */
+    outfit?: string
     reducedMotion?: boolean
     azimuth?: number
     children?: Snippet
@@ -66,6 +69,7 @@
   })
   $effect(() => stage?.setPosture(posture))
   $effect(() => stage?.setPalette(palette))
+  $effect(() => stage?.setOutfit(outfit))
   $effect(() => stage?.setReducedMotion(reducedMotion))
   $effect(() => stage?.setAzimuth(azimuth))
 </script>

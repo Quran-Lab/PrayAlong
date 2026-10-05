@@ -1,5 +1,6 @@
 import { buildSequence, nextPoseChange } from '@/sequence/build'
 import { OFFERED, READS_ARABIC, type Locale } from '@/i18n/locales'
+import { DEFAULT_OUTFIT, isOutfit, type Outfit } from '@/components/stage/characters'
 import { DEFAULT_PALETTE, isPalette, type Palette } from '@/lib/brand'
 import type { PoseClass, PrayerId, PrayerSequence, Step } from '@/sequence/types'
 
@@ -21,6 +22,8 @@ export interface Settings {
   translation: boolean | null
   textSize: TextSize
   characterId: string
+  /** The colour of the companion's clothes. */
+  outfit: Outfit
   theme: Theme
   /** The brand colour (docs/DESIGN.md). */
   palette: Palette
@@ -49,6 +52,7 @@ const DEFAULT_SETTINGS: Settings = {
   translation: null,
   textSize: 'l',
   characterId: 'brother',
+  outfit: DEFAULT_OUTFIT,
   theme: 'system',
   palette: DEFAULT_PALETTE,
   handsFree: true,
@@ -66,6 +70,7 @@ function loadSettings(): Settings {
     for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[])
       if (saved[key] !== undefined) Object.assign(settings, { [key]: saved[key] })
     if (!isPalette(settings.palette)) settings.palette = DEFAULT_PALETTE
+    if (!isOutfit(settings.outfit)) settings.outfit = DEFAULT_OUTFIT
     if (settings.locale !== 'auto' && !OFFERED.includes(settings.locale)) settings.locale = 'auto'
     return settings
   } catch {

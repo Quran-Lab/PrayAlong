@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import type { CharacterInfo } from './characters'
+import { GARMENT_MATERIALS, type CharacterInfo } from './characters'
 import { loadHumanoid } from './rig/humanoid'
 import { Performer, STAGE_HEIGHT } from './rig/performer'
 import type { PoseName } from './rig/prayer-poses'
@@ -19,7 +19,7 @@ const SHOTS: Record<'standing' | 'bowing' | 'floor' | 'sitting', Shot> = {
 
 function shotFor(posture: PoseName) {
   if (posture === 'ruku') return SHOTS.bowing
-  if (posture === 'sujud' || posture === 'kneel') return SHOTS.floor
+  if (posture === 'sujud' || posture === 'descend' || posture === 'rise') return SHOTS.floor
   if (posture === 'jalsah' || posture === 'tashahhud' || posture === 'tawarruk' || posture.startsWith('salam')) return SHOTS.sitting
   return SHOTS.standing
 }
@@ -42,6 +42,7 @@ export class CompanionStage {
   private performer: Performer | null = null
   private characterUrl = ''
   private posture: PoseName = 'rest'
+  private outfit = ''
   private reducedMotion = false
   private azimuth: number | undefined
   private raf = 0
@@ -104,13 +105,31 @@ export class CompanionStage {
     const token = ++this.loadToken
     const humanoid = await loadHumanoid(character.url)
     if (token !== this.loadToken) return humanoid.dispose()
-    const performer = new Performer(humanoid, character.id === 'sister' || /sister\.glb/.test(character.url))
+    const performer = new Performer(humanoid)
     performer.jumpTo(this.posture)
     this.performer?.dispose()
     this.mount.clear()
     this.mount.add(performer.root)
     this.performer = performer
+    this.dress()
     this.fade = 0
+  }
+
+  /** Colour the companion's clothes (a CSS hex colour). */
+  setOutfit(color: string) {
+    if (color === this.outfit) return
+    this.outfit = color
+    this.dress()
+    this.draw(0)
+  }
+
+  private dress() {
+    if (!this.performer || !this.outfit) return
+    this.performer.root.traverse((o) => {
+      const material = (o as THREE.Mesh).material
+      for (const m of Array.isArray(material) ? material : material ? [material] : [])
+        if (GARMENT_MATERIALS.has(m.name) && 'color' in m) (m as THREE.MeshStandardMaterial).color.set(this.outfit)
+    })
   }
 
   setPosture(posture: PoseName) {

@@ -16,7 +16,7 @@
   import Recitation from '@/components/Recitation.svelte'
   import SettingsSheet from '@/components/SettingsSheet.svelte'
   import SetupSheet from '@/components/SetupSheet.svelte'
-  import { characterById } from '@/components/stage/characters'
+  import { characterById, outfitColor } from '@/components/stage/characters'
   import type { PoseName } from '@/components/stage/rig/prayer-poses'
   import Stage from '@/components/stage/Stage.svelte'
   import { handsFree } from '@/handsfree/hands-free.svelte'
@@ -314,7 +314,7 @@
 
   <main>
     <div class="stage-area">
-      <Stage prayer={session.prayer} {posture} {character} palette={session.settings.palette} reducedMotion={reducedMotion.current}>
+      <Stage prayer={session.prayer} {posture} {character} palette={session.settings.palette} outfit={outfitColor(session.settings.outfit)} reducedMotion={reducedMotion.current}>
         <div class="overlay top-end">
           {#if session.handsFree && !setupOpen}
             <HandsFree onopen={() => (setupOpen = true)} />

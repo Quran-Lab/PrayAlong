@@ -29,3 +29,6 @@ assets/backgrounds/*.jpg
 
 # Quran Lab ASR runtime and model (73 MB, gated licence): `npm run fetch:asr`
 public/asr/
+
+# The reference figure for the companions (9 MB, CC BY 4.0, from Sketchfab): see tools/characters/reference.py
+tools/characters/source/

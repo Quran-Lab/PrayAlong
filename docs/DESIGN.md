@@ -21,7 +21,7 @@ differently, and why.
 | Brand ink | Indigo | **Plum** by default; the learner can pick Indigo, Teal or Graphite | Its own colour in the same family. Plum is the sky after Maghrib, and the colour of many prayer mats. |
 | Mark | Five rounded bars (a voice) | **A crescent** with tips as round as the bars | The moon times the prayers. It is the same moon as on the rug. |
 | Imagery | No photographs; dither and halftone in indigo | **Nature photographs** behind the 3D stage, one per prayer time, with no people | The companion needs a place to pray. |
-| Figures | Dithered faceless reciters | **3D faceless companions** (brother, sister) | They demonstrate movements. Still faceless. |
+| Figures | Dithered faceless reciters | **3D faceless companions** (brother, sister), hamzahs (ء) for eyes | They demonstrate movements. Still faceless. |
 | Type scale | Product scale | Adds **distance tokens** (`--d-*`) | Read from the prayer mat, two to seven steps from a laptop. |
 | Verdicts | Correct, khafi, jali | **Correct** marks words heard; **khafi** is used for notices only; **jali is never used** | PrayAlong never corrects anyone. |
 | Motion | Still UI; only live audio moves | **Motion explains change**: slides, crossfades, indicators that glide (see below) | A prayer is a sequence; motion shows where the learner is in it. |
@@ -90,7 +90,7 @@ by a circle that touches both edges, so the mark shares the rounded ends of the 
   icon. At runtime the favicon follows the chosen palette.
 - Never add a star, an outline or a gradient to it. It is not an icon for dark mode: Appearance
   uses words, not a moon.
-- The brother's thobe carries the Quran Lab bars on the chest, as the maker's label.
+- The companions' clothes carry no logo.
 - No stars, on the mark or anywhere: the rug carries the crescent alone.
 
 ## Files

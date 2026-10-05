@@ -9,7 +9,7 @@
   import { clock } from '@/lib/prayer-clock.svelte'
   import { methodLabel } from '@/lib/prayer-times'
   import { display, session, type TextSize, type Theme } from '@/state/session.svelte'
-  import { CHARACTERS } from './stage/characters'
+  import { CHARACTERS, FIGURE, OUTFITS } from './stage/characters'
   import Segmented from './ui/Segmented.svelte'
   import Sheet from './ui/Sheet.svelte'
   import Switch from './ui/Switch.svelte'
@@ -47,6 +47,22 @@
             <span>{t(c.nameKey)}</span>
           </button>
         {/each}
+      </div>
+      <div class="field">
+        <span class="label">{t('settings.outfit')}</span>
+        <div class="outfits" role="radiogroup" aria-label={t('settings.outfit')}>
+          {#each OUTFITS as o (o.id)}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={settings.outfit === o.id}
+              aria-label={t(`outfit.${o.id}`)}
+              title={t(`outfit.${o.id}`)}
+              style:--swatch={o.color}
+              onclick={() => update({ outfit: o.id })}
+            ></button>
+          {/each}
+        </div>
       </div>
       <p class="soon"><span>{t('companion.auto')}</span><span class="tag">{t('ui.soon')}</span></p>
     </section>
@@ -134,6 +150,10 @@
           <dt>{t('about.photo')}</dt>
           <dd><a href={photo.page} target="_blank" rel="noreferrer">{t('about.photoBy', { what: photo.what, by: photo.by })}</a></dd>
         </div>
+        <div>
+          <dt>{t('about.figure')}</dt>
+          <dd><a href={FIGURE.page} target="_blank" rel="noreferrer">{t('about.figureBy', { what: FIGURE.title, by: FIGURE.author })}</a></dd>
+        </div>
       </dl>
     </section>
   </div>
@@ -214,6 +234,31 @@
     background: var(--brand-tint);
     color: var(--brand);
     font-weight: 600;
+  }
+  /* The clothes: round swatches of the fabric; the chosen one is ringed in the brand ink. */
+  .outfits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .outfits button {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: var(--swatch);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--ink) 14%, transparent),
+      0 0 0 0 var(--surface),
+      0 0 0 0 var(--brand);
+    transition: box-shadow 260ms cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  .outfits button[aria-checked='true'] {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--ink) 14%, transparent),
+      0 0 0 3px var(--surface),
+      0 0 0 5px var(--brand);
   }
   /* Each swatch is the app icon in its palette: the tile keeps its colour in both themes. */
   .palettes {

@@ -1,107 +1,89 @@
 # Companion characters
 
-PrayAlong never hand-animates a character. Postures are authored once in a
-normalized humanoid space (`src/components/stage/rig/prayer-poses.ts`) and
-applied to whichever character is loaded:
+Both companions are one figure: **"MUSLIM PRAYER ISLAM SALAH" by sameka**
+([Sketchfab](https://sketchfab.com/3d-models/muslim-prayer-islam-salah-eb0f80a7278243b4988b159fc957bbd5),
+CC BY 4.0, credited in Settings → About and in `CHARACTERS`), a man with a Mixamo skeleton who
+prays two rak'ahs on a mat. We keep his body, his proportions and his motion, make him faceless
+like the Quran Lab mascot, with two hamzahs (ء, in the app's KFGQPC Uthman Taha Naskh) for eyes,
+and dress him twice.
 
-- **Spine, head and legs**: forward kinematics on standard humanoid bones.
-- **Hands**: IK to landmarks on *that* character — its chest, knees, thighs,
-  ears, the mat beside its head — with an explicit palm orientation.
-- **Grounding**: knees, feet and toes are kept on the mat and the toes stay
-  on one spot, as a real worshipper's do.
-- **Sujud**: the torso pitches until the character's own forehead rests on
-  the mat, whatever its proportions.
-
-- **Raising the hands** (Sifat Salat an-Nabi; al-Bukhari 735, 739): besides the opening takbir,
-  the hands go up to the ears before bowing, while rising from it ("sami‘allāhu liman ḥamidah")
-  and when standing up from the first tashahhud, then come down. These are waypoints with a short
-  hold (`waypoints()` in `prayer-poses.ts`, tested in `prayer-poses.test.ts`); hands-free counts
-  raised hands as standing when the learner rises.
-- **Ruku**: the back level, about 90° at the hips, the head in line with it and the legs straight.
-
-Tested on three unrelated third-party rigs (a Mixamo mannequin, a Ready
-Player Me avatar and a stylised cartoon character) with no per-character
-changes, and on the four PrayAlong companions below.
-
-## The cast
-
-| | File | Look |
+| Id | Clothes | Build |
 | --- | --- | --- |
-| Yusuf | `public/avatars/yusuf.glb` | Swoopy brown hair, cream kurta, olive trousers |
-| Maryam | `public/avatars/maryam.glb` | Dusty-rose hijab over a cream under-scarf, periwinkle dress |
-| Ahmad | `public/avatars/ahmad.glb` | White kufi, short beard, stone thobe over sirwal |
-| Aisha | `public/avatars/aisha.glb` | Sand hijab with a long cape, plum abaya |
+| `brother` | A loose gamis above the ankles (mandarin collar, buttoned placket, chest pocket, no logo) over loose trousers that stop above the ankles; short hair; bare feet | `tools/characters/build_brother.py` |
+| `sister` | A loose abaya to the floor; a khimar with a niqab (an opening at the eyes only) falling from the head over the shoulders, the chest and the arms to the thighs; black socks | `tools/characters/build_sister.py` |
 
-Each is ~1 MB and ~30k triangles, T-pose, Mixamo skeleton with finger roots,
-eyes modelled closed. They're built by Blender scripts — reproducible and
-editable:
+Nothing is tight: every garment hangs from the shoulders (and the khimar from the head) with
+3–4 cm of ease and is draped by a cloth simulation in every posture. The clothes are black by
+default; Settings → Companion → Clothes recolours the `Thobe`, `Sirwal`, `Abaya` and `Khimar`
+materials (`OUTFITS` in `src/components/stage/characters.ts`).
+
+## The postures, and where they come from
+
+The postures are taken from the figure's own prayer and set right where it differs from
+al-Albani's *Talkhis Sifat Salat an-Nabi* (the app's main source; a woman prays as a man does,
+"الرجل والمرأة في ذلك سواء"). `tools/characters/poses.py`:
+
+| Posture | Talkhis | The clip | Here |
+| --- | --- | --- | --- |
+| `takbir` | palms level with the shoulders, sometimes up to the tips of the ears, fingers outstretched | hands above the head, fingers splayed | wrists at the shoulders, fingertips at the ears, palms to the qibla, fingers outstretched, in front of the ears |
+| `qiyam` | the right hand on the left, on the chest | at the stomach | on the chest, right over left |
+| `ruku` | palms on the knees, fingers apart, back stretched, head neither raised nor lowered, elbows away | back rounded, head hanging | back flat (the legs lean back slightly so the palms reach), head in line, palms over the kneecaps |
+| raising the hands | before bowing and on rising from it (al-Bukhari 735) | only on rising | both (`takbir` as a waypoint) |
+| `itidal` | stand straight; no folding of the hands here | arms by the sides | as the clip |
+| `descend` | down onto the hands, before the knees (Abu Dawud 840) | hands and knees together | hands on the mat first, knees still up |
+| `sujud` | forehead and nose, palms flat by the shoulders, fingers together to the qibla, forearms raised, heels together, toes bent | as described, fingers splayed | fingers together |
+| `jalsah` | iftirash, the right foot upright | iftirash | as the clip (lifted onto the mat) |
+| sitting of rest, `rise` | sit straight, then rise on the fists like kneading dough (al-Bukhari 823) | stands straight up from sujud | `jalsah`, then up on clenched fists |
+| `tashahhud` | iftirash; the right hand closed, the index finger pointing; the left palm open | — | as described |
+| `tawarruk` | the final tashahhud: the left hip on the mat | tawarruk | as the clip, pointing finger |
+| `salam-*` | turn until the whiteness of the cheek is seen | ~45° | 75° |
+
+Each posture is a glTF animation in the character file. The app (`performer.ts`) blends the bones
+between them, through the waypoints the Sunnah moves by (`waypoints()` in `prayer-poses.ts`):
+the hands rise before ruku and on rising, the hands go down before the knees, the body sits for a
+moment before standing up from a prostration and rises on its fists, and the hands rise again
+when standing up from the first tashahhud. `performer.test.ts` checks every posture against the
+table above (hand heights, a level back, contacts with the mat, the pointing finger, the turn of
+the salam).
+
+## How a companion is built
 
 ```bash
-pip install bpy==5.0.1 scikit-image
-python3 tools/characters/build_yusuf.py        # ~3–5 min; also maryam, ahmad, aisha
-python3 tools/characters/validate_glb.py public/avatars/*.glb
+# Blender 5.0 (bpy) on Python 3.11 with numpy, scipy, scikit-image, Pillow
+# tools/characters/source/muslim_prayer_islam_salah.glb: download it from Sketchfab (not in git)
+CHAR_CACHE=/tmp/chars python3 tools/characters/build_brother.py   # ~25 min with the cloth bake
+CHAR_CACHE=/tmp/chars python3 tools/characters/build_sister.py    # ~40 min
+node tools/characters/portrait.mjs brother sister                  # the picker portraits (dev server on :5180)
 ```
 
-`common.py` holds the modelling, rig, weighting and export helpers; `kit.py`
-the shared head/face, hands, feet, skeletons, hijab builder and weight
-rules. Options: `NO_RENDER=1` (export only), `POSES=1` (render the postures
-in Blender), `CHAR_CACHE=<dir>`, `PREVIEW_DIR=<dir>`.
-
-Known rough edges: a small dark sliver at the hijab cape edge beside the
-right arm when sitting; long skirts read slightly boxy on the lap and the
-hem trim stretches in sujud; Ahmad has a tiny notch at the collar opening.
-
-Portraits for the picker (`public/avatars/<id>.webp`) are cropped from
-Pose Lab renders so they match the app's lighting.
-
-## Asset spec
-
-| | |
-| --- | --- |
-| Format | **GLB** (glTF 2.0 binary) or **VRM** 0.x/1.0 |
-| Skeleton | Humanoid. GLB: Mixamo bone names, with or without the `mixamorig:` prefix (Mixamo, AccuRIG, Meshy, Tripo and Avaturn all export these). VRM: standard humanoid mapping. |
-| Rest pose | T-pose or A-pose, facing +Z, Y up. Any scale. |
-| Required bones | Hips, Spine, Head, both arms (upper/lower/hand), both legs (upper/lower/foot). Recommended: Spine1/2, Neck, ToeBase, finger roots (Index1/Middle1/Pinky1) for accurate palms. |
-| Face | Eyes close during prayer if the asset has `eyeBlinkLeft`/`eyeBlinkRight` (ARKit) morph targets or a VRM `blink` expression. A gentle smile uses `mouthSmile*` / VRM `happy`. |
-| Budget | ≤ 30k triangles, ≤ 2 × 2048² textures, ≤ 6 MB. |
-| Clothing | Modest prayer clothing. Long garments (thobe, abaya, jilbab) work best skinned to the legs with a little extra hip/thigh weight so the hem follows when kneeling. |
-
-## The cast
-
-| Id | Look | Build |
-| --- | --- | --- |
-| `brother` | Adult, faceless (cream face and ears, short black hair at the temples): black kufi, long black thobe with a mandarin collar, three buttons, cuffs and the Quran Lab mark on the chest, bare feet | `tools/characters/build_brother.py` |
-| `sister` | Adult, faceless: black khimar falling like a bell to the waist, headband and niqab with a cream eye strip, slim black abaya to the floor, black socks | `tools/characters/build_sister.py` |
-
-Both follow the brief's pose sheet (`prayer_app_assets/images`, 32 steps): a slim, stylised adult
-of about seven heads, long arms, hands with fingers. They share the tall body in
-`tools/characters/kit.py` (`tall_body`, `tall_head`, `adult_hand`, `tall_field`, `mark_sdf`), and the
-khimar uses `hijab_weights` and the abaya `skirt_weights` from `main`. Brother 29.5k triangles,
-sister 31.7k (the khimar's thin hem needs the extra faces). Both pass `validate_glb.py`.
-Rebuild a GLB with `NO_RENDER=1 python3 tools/characters/build_sister.py`, and
-its picker thumbnail with `THUMB_ONLY=1` (needs `avifenc`).
-
-The companion is picked in Settings. Picking it from the camera is a placeholder for now; see
-[FEATURE-GAPS.md](FEATURE-GAPS.md#companion-matching-from-the-camera-a-placeholder-for-now).
-
-## Getting the look from the mockup
-
-The mockup's soft, rounded Pixar-like style is a modelling job, not a code
-job. Two routes that land in the spec above:
-
-1. **Commission** a character artist with this page as the brief.
-2. **Image → 3D → auto-rig**: generate from the mockup render with an
-   image-to-3D tool (Meshy, Tripo, Rodin), auto-rig it (Mixamo or AccuRIG),
-   export GLB in T-pose. Clean up in Blender if needed.
-
-Ideas for more: an elder, a younger child, more skin tones and clothing
-styles, so everyone can pick a companion who feels like them.
+1. **`reference.py`** loads the figure into a clean scene: the 52 human bones only (the face rig
+   and the animation controls go, their weights handed to the nearest human bone), the meshes
+   bound in a standing A-pose at 1.75 m, and every frame of his prayer sampled as world matrices.
+   The importer must not guess the bind pose (the head is bound with the face rig).
+2. **`poses.py`** picks each posture's frame from the clip and applies the corrections above (IK
+   for the hands, the spine levelled in ruku, fingers curled or opened), then settles the sitting
+   postures onto the mat.
+3. **`figure.py`** makes the head faceless (the face smoothed into one surface, the painted
+   features covered with the skin's own colour, the eyes as hamzah decals traced from the font),
+   gives the brother short hair, keeps the figure's own loose trousers cut above the ankles, and
+   adds a slim body under the clothes. `FACE=1` keeps the face.
+4. **`wardrobe.py`** turns a garment shape into an open sheet of cloth (cut at the hem, cuffs,
+   neckline and the niqab's eye slit), with skin weights from the body underneath and a pin group
+   (what is held to the body: the shoulders, the hood, the gamis' placket and pocket).
+5. **`drape.py`** walks the body through the prayer in order and simulates the cloth around it
+   (the body, the trousers and the mat are colliders; the abaya is one for the khimar). Each
+   posture's settled cloth is pushed clear of the body, kept on the mat, and un-skinned into the
+   rest pose as a morph target `pose_<posture>`; `ClothDrape` (`garment.ts`) blends them in the app.
+   With `CHAR_CACHE` set the simulation is reused while the garments, the poses and the walk are
+   unchanged; `DRAPE=0` skips it for a quick look.
 
 ## Adding one
 
-1. Drop the file in `public/avatars/`.
-2. Add an entry (with a `thumbnail`) to `src/components/stage/characters.ts`.
-3. Check it in the Pose Lab: `/?lab&pose=sujud&character=/avatars/<file>.glb`
-   (add `&az=1.57` for a side view).
+A companion is a GLB with Mixamo bone names, one animation per posture named as in `POSE_NAMES`
+(`prayer-poses.ts`), and, for long clothes, `pose_<posture>` morph targets. The quickest way is a
+new `build_*.py` on the same reference figure with other clothes. Then add an entry with a
+`thumbnail` to `src/components/stage/characters.ts` and check it in the Pose Lab:
+`/?lab&pose=sujud&character=/avatars/<file>.glb` (add `&az=1.57` for a side view).
 
-The **Companion** picker in Settings lists every entry.
+The four earlier companions in `public/avatars/` (Yusuf, Maryam, Ahmad, Aisha, from
+`build_yusuf.py` and friends) carry no postures and are not offered.

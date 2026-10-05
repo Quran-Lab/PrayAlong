@@ -42,9 +42,9 @@ src/
   lib/            Prayer-time detection (adhan), location, wake lock, brand (palettes, crescent)
   components/     UI (Svelte 5, PrayAlong design system): header, recitation, dock, panels, sheets
     stage/        3D stage (plain three.js): photo backdrop, lighting, rug, camera, character
-      rig/        humanoid.ts   — adapts any VRM / Mixamo-style rig to one normalized skeleton
-                  prayer-poses.ts — the postures, authored once for every character
-                  performer.ts  — blends postures, grounds the body, IK hands, forehead contact
+      rig/        humanoid.ts   — loads the character (Mixamo-style rig) and its posture animations
+                  prayer-poses.ts — the postures' names and the Sunnah's way between them
+                  performer.ts  — blends the character's own postures; garment.ts its draped clothes
   handsfree/      Camera → MediaPipe / DETRPose (Web Worker) → pose class → stable pose changes
   voice/          voice.svelte.ts — qari clips, the voice coach, and the microphone listener
     asr/          Quran Lab ASR client, phoneme targets per line, word-by-word follow
@@ -65,15 +65,15 @@ full-size originals there and run `npm run backgrounds` (needs `cjxl`,
 
 ## Characters
 
-The stage is character-agnostic: any humanoid VRM, or GLB with a
-Mixamo-style skeleton, plays every posture with no per-character tuning.
-See [docs/characters.md](docs/characters.md) for the asset spec and how to
-add one. The two companions, a brother (kufi and thobe) and a sister (khimar,
-niqab and abaya), are faceless, about seven heads tall after the brief's pose
-sheet, and built from code: `tools/characters/build_brother.py` and
-`build_sister.py`. The chibi companions from `main` (Yusuf, Maryam, Ahmad,
-Aisha) are still in `public/avatars/` but not in the picker, because they have
-faces.
+Both companions are one figure, sameka's "MUSLIM PRAYER ISLAM SALAH" (Sketchfab, CC BY 4.0),
+faceless like the Quran Lab mascot with two hamzahs for eyes: a brother in a loose gamis over
+loose trousers, both above the ankles, and a sister in an abaya and a khimar with a niqab that
+covers her chest and arms. Each carries its prayer postures in its file, taken from the figure's
+own prayer and set right by al-Albani's Talkhis Sifat Salat; the clothes are real cloth,
+simulated around the body in every posture and baked as morph targets, in a colour the learner
+picks. See [docs/characters.md](docs/characters.md) (the fiqh table, the build, adding one). The
+chibi companions from `main` (Yusuf, Maryam, Ahmad, Aisha) are still in `public/avatars/` but carry
+no postures and are not offered.
 
 ## Voice
 
