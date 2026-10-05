@@ -12,7 +12,7 @@ const PALM_SINK = 0.004
 const FOREHEAD_SINK = 0.005
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
-const v = () => new THREE.Vector3()
+const v = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z)
 const q = () => new THREE.Quaternion()
 const vec = (d: Dir3, out = v()) => out.set(d[0], d[1], d[2])
 
@@ -168,6 +168,8 @@ export class Performer {
 
   /** Raise the hands going into ruku and rising from it (raf' al-yadayn). */
   raiseHands = false
+  /** Where each upper leg sits in its parent at rest (for the tuned leg drop). */
+  private legRest = new Map<'left' | 'right', THREE.Vector3>()
   /** Per-posture fine-tuning for this character (see tuning.ts). */
   tune: (pose: PoseName) => Tune = () => ZERO
   private pose: PoseName = 'rest'
@@ -193,6 +195,10 @@ export class Performer {
         o.receiveShadow = false
       }
     })
+    for (const side of ['left', 'right'] as const) {
+      const b = humanoid.raw[`${side}UpperLeg`]
+      if (b) this.legRest.set(side, b.position.clone())
+    }
     this.measure()
     this.jumpTo('rest')
   }
@@ -455,7 +461,36 @@ export class Performer {
       const from = this.fkFrom.get(bone) ?? q()
       this.fkCurrent.set(bone, (this.fkCurrent.get(bone) ?? q()).copy(from).slerp(to, e))
     }
-    for (const bone of Object.keys(h.raw) as HumanBone[]) h.setRotation(bone, this.fkCurrent.get(bone) ?? q())
+    // Tuned extra leg bend (degrees), blended with the posture change.
+    const ta = this.tune(this.from), tb = this.tune(this.pose)
+    const mix = (k: 'thigh' | 'shin' | 'foot' | 'spread') => THREE.MathUtils.lerp(ta[k], tb[k], e)
+    const legTune: Partial<Record<HumanBone, THREE.Quaternion>> = {}
+    const [thigh, shin, foot, spread] = [mix('thigh'), mix('shin'), mix('foot'), mix('spread')]
+    if (thigh || shin || foot || spread) {
+      for (const side of ['left', 'right'] as const) {
+        const s = side === 'left' ? 1 : -1
+        legTune[`${side}UpperLeg`] = this.toQuat([-thigh, 0, s * spread])
+        legTune[`${side}LowerLeg`] = this.toQuat([shin, 0, 0])
+        legTune[`${side}Foot`] = this.toQuat([foot, 0, 0])
+      }
+    }
+    // Per-bone tuned rotations (degrees), blended between the two postures.
+    for (const bone of new Set([...Object.keys(ta.bones), ...Object.keys(tb.bones)]) as Set<HumanBone>) {
+      const a = ta.bones[bone] ?? [0, 0, 0], b = tb.bones[bone] ?? [0, 0, 0]
+      const d = [0, 1, 2].map((i) => THREE.MathUtils.lerp(a[i]!, b[i]!, e))
+      const extra = this.toQuat(d)
+      legTune[bone] = legTune[bone] ? legTune[bone]!.clone().multiply(extra) : extra
+    }
+    for (const bone of Object.keys(h.raw) as HumanBone[]) {
+      const base = this.fkCurrent.get(bone) ?? q()
+      h.setRotation(bone, legTune[bone] ? base.clone().multiply(legTune[bone]!) : base)
+    }
+    // Legs back at their rest place before any tuned drop below.
+    for (const side of ['left', 'right'] as const) {
+      const b = h.raw[`${side}UpperLeg`]
+      const rest = this.legRest.get(side)
+      if (b && rest) b.position.copy(rest)
+    }
     this.poseFingers(target, e)
 
     // Gentle breathing so the figure never looks frozen.
@@ -472,8 +507,22 @@ export class Performer {
 
     // 2b. Tuned sink into the rug (blends with the posture change).
     const sink = THREE.MathUtils.lerp(this.tune(this.from).sink, this.tune(this.pose).sink, e) * STAGE_HEIGHT
-    if (sink) {
-      this.rig.position.y -= sink
+    const mv = [0, 1, 2].map((i) => THREE.MathUtils.lerp(ta.move[i]!, tb.move[i]!, e) * STAGE_HEIGHT)
+    if (sink || mv.some(Boolean)) {
+      this.rig.position.y -= sink - mv[1]!
+      this.rig.position.x += mv[0]!
+      this.rig.position.z += mv[2]!
+      this.root.updateMatrixWorld(true)
+    }
+    // 2c. Tuned leg drop: legs move down from the hips (into the rug), the body stays.
+    const drop = THREE.MathUtils.lerp(ta.legDrop, tb.legDrop, e) * STAGE_HEIGHT
+    if (drop) {
+      for (const side of ['left', 'right'] as const) {
+        const b = h.raw[`${side}UpperLeg`]
+        if (!b?.parent) continue
+        const wp = b.getWorldPosition(v()).add(v(0, -drop, 0))
+        b.position.copy(b.parent.worldToLocal(wp))
+      }
       this.root.updateMatrixWorld(true)
     }
 
