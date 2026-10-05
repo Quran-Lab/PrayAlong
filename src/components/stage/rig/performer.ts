@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { FINGER_CHAINS, type Humanoid, type HumanBone } from './humanoid'
+import { FINGER_CHAINS, type Drape, type Humanoid, type HumanBone } from './humanoid'
 import { GRIPS, PRAYER_POSES, waypoints, type Dir3, type HandSpec, type PoseName, type PrayerPose } from './prayer-poses'
 
 /** Characters are scaled to this standing height so framing is consistent. */
@@ -9,6 +9,15 @@ const DEG = Math.PI / 180
 /** Root-space heights: y = 0 is the sole, which the stage sinks 6 mm into the plush. */
 const PALM_SINK = 0.004
 const FOREHEAD_SINK = 0.005
+/** Which corrective robe shape each floor posture uses. */
+const DRAPE: Partial<Record<PoseName, Drape>> = {
+  kneel: 'kneel',
+  sujud: 'sujud',
+  jalsah: 'sit',
+  tashahhud: 'sit',
+  'salam-right': 'sit',
+  'salam-left': 'sit',
+}
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
 const v = () => new THREE.Vector3()
@@ -72,6 +81,13 @@ interface Metrics {
   hands: { left: HandRest; right: HandRest }
   /** Per finger bone: the axis that curls it towards the palm (normalized space). */
   curlAxis: Map<HumanBone, THREE.Vector3>
+  /**
+   * Rest pitch of each thigh from straight down, and of each shin relative
+   * to its thigh (radians, +X pitch). Auto-rigs often put the knee joint in
+   * front of the hip, so a pose that folds the legs would fold them along
+   * that slant: sitting would lift the knees and stack the shins on the lap.
+   */
+  legRest: Record<'left' | 'right', { thigh: number; knee: number }>
 }
 
 /** A sparse set of skinned vertices, re-skinned each frame to find what touches the rug. */
@@ -86,7 +102,10 @@ interface Sample {
  * each vertex is ever needed, so each bone contributes one matrix row.
  */
 class SampleSet {
-  private groups: { mesh: THREE.SkinnedMesh; pos: Float32Array; bone: Uint16Array; weight: Float32Array }[] = []
+  // `morph` holds each morph target's bind-space offsets for the samples, so
+  // corrective cloth shapes (drapes) count when grounding the body.
+  private groups: { mesh: THREE.SkinnedMesh; pos: Float32Array; bone: Uint16Array; weight: Float32Array; morph: Float32Array[] }[] = []
+  private posed = new Float32Array(0)
   private row = new Float32Array(0)
   private m = new THREE.Matrix4()
   private toRoot = new THREE.Matrix4()
@@ -109,7 +128,19 @@ class SampleSet {
           weight[n * 4 + k] = skinWeight!.getComponent(i, k)
         }
       })
-      this.groups.push({ mesh, pos, bone, weight })
+      const bindLinear = new THREE.Matrix3().setFromMatrix4(mesh.bindMatrix)
+      const rest = new THREE.Vector3()
+      const morph = (mesh.geometry.morphAttributes.position ?? []).map((attr) => {
+        const out = new Float32Array(list.length * 3)
+        list.forEach((i, n) => {
+          p.fromBufferAttribute(attr as THREE.BufferAttribute, i)
+          if (!mesh.geometry.morphTargetsRelative) p.sub(rest.fromBufferAttribute(position as THREE.BufferAttribute, i))
+          p.applyMatrix3(bindLinear)
+          out.set([p.x, p.y, p.z], n * 3)
+        })
+        return out
+      })
+      this.groups.push({ mesh, pos, bone, weight, morph })
     }
     this.size = samples.length
   }
@@ -117,7 +148,18 @@ class SampleSet {
   /** Lowest sample, as a height in `root`'s space. */
   lowest(root: THREE.Object3D) {
     let low = Infinity
-    for (const { mesh, pos, bone, weight } of this.groups) {
+    for (const { mesh, pos: bindPos, bone, weight, morph } of this.groups) {
+      let pos = bindPos
+      const influences = mesh.morphTargetInfluences
+      if (morph.length && influences?.some((w) => w > 1e-4)) {
+        if (this.posed.length < bindPos.length) this.posed = new Float32Array(bindPos.length)
+        pos = this.posed.subarray(0, bindPos.length)
+        pos.set(bindPos)
+        morph.forEach((delta, t) => {
+          const w = influences[t] ?? 0
+          if (w > 1e-4) for (let i = 0; i < delta.length; i++) pos[i]! += w * delta[i]!
+        })
+      }
       const bones = mesh.skeleton.bones
       const inverses = mesh.skeleton.boneInverses
       if (this.row.length < bones.length * 4) this.row = new Float32Array(bones.length * 4)
@@ -299,6 +341,13 @@ export class Performer {
       return front - knee.z
     }
 
+    const pitchFromDown = (d: THREE.Vector3) => Math.atan2(-d.z, -d.y)
+    const legRest = (side: 'left' | 'right') => {
+      const hip = P(`${side}UpperLeg`)!, knee = P(`${side}LowerLeg`)!, ankle = P(`${side}Foot`)!
+      const thigh = pitchFromDown(knee.clone().sub(hip))
+      return { thigh, knee: pitchFromDown(ankle.clone().sub(knee)) - thigh }
+    }
+
     const footY = Math.min(P('leftFoot')!.y, P('rightFoot')!.y)
     const toesY = h.raw.leftToes ? P('leftToes')!.y : footY * 0.35
     this.metrics = {
@@ -312,6 +361,7 @@ export class Performer {
       restWorld,
       hands: { left: hand('left'), right: hand('right') },
       curlAxis: new Map(),
+      legRest: { left: legRest('left'), right: legRest('right') },
     }
     // Curl axes: finger direction × palm normal, so a positive angle folds
     // each joint towards the palm. Rigs without fingers simply skip this.
@@ -451,6 +501,10 @@ export class Performer {
       this.fkCurrent.set(bone, (this.fkCurrent.get(bone) ?? q()).copy(from).slerp(to, e))
     }
     for (const bone of Object.keys(h.raw) as HumanBone[]) h.setRotation(bone, this.fkCurrent.get(bone) ?? q())
+    for (const side of ['left', 'right'] as const) {
+      h.setRotation(`${side}UpperLeg`, this.legRotation(`${side}UpperLeg`))
+      h.setRotation(`${side}LowerLeg`, this.legRotation(`${side}LowerLeg`))
+    }
     this.poseFingers(target, e)
 
     // Gentle breathing so the figure never looks frozen.
@@ -460,7 +514,13 @@ export class Performer {
     h.applyPose()
     this.root.updateMatrixWorld(true)
 
-    // 2. Plant the body on the mat; in sujud, lower the forehead onto it.
+    // 2. Let the robe settle (corrective drape shapes fade in with the
+    // posture, before grounding so the settled cloth is what rests on the
+    // mat), then plant the body; in sujud, lower the forehead onto it.
+    for (const drape of ['sit', 'kneel', 'sujud'] as const) {
+      const w = (DRAPE[this.pose] === drape ? e : 0) + (DRAPE[this.from] === drape ? 1 - e : 0)
+      h.setDrape(drape, Math.min(1, w))
+    }
     this.ground(target)
     const forehead = this.pose === 'sujud' ? e : this.from === 'sujud' ? 1 - e : 0
     if (forehead > 0) this.lowerForehead(target, forehead)
@@ -486,6 +546,24 @@ export class Performer {
     h.setExpression('blink', this.eyes)
     h.setExpression('relaxed', this.eyes * 0.6)
     h.finish(dt)
+  }
+
+  /**
+   * The authored leg rotation, plus (when the knee is folded) a pitch that
+   * first straightens the rig's own rest slant, so folded legs follow the
+   * authored angles: knees on the mat, shins under the thighs. Straight
+   * standing legs are left exactly as the character was modelled.
+   */
+  private legRotation(bone: 'leftUpperLeg' | 'rightUpperLeg' | 'leftLowerLeg' | 'rightLowerLeg') {
+    const side = bone.startsWith('left') ? 'left' : 'right'
+    const fk = this.fkCurrent.get(bone) ?? q()
+    const knee = this.fkCurrent.get(`${side}LowerLeg`) ?? q()
+    const fold = v().set(0, -1, 0).applyQuaternion(knee).angleTo(v().set(0, -1, 0))
+    const s = THREE.MathUtils.smoothstep(fold, 30 * DEG, 80 * DEG)
+    if (s <= 0) return fk.clone()
+    const rest = this.metrics.legRest[side]
+    const angle = -(bone.endsWith('UpperLeg') ? rest.thigh : rest.knee) * s
+    return fk.clone().multiply(q().setFromAxisAngle(v().set(1, 0, 0), angle))
   }
 
   /** Blend each hand's finger shape from the previous posture's grip to this one's. */
@@ -553,8 +631,8 @@ export class Performer {
       const bend = q().setFromAxisAngle(X, extra)
       const unbend = q().setFromAxisAngle(X, -extra)
       h.setRotation('hips', (this.fkCurrent.get('hips') ?? q()).clone().premultiply(bend))
-      h.setRotation('leftUpperLeg', unbend.clone().multiply(this.fkCurrent.get('leftUpperLeg') ?? q()))
-      h.setRotation('rightUpperLeg', unbend.clone().multiply(this.fkCurrent.get('rightUpperLeg') ?? q()))
+      h.setRotation('leftUpperLeg', unbend.clone().multiply(this.legRotation('leftUpperLeg')))
+      h.setRotation('rightUpperLeg', unbend.clone().multiply(this.legRotation('rightUpperLeg')))
       h.applyPose()
       this.root.updateMatrixWorld(true)
       this.ground(target)
@@ -593,7 +671,7 @@ export class Performer {
         break
       }
       case 'thighs': {
-        // On top of the thigh, a little behind the knee.
+        // On top of the thigh, behind the knee, so the fingers end at the kneecap.
         const hip = P(`${side}UpperLeg`)
         const knee = P(`${side}LowerLeg`)
         const along = knee.clone().sub(hip).normalize()
@@ -601,7 +679,7 @@ export class Performer {
         // Upright thighs (kneeling): rest the hands on their front instead.
         if (top.lengthSq() < 0.09) top.set(0, 0, 1)
         top.normalize()
-        target = hip.lerp(knee, 0.55).addScaledVector(top, 0.05 * H)
+        target = hip.lerp(knee, 0.45).addScaledVector(top, 0.05 * H)
         break
       }
       case 'ground': {

@@ -70,11 +70,20 @@ const REQUIRED: HumanBone[] = [
 ]
 
 export type Expression = 'blink' | 'happy' | 'relaxed'
+/**
+ * Corrective cloth shapes for floor postures: how a long robe settles when
+ * sitting, kneeling or in sujud. Authored per character (see
+ * docs/characters.md) and faded in with the posture by the performer.
+ */
+export type Drape = 'sit' | 'kneel' | 'sujud'
 
-const MORPH_ALIASES: Record<Expression, string[]> = {
+const MORPH_ALIASES: Record<Expression | `drape:${Drape}`, string[]> = {
   blink: ['eyeBlinkLeft', 'eyeBlinkRight', 'eyesClosed', 'EyesClosed', 'Blink', 'blink', 'Eye_Blink_L', 'Eye_Blink_R'],
   happy: ['mouthSmileLeft', 'mouthSmileRight', 'mouthSmile', 'Smile', 'smile'],
   relaxed: ['relaxed', 'Relaxed'],
+  'drape:sit': ['drape_sit'],
+  'drape:kneel': ['drape_kneel'],
+  'drape:sujud': ['drape_sujud'],
 }
 
 export interface Humanoid {
@@ -88,6 +97,8 @@ export interface Humanoid {
   /** Per-frame work that must run after IK (VRM spring bones, expressions…). */
   finish(dt: number): void
   setExpression(name: Expression, weight: number): void
+  /** Corrective cloth shape weight (0..1). Characters without one ignore it. */
+  setDrape(name: Drape, weight: number): void
   dispose(): void
 }
 
@@ -125,7 +136,7 @@ class GltfHumanoid implements Humanoid {
   private normalized = new Map<HumanBone, THREE.Quaternion>()
   private restLocal = new Map<HumanBone, THREE.Quaternion>()
   private parentRestWorld = new Map<HumanBone, THREE.Quaternion>()
-  private morphs: { mesh: THREE.Mesh; index: number; expression: Expression }[] = []
+  private morphs: { mesh: THREE.Mesh; index: number; expression: Expression | `drape:${Drape}` }[] = []
   private tmp = new THREE.Quaternion()
 
   constructor(readonly scene: THREE.Object3D) {
@@ -141,7 +152,7 @@ class GltfHumanoid implements Humanoid {
       }
       if ((o as THREE.Mesh).isMesh && (o as THREE.Mesh).morphTargetDictionary) {
         const dict = (o as THREE.Mesh).morphTargetDictionary!
-        for (const [expression, names] of Object.entries(MORPH_ALIASES) as [Expression, string[]][]) {
+        for (const [expression, names] of Object.entries(MORPH_ALIASES) as [Expression | `drape:${Drape}`, string[]][]) {
           for (const n of names) if (n in dict) this.morphs.push({ mesh: o as THREE.Mesh, index: dict[n]!, expression })
         }
       }
@@ -181,6 +192,11 @@ class GltfHumanoid implements Humanoid {
     for (const m of this.morphs) if (m.expression === name && m.mesh.morphTargetInfluences) m.mesh.morphTargetInfluences[m.index] = weight
   }
 
+  setDrape(name: Drape, weight: number) {
+    const key = `drape:${name}` as const
+    for (const m of this.morphs) if (m.expression === key && m.mesh.morphTargetInfluences) m.mesh.morphTargetInfluences[m.index] = weight
+  }
+
   dispose() {}
 }
 
@@ -215,6 +231,8 @@ class VrmHumanoid implements Humanoid {
   setExpression(name: Expression, weight: number) {
     this.vrm.expressionManager?.setValue(name, weight)
   }
+
+  setDrape() {}
 
   dispose() {
     this.scene.traverse((o) => {

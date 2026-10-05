@@ -95,10 +95,10 @@ const kneelingLegs = (hips: number, hipFlex: number, shinLift = 16) => {
  * Thighs forward, shins folded back under them.
  */
 const sittingLegs = {
-  leftUpperLeg: [-84, 0, 4],
-  rightUpperLeg: [-84, 0, -4],
-  leftLowerLeg: [172, 0, 0],
-  rightLowerLeg: [172, 0, 0],
+  leftUpperLeg: [-78, 0, 4],
+  rightUpperLeg: [-78, 0, -4],
+  leftLowerLeg: [168, 0, 0],
+  rightLowerLeg: [168, 0, 0],
   leftFoot: [92, 0, 0],
   rightFoot: [8, 0, 0],
   rightToes: [-70, 0, 0],

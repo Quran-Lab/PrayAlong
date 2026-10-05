@@ -11,6 +11,12 @@ applied to whichever character is loaded:
   on one spot, as a real worshipper's do.
 - **Sujud**: the torso pitches until the character's own forehead rests on
   the mat, whatever its proportions.
+- **Folded legs**: auto-rigs often put the knee joint in front of the hip.
+  When the knees fold, the performer first straightens that rest slant, so
+  the knees land on the mat and the shins fold under the thighs instead of
+  over them. Straight standing legs stay as modelled.
+- **Robe drapes**: optional morph targets `drape_sit`, `drape_kneel` and
+  `drape_sujud` fade in with those postures (see step 9 below).
 
 Tested on three unrelated third-party rigs (a Mixamo mannequin, a Ready
 Player Me avatar and a stylised cartoon character) with no per-character
@@ -52,15 +58,47 @@ point in tashahhud.
    scaled and aligned at the wrist, coloured with the character's skin. Also
    renames the spine to Mixamo names, smooths the skirt weights so long
    robes drape when kneeling, and recomputes normals.
-7. Compress: `npx @gltf-transform/cli optimize in.glb public/avatars/x.glb
-   --compress meshopt --texture-compress webp --simplify false`.
-8. `validate_glb.py` on the uncompressed file; `render_turn.py` for turntables.
+7. `cuff.py`: cleans the sleeve ends left by the hand swap (drops loose
+   shards, fills notches and pinholes, snaps the edge to one round hem, adds
+   a short inturned hem ring with a cloth texel) and sets the hand colour to
+   the face and feet skin as the app renders it (sRGB texel to linear).
+8. `reweight.py`: rebuilds the upper-body skin weights straight in the GLB
+   (vertex order kept). Meshy weights the collar to the head and the chest
+   to the upper arms, which shreds the sleeves in takbir and lifts a hump
+   behind the neck in ruku. Sleeves are found by flood fill from the cuff
+   and weighted along the arm (cuff fully forearm); torso, neck and head
+   follow a vertical profile on the spine chain (rigid head from the chin);
+   the skirt keeps its leg weights; seams are relaxed with a Laplace solve.
+9. Robe drapes for the floor postures (corrective morph targets
+   `drape_sit`, `drape_kneel`, `drape_sujud`, faded in by the performer):
+   - `pose-seq.test.ts` dumps the real Performer moving from qiyam into
+     jalsah, kneel and sujud, frame by frame (run it with a vitest config
+     whose `include` points at it; env `POSE_GLB`, `POSES`, `POSE_OUT`);
+   - `prep_cloth.py` marks what may move (the skirt below the waist; torso,
+     sleeves and bare feet ride with the skin);
+   - `clothsim.py` (Blender, `blenv`) replays that motion as a point cache
+     and simulates the skirt as cloth over capsules on the posed thighs,
+     shins, feet and seat, with self collision and the rug as a floor that
+     rises to the knees; the cloth below the knees may shrink so the
+     standing-length hem gathers under the legs;
+   - `bake_morph.py` smooths the settled cloth lightly and stores
+     `S^-1 (settled - skinned)` per vertex as a morph target in rest space,
+     with matching normal deltas. Grounding counts morphs, so the body comes
+     down onto the settled cloth.
+10. Compress: `npx @gltf-transform/cli optimize in.glb public/avatars/x.glb
+   --compress meshopt --texture-compress webp --texture-size 2048
+   --simplify false --join false --instance false --palette false`.
+11. `validate_glb.py` on the uncompressed file; `render_turn.py` for turntables.
+
+The uncompressed results live in `prayalong-assets/final/<id>_drape.glb`.
 
 Credits: hands from Quaternius Universal Base Characters (CC0). Bodies
 generated with Meshy from PrayAlong's own concept art.
 
-Known rough edges: the robe reads as a smooth block on the lap when sitting;
-the hands are a touch lighter than the face texture.
+Known rough edges: the cloth on the floor is simulated on a coarse mesh, so
+the hem pooled behind the knees still shows some small crumples, most of
+all on Maryam's wide abaya. The heads are large by design (soft chibi
+proportions), so the cap dominates the view from above in sujud.
 
 Portraits for the picker (`public/avatars/<id>.webp`) are cropped from
 turntable renders.
