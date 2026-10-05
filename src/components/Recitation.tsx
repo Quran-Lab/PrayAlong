@@ -5,6 +5,29 @@ import { useLocale, useT } from '@/i18n'
 import { cn } from '@/lib/cn'
 import type { Step } from '@/sequence/types'
 import { display, useSession, type TextSize } from '@/state/session'
+import { useSpokenWord, type Speaking } from '@/audio/use-companion-audio'
+
+/** Words of a line, with the one being spoken lit (whole words keep Arabic letters joined). */
+function Words({ text, lit, total }: { text: string; lit: number; total?: number }) {
+  const words = text.split(/(\s+)/)
+  const real = words.filter((w) => w.trim()).length
+  // Map the Arabic word index onto this text's words (transliteration splits differently).
+  const at = lit < 0 ? -1 : total && total !== real ? Math.min(real - 1, Math.floor(((lit + 0.5) * real) / total)) : lit
+  let k = -1
+  return (
+    <>
+      {words.map((w, i) => {
+        if (!w.trim()) return w
+        k++
+        return (
+          <span key={i} className={cn('transition-colors duration-200', at >= 0 && (k === at ? 'text-mint' : k < at ? 'text-ink' : 'text-ink-muted'))}>
+            {w}
+          </span>
+        )
+      })}
+    </>
+  )
+}
 
 /** Size steps on top of the fluid scale (settings: medium, large, extra large). */
 const SCALE: Record<TextSize, number> = { m: 0.86, l: 1, xl: 1.16 }
@@ -21,7 +44,19 @@ const calm = { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const }
  * is how to say it; its meaning sits beneath in the reader's language, and
  * the next line waits quietly below so nobody is caught off guard.
  */
-export function Recitation({ step, next, timedMs, distance = false }: { step: Step; next?: Step; timedMs: number | null; distance?: boolean }) {
+export function Recitation({
+  step,
+  next,
+  timedMs,
+  distance = false,
+  speaking = null,
+}: {
+  step: Step
+  next?: Step
+  timedMs: number | null
+  distance?: boolean
+  speaking?: Speaking | null
+}) {
   const t = useT()
   const locale = useLocale()
   const settings = useSession((s) => s.settings)
@@ -34,6 +69,9 @@ export function Recitation({ step, next, timedMs, distance = false }: { step: St
   const arabicHero = show.arabic && !show.transliteration
   const long = (arabicHero ? line.arabic : line.transliteration).length > 46
   const upcoming = next && next.recitationId !== step.recitationId ? resolveLine(next.recitationId, locale) : null
+  const live = speaking?.stepId === step.id ? speaking : null
+  const word = useSpokenWord(live)
+  const arabicWords = line.arabic.split(/\s+/).filter(Boolean).length
 
   return (
     <div className="relative mx-auto grid w-full max-w-[46rem] px-5 text-center" aria-live="polite">
@@ -77,7 +115,7 @@ export function Recitation({ step, next, timedMs, distance = false }: { step: St
               className={cn('text-balance text-ink', quran ? 'quran' : 'arabic')}
               style={{ fontSize: `calc(${arabicHero ? 'var(--text-arabic)' : 'var(--text-arabic-sub)'} * ${k * (long && arabicHero ? 0.82 : 1)})` }}
             >
-              {line.arabic}
+              <Words text={line.arabic} lit={word} />
             </p>
           )}
           {show.transliteration && (
@@ -86,7 +124,7 @@ export function Recitation({ step, next, timedMs, distance = false }: { step: St
               className={cn('leading-[1.12] font-semibold tracking-[-0.018em] text-balance text-ink', show.arabic && 'mt-2 text-ink-soft')}
               style={{ fontSize: `calc(${long ? 'var(--text-hero-long)' : 'var(--text-hero)'} * ${k * (show.arabic ? 0.72 : 1)})` }}
             >
-              {line.transliteration}
+              <Words text={line.transliteration} lit={word} total={arabicWords} />
             </p>
           )}
           {show.translation && line.meaning && (

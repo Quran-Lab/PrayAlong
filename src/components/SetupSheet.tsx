@@ -93,7 +93,7 @@ export function SetupSheet({
       </div>
 
       {engineLabel && status === 'watching' && (
-        <p className="mt-2 text-center text-[11px] text-ink-faint">{engineLabel} · {t('hf.private')}</p>
+        <p className="mt-2 text-center text-sm text-ink-faint">{engineLabel} · {t('hf.private')}</p>
       )}
 
       <ol className="mt-4 space-y-2.5">

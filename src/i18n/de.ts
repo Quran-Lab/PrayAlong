@@ -138,6 +138,11 @@ export const de: Messages = {
 
   // Settings
   'settings.title': 'Einstellungen',
+  'settings.sound': 'Ton',
+  'settings.voice': 'Mit der Stimme des Begleiters rezitieren',
+  'settings.guide': 'Jede Bewegung laut erklären',
+  'settings.ambience': 'Geräusche der Tageszeit am Fenster',
+  'settings.volume': 'Lautstärke',
   'settings.language': 'Sprache',
   'settings.auto': 'Automatisch',
   'settings.show': 'Anzeigen',

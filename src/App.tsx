@@ -4,6 +4,7 @@ import { AlertDialog, Direction, Tooltip as RadixTooltip } from 'radix-ui'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { CameraBubble, DemoBar, HandsFreeButton } from '@/components/HandsFree'
 import { Logo } from '@/components/Logo'
+import { useCompanionAudio } from '@/audio/use-companion-audio'
 import { CompletePanel, ReadyPanel } from '@/components/Panels'
 import { PostureDock } from '@/components/PostureDock'
 import { PrayerChips, PrayerMenu } from '@/components/PrayerSelector'
@@ -27,6 +28,9 @@ import { PACE_FACTOR, currentStep, useSession } from '@/state/session'
 
 // The 3D stack is the heaviest part of the app; let the UI paint first.
 const CompanionStage = lazy(() => import('@/components/stage/CompanionStage').then((m) => ({ default: m.CompanionStage })))
+
+/** How long hands-free waits for a movement it cannot see before moving on anyway. */
+const BODY_GRACE_MS = 6000
 
 const stepMs = (step: Step, pace: keyof typeof PACE_FACTOR) => Math.max(step.timing.minMs, step.timing.expectedMs * PACE_FACTOR[pace])
 
@@ -79,7 +83,16 @@ export function App() {
   }, [prayer])
 
   useWakeLock(phase === 'praying')
-  const timedMs = useStepTimer(following)
+  const { speaking, audioMs } = useCompanionAudio({ phase, step, next: sequence.steps[index + 1], prayer, voice: character.id, locale, settings })
+  const timedMs = useStepTimer(following, audioMs)
+
+  // Praying behind the companion: when it recites, it leads (pause any time).
+  const leadOnBegin = useRef(phase)
+  useEffect(() => {
+    const s = useSession.getState()
+    if (leadOnBegin.current === 'ready' && phase === 'praying' && settings.voice && !s.handsFree) s.setAutoplay(true)
+    leadOnBegin.current = phase
+  }, [phase, settings.voice])
   useKeyboard(toggleHandsFree)
 
   // A soft chime when PrayAlong follows a movement, so nobody has to look up.
@@ -176,7 +189,7 @@ export function App() {
                   {phase === 'ready' && <ReadyPanel key="ready" clock={clock} handsFree={handsFree} onHandsFree={toggleHandsFree} />}
                   {phase === 'praying' && (
                     <motion.div key="praying" className="w-full" exit={{ opacity: 0 }}>
-                      <Recitation step={step} next={sequence.steps[index + 1]} timedMs={timedMs} distance={following} />
+                      <Recitation step={step} next={sequence.steps[index + 1]} timedMs={timedMs} distance={following} speaking={speaking} />
                     </motion.div>
                   )}
                   {phase === 'complete' && <CompletePanel key="complete" clock={clock} />}
@@ -219,17 +232,20 @@ export function App() {
  * Hands-free without a working camera falls back to timed guidance.
  * Returns the current line's duration so the UI can show a gentle timer.
  */
-function useStepTimer(following: boolean): number | null {
+function useStepTimer(following: boolean, audioMs: number | null): number | null {
   const { phase, index, sequence, autoplay, handsFree, settings, next } = useSession()
   const step = sequence.steps[index]!
   const after = sequence.steps[index + 1]
   const timed = phase === 'praying' && (autoplay || handsFree)
   const waitForBody = following && after !== undefined && after.pose !== step.pose
-  const ms = stepMs(step, settings.pace)
+  // When the companion recites, never cut it short; leave a breath after.
+  const ms = audioMs !== null ? Math.max(audioMs + 700, step.timing.minMs) : stepMs(step, settings.pace)
 
   useEffect(() => {
-    if (!timed || waitForBody) return
-    const id = setTimeout(next, ms)
+    if (!timed) return
+    // Waiting for the body: if the camera misses the movement, never stall;
+    // carry on a few seconds after the line is done.
+    const id = setTimeout(next, waitForBody ? ms + BODY_GRACE_MS : ms)
     return () => clearTimeout(id)
   }, [timed, waitForBody, ms, index, next])
 

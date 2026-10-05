@@ -171,10 +171,10 @@ function StageLights({ ambient, prayer }: { ambient: string; prayer: PrayerId })
 // ————————————————————————————————————————————————————————— camera
 
 const SHOTS: Record<'standing' | 'bowing' | 'floor' | 'sitting', { azimuth: number; elevation: number; target: [number, number, number]; fit: [number, number] }> = {
-  standing: { azimuth: 0.3, elevation: 0.16, target: [0, 0.8, 0.22], fit: [2.15, 1.6] },
-  bowing: { azimuth: 0.9, elevation: 0.17, target: [0, 0.66, 0.24], fit: [2.0, 1.9] },
-  floor: { azimuth: 0.95, elevation: 0.24, target: [0, 0.42, 0.4], fit: [1.7, 2.0] },
-  sitting: { azimuth: 0.6, elevation: 0.2, target: [0, 0.5, 0.3], fit: [1.7, 1.7] },
+  standing: { azimuth: 0.3, elevation: 0.16, target: [0, 0.72, 0.26], fit: [2.45, 1.75] },
+  bowing: { azimuth: 0.9, elevation: 0.17, target: [0, 0.6, 0.28], fit: [2.2, 2.05] },
+  floor: { azimuth: 0.95, elevation: 0.24, target: [0, 0.36, 0.42], fit: [1.85, 2.2] },
+  sitting: { azimuth: 0.6, elevation: 0.2, target: [0, 0.44, 0.34], fit: [1.85, 1.9] },
 }
 
 function shotFor(posture: PoseName) {

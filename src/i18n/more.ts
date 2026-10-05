@@ -139,6 +139,11 @@ export const fr: Messages = {
 
   // Settings
   'settings.title': 'Réglages',
+  'settings.sound': 'Son',
+  'settings.voice': 'Réciter avec la voix du compagnon',
+  'settings.guide': 'Expliquer chaque mouvement à voix haute',
+  'settings.ambience': 'Les sons de l’heure à la fenêtre',
+  'settings.volume': 'Volume',
   'settings.language': 'Langue',
   'settings.auto': 'Automatique',
   'settings.show': 'Afficher',
@@ -312,6 +317,11 @@ export const es: Messages = {
 
   // Settings
   'settings.title': 'Ajustes',
+  'settings.sound': 'Sonido',
+  'settings.voice': 'Recitar con la voz del compañero',
+  'settings.guide': 'Explicar cada movimiento en voz alta',
+  'settings.ambience': 'Los sonidos de la hora en la ventana',
+  'settings.volume': 'Volumen',
   'settings.language': 'Idioma',
   'settings.auto': 'Automático',
   'settings.show': 'Mostrar',
@@ -485,6 +495,11 @@ export const tr: Messages = {
 
   // Settings
   'settings.title': 'Ayarlar',
+  'settings.sound': 'Ses',
+  'settings.voice': 'Arkadaşın sesiyle oku',
+  'settings.guide': 'Her hareketi sesli açıkla',
+  'settings.ambience': 'Pencereden vaktin sesleri',
+  'settings.volume': 'Ses düzeyi',
   'settings.language': 'Dil',
   'settings.auto': 'Otomatik',
   'settings.show': 'Göster',
@@ -658,6 +673,11 @@ export const id: Messages = {
 
   // Settings
   'settings.title': 'Pengaturan',
+  'settings.sound': 'Suara',
+  'settings.voice': 'Bacakan dengan suara pendamping',
+  'settings.guide': 'Jelaskan setiap gerakan dengan suara',
+  'settings.ambience': 'Suasana waktu dari jendela',
+  'settings.volume': 'Volume',
   'settings.language': 'Bahasa',
   'settings.auto': 'Otomatis',
   'settings.show': 'Tampilkan',
@@ -831,6 +851,11 @@ export const nl: Messages = {
 
   // Settings
   'settings.title': 'Instellingen',
+  'settings.sound': 'Geluid',
+  'settings.voice': 'Reciteren met de stem van de metgezel',
+  'settings.guide': 'Elke beweging hardop uitleggen',
+  'settings.ambience': 'Geluiden van het uur bij het raam',
+  'settings.volume': 'Volume',
   'settings.language': 'Taal',
   'settings.auto': 'Automatisch',
   'settings.show': 'Weergeven',
@@ -1004,6 +1029,11 @@ export const ur: Messages = {
 
   // Settings
   'settings.title': 'ترتیبات',
+  'settings.sound': 'آواز',
+  'settings.voice': 'ساتھی کی آواز میں تلاوت',
+  'settings.guide': 'ہر حرکت کو بول کر سمجھائیں',
+  'settings.ambience': 'کھڑکی سے وقت کی آوازیں',
+  'settings.volume': 'آواز کی سطح',
   'settings.language': 'زبان',
   'settings.auto': 'خودکار',
   'settings.show': 'دکھائیں',
@@ -1177,6 +1207,11 @@ export const ar: Messages = {
 
   // Settings
   'settings.title': 'الإعدادات',
+  'settings.sound': 'الصوت',
+  'settings.voice': 'التلاوة بصوت الرفيق',
+  'settings.guide': 'شرح كل حركة بصوت مسموع',
+  'settings.ambience': 'أصوات الوقت من النافذة',
+  'settings.volume': 'مستوى الصوت',
   'settings.language': 'اللغة',
   'settings.auto': 'تلقائي',
   'settings.show': 'العرض',

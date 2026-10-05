@@ -102,7 +102,7 @@ export function CameraBubble({
           <CameraPreview stream={stream} className="aspect-[4/3] w-full opacity-90" />
         </button>
       )}
-      <div className="flex items-start gap-2 px-3 py-2.5 text-xs">
+      <div className="flex items-start gap-2 px-3 py-2.5 text-sm">
         <span className={cn('mt-1 size-1.5 shrink-0 rounded-full', isFollowing(status) ? 'animate-breathe bg-mint' : isFallback(status) ? 'bg-amber-300/80' : 'animate-breathe bg-white/50')} />
         <div className="min-w-0 leading-relaxed">
           <div className="text-ink-soft">{statusText(status)}</div>
@@ -168,7 +168,7 @@ export function DemoBar({
       role="toolbar"
       aria-label={t('demo.title')}
     >
-      <span className="hidden ps-2 pe-1 text-[11px] font-medium tracking-[0.14em] text-ink-muted uppercase sm:inline">{t('demo.title')}</span>
+      <span className="hidden ps-2 pe-1 text-sm font-medium text-ink-muted sm:inline">{t('demo.title')}</span>
       {DEMO_POSES.map(({ pose, icon }) => (
         <Tooltip key={pose} content={`${t(`pose.${pose}`)} · ${t('demo.keys')}`} side="top">
           <button
@@ -188,7 +188,7 @@ export function DemoBar({
       <span className="mx-0.5 h-7 w-px bg-line" />
       <button
         onClick={() => onAuto(!auto)}
-        className={cn('flex h-11 cursor-pointer items-center gap-1.5 rounded-xl px-3 text-xs font-medium', auto ? 'bg-mint/15 text-mint' : 'text-ink-soft hover:bg-white/[0.07]')}
+        className={cn('flex h-11 cursor-pointer items-center gap-1.5 rounded-xl px-3 text-sm font-medium', auto ? 'bg-mint/15 text-mint' : 'text-ink-soft hover:bg-white/[0.07]')}
       >
         {auto ? <Pause className="size-4 fill-current" /> : <Play className="size-4 fill-current" />}
         <span className="hidden sm:inline">{auto ? t('demo.stop') : t('demo.auto')}</span>

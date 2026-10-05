@@ -141,6 +141,11 @@ export const en = {
 
   // Settings
   'settings.title': 'Settings',
+  'settings.sound': 'Sound',
+  'settings.voice': 'Recite with the companion’s voice',
+  'settings.guide': 'Explain each movement aloud',
+  'settings.ambience': 'Sounds of the hour from the window',
+  'settings.volume': 'Volume',
   'settings.language': 'Language',
   'settings.auto': 'Automatic',
   'settings.show': 'Show',

@@ -32,7 +32,7 @@
 
   /* Fluid type: comfortable on a phone, readable from 1.5 m on a laptop
      sitting on the floor. */
-  --text-meta: clamp(0.82rem, 0.74rem + 0.25vw, 1rem);
+  --text-meta: clamp(0.92rem, 0.82rem + 0.25vw, 1.08rem);
   --text-body: clamp(1rem, 0.9rem + 0.35vw, 1.2rem);
   --text-meaning: clamp(1.05rem, 0.86rem + 0.62vw, 1.5rem);
   --text-hero: clamp(1.9rem, 1.1rem + 2.5vw, 3.7rem);
@@ -149,6 +149,12 @@ html,
 body,
 #root {
   height: 100%;
+}
+
+/* Everything in rem grows with the screen, so a laptop on the floor stays
+   readable from the prayer mat (16px on phones, up to 19px on big screens). */
+html {
+  font-size: clamp(16px, 9.5px + 0.62vw, 19px);
 }
 
 body {

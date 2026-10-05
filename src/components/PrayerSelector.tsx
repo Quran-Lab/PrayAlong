@@ -65,7 +65,7 @@ export function PrayerChips({ clock, onRequestSwitch }: { clock: PrayerClock; on
                 <motion.span
                   initial={{ opacity: 0, x: -4 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="relative text-[11.5px] whitespace-nowrap text-mint"
+                  className="relative text-sm whitespace-nowrap text-mint"
                 >
                   {sublabel(t, p.id, clock)}
                 </motion.span>
@@ -91,7 +91,7 @@ export function PrayerMenu({ clock, onRequestSwitch }: { clock: PrayerClock; onR
       <Popover.Trigger asChild>
         <button className="flex h-10 min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-mint/45 bg-mint/[0.08] pr-2.5 pl-3.5 text-sm shadow-[0_0_24px_-8px_color-mix(in_oklab,var(--accent)_60%,transparent)]">
           <span className="font-medium">{t(`prayer.${selected}`)}</span>
-          <span className="truncate text-[11.5px] text-mint">{sublabel(t, selected, clock, true)}</span>
+          <span className="truncate text-sm text-mint">{sublabel(t, selected, clock, true)}</span>
           <ChevronDown className="size-4 shrink-0 text-ink-muted" />
         </button>
       </Popover.Trigger>
@@ -113,7 +113,7 @@ export function PrayerMenu({ clock, onRequestSwitch }: { clock: PrayerClock; onR
                 {t(`prayer.${p.id}`)}
                 {p.id === clock.detected.id && <span className="size-1.5 rounded-full bg-mint" />}
               </span>
-              <span className="tabular text-xs text-ink-muted">{formatTime(clock.times[p.id])}</span>
+              <span className="tabular text-sm text-ink-muted">{formatTime(clock.times[p.id])}</span>
             </button>
           ))}
         </Popover.Content>

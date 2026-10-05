@@ -38,8 +38,8 @@ export function PostureDock({ following }: { following: boolean }) {
     <div className="glass mx-auto flex w-full max-w-[52rem] items-stretch gap-1 rounded-[1.35rem] p-1.5 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)] sm:gap-2 sm:p-2">
       {/* Rak'ah */}
       <div className="flex shrink-0 flex-col justify-center gap-1.5 py-1 pr-2 pl-2.5 sm:pr-4 sm:pl-3.5">
-        <div className="text-[13px] leading-none font-semibold text-ink">{t('dock.rakah')}</div>
-        <div className="tabular text-xs leading-none text-ink-muted">{t('dock.rakahOf', { r: rakah, n: sequence.rakahs })}</div>
+        <div className="text-sm leading-none font-semibold text-ink">{t('dock.rakah')}</div>
+        <div className="tabular text-sm leading-none text-ink-muted">{t('dock.rakahOf', { r: rakah, n: sequence.rakahs })}</div>
         <div className="flex gap-1" aria-hidden>
           {Array.from({ length: sequence.rakahs }, (_, i) => (
             <span key={i} className={cn('h-1 w-3 rounded-full transition-colors duration-500', i + 1 < rakah || phase === 'complete' ? 'bg-mint/70' : i + 1 === rakah && praying ? 'bg-mint' : 'bg-white/10')} />
@@ -77,7 +77,7 @@ export function PostureDock({ following }: { following: boolean }) {
                       />
                     )}
                     <PostureIcon posture={seg.posture} className="relative size-6 sm:size-7" />
-                    <span className={cn('relative text-[11px] leading-none font-medium whitespace-nowrap sm:text-xs', !active && 'max-sm:sr-only')}>{label}</span>
+                    <span className={cn('relative text-sm leading-none font-medium whitespace-nowrap sm:text-xs', !active && 'max-sm:sr-only')}>{label}</span>
                   </button>
                 </Tooltip>
               </li>
@@ -93,7 +93,7 @@ export function PostureDock({ following }: { following: boolean }) {
           <ChevronLeft className="size-5 rtl:rotate-180" />
         </IconButton>
         {handsFree && following ? (
-          <div className="flex h-10 items-center gap-1.5 px-1.5 text-xs text-ink-muted max-sm:hidden">
+          <div className="flex h-10 items-center gap-1.5 px-1.5 text-sm text-ink-muted max-sm:hidden">
             <span className="size-1.5 animate-breathe rounded-full bg-mint" />
             {t('dock.following')}
           </div>

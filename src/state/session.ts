@@ -20,6 +20,14 @@ export interface Settings {
   /** Soft chime + haptic when hands-free follows a movement. */
   sounds: boolean
   characterId: string
+  /** The companion recites each line aloud (quiet lines softly). */
+  voice: boolean
+  /** The companion briefly says what to do at each movement, in your language. */
+  guide: boolean
+  /** Quiet sounds of the hour from the window (no music). */
+  ambience: boolean
+  /** 0..1 */
+  volume: number
 }
 
 /** What to show, after applying per-language defaults. */
@@ -83,6 +91,11 @@ export const useSession = create<SessionState>()(
         pace: 'normal',
         sounds: true,
         characterId: 'yusuf',
+        voice: true,
+        guide: true,
+        // Off until we ship real field recordings (generated ambience was not good enough).
+        ambience: false,
+        volume: 0.9,
       },
 
       autoSelectPrayer: (id) => {
