@@ -118,6 +118,19 @@ describe('VoiceDriver', () => {
     expect(d.tick(view(i), 8100)).toEqual({ type: 'goTo', index: i + 1, reason: 'timer' })
   })
 
+  it('does not take the last decoded phonemes of al-Fatiha for a start of amin', () => {
+    // The decoder lags the audio: the final "n" of "ad-dallin" arrives after the
+    // energy gate has gone quiet, in the same batch that finishes the verse.
+    const i = idx('amin')
+    const d = driver()
+    d.onLevel(true, -1000)
+    d.onLevel(false, -200)
+    d.onTokens(0)
+    d.sync(view(i), 0)
+    expect(d.tick(view(i), 5000)).toBeNull()
+    expect(d.tick(view(i), 8100)).toEqual({ type: 'goTo', index: i + 1, reason: 'timer' })
+  })
+
   it('gives posture changes extra grace before timing out', () => {
     const last = idx('ruku') - 1
     const d = driver()

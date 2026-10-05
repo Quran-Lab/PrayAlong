@@ -50,8 +50,10 @@ export class VoiceCore {
 
   tokens(tokens: readonly string[], at: number, now: number) {
     // The decoder hearing phonemes is speech, even when it is too quiet (or
-    // too noisy) for the energy gate to say so.
-    if (tokens.length) this.driver.onLevel(true, now)
+    // too noisy) for the energy gate to say so. Never a speech onset: tokens
+    // lag the audio, so the last phonemes of a line arrive after the session
+    // moved on and would look like the next line being started.
+    if (tokens.length) this.driver.onTokens(now)
     this.handle(this.follower.push(tokens, at), now)
   }
 

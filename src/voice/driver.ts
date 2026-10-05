@@ -126,6 +126,10 @@ export class VoiceDriver {
     this.speechNow = speech
     if (speech) this.lastSpeechAt = now
   }
+  /** Decoded phonemes: the person is talking (extends the hold), but not a new start. */
+  onTokens(now: number) {
+    this.lastSpeechAt = now
+  }
   private speechNow = false
   /** When the current stretch of speech began (speech still running from the previous line is not a start). */
   private speechOnsetAt = -Infinity
