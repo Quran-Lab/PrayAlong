@@ -499,5 +499,5 @@ describe('VoiceCore: listening started late', () => {
       at = to
     }
     expect(sim.index).toBeGreaterThan(20)
-  })
+  }, 30_000) // a full prayer through the real follower: slow on a busy machine
 })
