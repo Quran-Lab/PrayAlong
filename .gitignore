@@ -28,6 +28,7 @@ shots/
 
 # Voice model parts (68 MB): staged by scripts/fetch-voice-model.mjs
 public/voice/model/
+public/voice/model-*/
 
 # Hands-free evaluation data and scratch (scripts/synth, scripts/eval)
 .eval/

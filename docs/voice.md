@@ -120,51 +120,79 @@ most between people. Substitutions of accent-level pairs (s/emphatic s, t/
 emphatic t, h/pharyngeal h, k/q, hamza/ain, ...) are cheap; a different short
 vowel is cheap in cost but does not count as "heard".
 
-**Line tracker.** An edit-distance alignment of everything heard since the
-anchor line against `[anchor line x repeat, next line, ..., 4 steps]`, with two
-extra moves: SKIP a whole line (cost 5; a remaining tasbih repetition costs
-0.8) and RESTART the current line (cost 2.5: false start, hesitation, extra
-repetition). Junk between lines (a cough, a movement takbir) is absorbed at the
-line boundaries. The cheapest end column is where the person is.
+**One aligner over a prayer graph** (`follower.ts`). Everything heard since
+the anchor line started is aligned against the expected path from there (the
+current step and the next 3; 12 when lost), built as a graph over target
+columns: each column has one predecessor and an entry cost, and these moves
+are edges:
+
+| edge | cost | what it models |
+| --- | --- | --- |
+| skip a line | 5 (2 when lost) | a forgotten line |
+| skip a remaining repetition | 0.8 | tasbih said once instead of three times |
+| restart a line | 2.5 | false start, hesitation |
+| one more repetition | 0.8 | tasbih said 4 or 5 times (never read as the next posture's identical line) |
+| leave out the basmala | 0.6 | the basmala before a surah is optional |
+| leave out the takbir node | 0.3 | "Allahu akbar" before a posture, often whispered or unheard |
+| enter another short surah | 1 | branch to the opening of al-Asr, al-Kawthar, al-Kafirun, an-Nasr, al-Masad, al-Ikhlas, al-Falaq or an-Nas |
+
+The cheapest end column is where the person is. Repeated lines are loops: a
+repetition said to its end (final phoneme decoded, then 0.15 s of quiet or the
+next repetition begun) is committed, its phonemes and unit leave the window,
+and the next utterance can only be the next repetition.
 
 - `word(step, lineId, wordIndex, rep)` when the cursor passes a word that was
   heard (>= 34% of it matched), or that lies before a well matched word.
 - `lineStart(step)` once a step is confidently entered (>= 6 symbols and 60%
   of its first word).
-- `lineDone(step)` when the line's last repetition is reached with >= 50% (aloud)
-  or 35% (quiet) matched; when a later line has clearly started; or after
-  1 s of silence with the cursor inside the last word (noise ate its end).
-- At most one `lineDone` per evaluation, strictly in order; word reports only
-  ever increase. When the session moves on by itself (timer, camera, tap) the
-  follower re-anchors and keeps only the last second of audio that no earlier
-  line already explains.
+- `lineDone(step, reps)` only when the line was said to its end: its last
+  word's final phoneme decoded (or 70% of it with one of the last two), at
+  least 40% (aloud) or 30% (quiet) of the line heard, then 0.15 s of quiet or
+  the next line starting. A later line clearly started also finishes it; a
+  partly heard last word only after 1 s of real silence with 60% of it heard
+  and at most one consonant missing (never on the onset of the word).
+- `takbir` when the best path goes through a takbir node with 55% of it
+  heard. There is no takbir node inside a posture, so nothing there (for
+  example "Allahumma barik") can be taken for one.
+- `surah(surah, step)` when the best path is in a branch, with 8 or more of its
+  phonemes heard, 2 cheaper than the planned surah and 1 cheaper than every
+  other branch (al-Falaq and an-Nas share their first three words).
+- At most one `lineDone` per evaluation, strictly in order; word reports and
+  repetition counts only ever increase (counts survive re-anchors and
+  endpoints; only a new prayer clears them).
 
-**Keyword spotter.** Approximate substring matching (Sellers) of the takbir,
-tasmi, salam and amin lines against the stream, firing as soon as the cost
-drops below a per-keyword threshold (0.12 to 0.26 per symbol). A keyword is
-dropped when the tracker already explains those same sounds as a different
-expected line: "Allahumma barik" is phonetically within a few edits of
-"Allahu akbar", but on the salawat line the tracker has matched it.
+The cursor (`voice.cursor`) is `{ step, wordIndex, rep, fill, repsDone }`:
+the word in progress, how far through it in phoneme positions (0..1), the
+repetition in progress (0-based) and the repetitions finished. A finished
+line shows its last word at fill 1 until the next line starts. The UI should
+keep a finished line visible at fill 1 for about 250 ms as it moves on (a
+visual hold; the follower does not delay the session for it).
 
 ## The driver (mic-only mode)
 
-- Ready: the opening takbir begins the prayer.
+Every move is forward and exactly one step.
+
+- Ready: the opening takbir line begins the prayer.
 - A finished line moves to the next line of the same posture.
-- Hearing the start of the NEXT line moves there (one step, any posture).
-- A movement phrase moves to the next posture change, like the camera seeing
-  the body move, but only if it is the phrase that movement is announced with
-  (`announcedBy`: takbir into ruku/sujud/jalsah/sitting/standing, tasmi into
-  i'tidal, salam into each salam), after 1.2 s on the current step, never when
-  the current line IS that phrase (the salam line itself), and not while an
-  aloud passage with more than one line left is being followed.
-- Timers as fallback: a line moves on after its expected time if nobody is
-  talking and no word was matched for 1.5 s (1.8x the time while a line is
-  being followed but not finished); posture changes wait 3 s longer (1.5 s if
-  the line was heard finishing). Decoder output counts as speech even when the
-  energy gate misses it (very quiet or noisy rooms).
-- Forward only. No event can move the session backwards, and no single event
-  moves it more than one step except a movement phrase, which moves exactly as
-  far as a camera pose change would (the next posture change).
+- Hearing the next line moves there: its `lineStart`, or one of its words
+  heard clearly (confidence >= 0.5; the sujud tasbih after i'tidal moves to
+  sujud on its first words even with no takbir heard). Not while a repeated
+  line is short of its count.
+- The takbir moves into the posture it announces, only from the line right
+  before it and after 1.2 s on the current step.
+- A short surah other than the planned one: the session switches to it
+  (`switchSurah`) from the end of al-Fatiha until the planned surah's second
+  line.
+- Catching up (the session is behind the voice): a later line finished moves
+  one step, if that line was heard (not merely inferred as skipped) or words
+  of a later line were heard clearly in the last 10 s.
+- Timers, so nothing stalls: a line moves on after its expected time if nobody
+  is talking and no word matched for 1.5 s (1.8x the time while it is being
+  followed; 2x on an aloud line nobody has started). After the last line before
+  a movement is done and no phrase is heard: 3 s. A repeated line short of its
+  count never times out while repetitions are heard, except after 6 s of
+  silence. Timers hold while the companion speaks. Decoder output counts as
+  speech even when the energy gate misses it.
 
 ## Modes and the fusion API
 
@@ -179,9 +207,24 @@ const voice = useVoiceFollow({
 voice.status   // 'idle' | 'loading' | 'listening' | 'error'
 voice.error    // 'unsupported' | 'mic-denied' | 'mic-missing' | 'model-unreachable' | 'engine-failed'
 voice.progress // model download 0..1
-voice.cursor   // {step, wordIndex}: highlight the word being said
+voice.cursor   // {step, wordIndex, rep, fill, repsDone} (see the follower)
 voice.speaking
+voice.recording, voice.saveRecording()  // with record: true (below)
 ```
+
+**Recording (opt-in).** `useVoiceFollow({ record: true })` keeps the raw
+microphone (before the companion gate) at 16 kHz in the worker and logs
+everything the engine does on the worker's audio clock: tokens, speech
+levels, endpoints, follower events, session moves and changes, the companion
+gate. `voice.saveRecording()` downloads `prayalong-<prayer>-<date>.wav` and
+`.json`; nothing is uploaded. The voice lab has Record, Save and "Replay a
+recording", which runs a saved WAV through the real worker, follower and
+driver, so a real failing session becomes a fixture.
+
+**Console log (beta).** `[voice] heard <phonemes in Latin letters> |
+expected <line> xN | cursor <line>#<word> "<that word's phonemes>" rep, done,
+fill, cost`, `[voice] event ...`, `[voice] move ...` and `[voice] timer
+advance ...`. Turn off with `localStorage.setItem('prayalong:voiceDebug', '0')`.
 
 - `full` (camera off): voice leads lines and postures.
 - `lines` (camera following): voice moves lines within a posture; postures stay
@@ -253,7 +296,29 @@ npm run dev    # then open /?lab&voice      # live microphone: transcript, curso
 node scripts/voice-replay.mjs              # replay matrix (3 speakers, noise, -20 dB, whispered)
 node scripts/voice-replay.mjs --stress     # false starts, skipped lines, tasbih x1/x5, companion
 node scripts/voice-replay.mjs --mic --prayer fajr --speaker aisha   # through fake audio capture, real time
+node scripts/voice-replay.mjs --real       # real-like takes (below): tempo, pitch, room, laptop mic, quiet, held last word
+node scripts/voice-replay.mjs --model voice/model-c8/   # another model folder (fetch-voice-model.mjs --chunk 8)
+python scripts/voice-real-set.py           # once: real recordings from local data (stay on this machine)
+node scripts/voice-real.mjs                # real voices: short surahs, adults and children, phone audio
 ```
+
+**Real-like takes** (`scripts/voice-augment.mjs`, ffmpeg): several takes of
+every companion line per preset, one picked per occurrence: `fast` (tempo
+1.25-1.5, pitch +-1 semitone), `slow` (0.7-0.85, last word held 2-3x),
+`room` (reverb plus laptop-mic EQ and compression), `quiet` (laptop EQ,
+-18 to -26 dB), `real` (all of these mixed per take). The timeline can put
+tasbih repetitions back to back (`--tight`) and ayat in one breath
+(`--joined`).
+
+**Real voices** (`scripts/voice-real-set.py`, `scripts/voice-real.mjs`):
+whole short surahs from el-mohafez (app recordings by learners, adults and
+children, AMR phone audio) and single verses from TLOG (Tarteel app logs; the
+file name is the verse the app asked for, which is not always what was said,
+so these numbers are lower bounds). Each recording starts the session on amin
+of the rak'ah whose planned surah is al-Kawthar (al-Ikhlas for al-Ikhlas), or
+on the verse itself; scored: lines finished by voice, words shown, the surah
+named right, and the lag from the end of the voice to the last line's
+completion.
 
 The harness builds each prayer from the companion recordings in
 `public/audio/voices/<speaker>/` (or `PRAYALONG_AUDIO_DIR`): every step's line

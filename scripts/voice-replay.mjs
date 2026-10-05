@@ -124,9 +124,12 @@ async function serveAudio(page, c) {
   })
 }
 
+// Another model folder, e.g. --model voice/model-c8/ (scripts/fetch-voice-model.mjs --chunk 8).
+const MODEL = opt('model', null)
 const query = (c, extra = '') =>
   `?lab&voice&replay&run&prayer=${c.prayer}&speaker=${c.speaker}&seed=${c.seed}&gain=${c.gain}&quietGain=${c.quiet}` +
-  `${c.snr ? `&snr=${c.snr}` : ''}${c.perturb ? '&perturb' : ''}${c.companion ? `&companion=${c.companion}` : ''}${c.gate ? '&gate' : ''}${c.tight ? '&tight' : ''}${c.joined ? '&joined' : ''}${extra}`
+  `${c.snr ? `&snr=${c.snr}` : ''}${c.perturb ? '&perturb' : ''}${c.companion ? `&companion=${c.companion}` : ''}${c.gate ? '&gate' : ''}${c.tight ? '&tight' : ''}${c.joined ? '&joined' : ''}` +
+  `${MODEL ? `&model=${encodeURIComponent(MODEL)}` : ''}${extra}`
 const name = (c) =>
   `${c.prayer}-${c.speaker}-${c.snr ? `snr${c.snr}` : 'clean'}-g${c.gain}${c.quiet !== '1' ? `-q${c.quiet}` : ''}` +
   `${c.perturb ? `-perturb${c.seed}` : ''}${c.companion ? `-companion-${c.gate ? 'gated' : 'open'}` : ''}${c.aug ? `-${c.aug}${c.seed}` : ''}${c.tight ? '-tight' : ''}${c.joined ? '-joined' : ''}${mic ? '-mic' : ''}`
@@ -172,6 +175,8 @@ async function runOne(c) {
   page.on('pageerror', (e) => console.log(`  ${label} pageerror`, e.message))
   page.on('console', (m) => m.type() === 'error' && console.log(`  ${label} console`, m.text().slice(0, 300)))
   await serveAudio(page, c)
+  // --cpu-throttle N: Chrome slows this tab's CPU N times (a laptop-class machine is roughly 2 to 4).
+  if (opt('cpu-throttle', null)) await (await context.newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: Number(opt('cpu-throttle', '1')) })
   await page.goto(base + query(c, mic ? '&source=mic' : ''))
   const isolated = await page.evaluate(() => self.crossOriginIsolated)
   const result = await waitResult(page, label)
@@ -227,6 +232,7 @@ const rows = results
       arrivalP95: m.session.arrivalLagP95,
       timer: m.session.byReason.timer ?? 0,
       complete: m.session.completed,
+      rtf: r.rtf,
     }
   })
 console.table(rows)

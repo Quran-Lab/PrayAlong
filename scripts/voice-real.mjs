@@ -45,7 +45,8 @@ await Promise.all(
     await page.goto(base + '?lab&voice&batch')
     await page.waitForFunction(() => !!window.__voiceRealBatch)
     const list = shard.map((x) => ({ url: `/realvoice/${x.file}`, surah: x.surah, ayahs: x.ayahs }))
-    const res = await page.evaluate((l) => window.__voiceRealBatch(l), list)
+    // --model voice/model-c8/ runs another model folder.
+    const res = await page.evaluate(([l, m]) => window.__voiceRealBatch(l, undefined, m ?? undefined), [list, opt('model', null)])
     res.forEach((r, i) => results.push({ ...shard[i], ...r }))
     console.log(`  shard ${k}: ${res.length} done`)
     await browser.close()

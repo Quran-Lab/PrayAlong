@@ -35,6 +35,8 @@ export interface ReplayParams {
   companion: string | null
   /** Silence the microphone while the companion speaks (the app's gate option). */
   gate: boolean
+  /** Model folder (manifest + parts) instead of the default, e.g. voice/model-c8/. */
+  model: string | null
 }
 
 export const DEFAULT_REPLAY: ReplayParams = {
@@ -50,6 +52,7 @@ export const DEFAULT_REPLAY: ReplayParams = {
   joined: false,
   companion: null,
   gate: false,
+  model: null,
 }
 
 export function replayParams(q: URLSearchParams): ReplayParams {
@@ -67,6 +70,7 @@ export function replayParams(q: URLSearchParams): ReplayParams {
     joined: q.has('joined'),
     companion: q.get('companion'),
     gate: q.has('gate'),
+    model: q.get('model'),
   }
 }
 
@@ -189,9 +193,9 @@ export interface RealResult {
  * or on the verse itself for single-verse clips, so a different surah must be
  * recognised and followed.
  */
-export async function runRealBatch(items: RealItem[], onProgress?: (k: number) => void): Promise<RealResult[]> {
+export async function runRealBatch(items: RealItem[], onProgress?: (k: number) => void, modelBase?: string): Promise<RealResult[]> {
   const engine = new VoiceEngine()
-  await engine.start({ mic: false })
+  await engine.start({ mic: false, ...(modelBase ? { modelBase } : {}) })
   if (engine.status !== 'listening') throw new Error(`engine ${engine.status}: ${engine.error}`)
   const out: RealResult[] = []
   let handler: ((e: Parameters<Parameters<VoiceEngine['on']>[0]>[0]) => void) | null = null
@@ -298,6 +302,8 @@ export interface ReplayResult {
   log: ReplayLog
   timeline: Timeline
   wallSeconds: number
+  /** Real-time factor of the decoder in this browser (decode time / audio time). */
+  rtf: number | null
 }
 
 export async function runReplay(p: ReplayParams, onProgress?: (audioSec: number, total: number) => void): Promise<ReplayResult> {
@@ -334,7 +340,7 @@ export async function runReplay(p: ReplayParams, onProgress?: (audioSec: number,
       onProgress?.(e.at, timeline.duration)
     }
   })
-  await engine.start({ mic: p.source === 'mic', micAfterLoad: true })
+  await engine.start({ mic: p.source === 'mic', micAfterLoad: true, ...(p.model ? { modelBase: p.model } : {}) })
   if (engine.status !== 'listening') throw new Error(`engine ${engine.status}: ${engine.error}`)
   // Fake capture starts playing the file when the microphone opens; the worker's
   // clock starts at the first sample it receives, a little later.
@@ -376,5 +382,6 @@ export async function runReplay(p: ReplayParams, onProgress?: (audioSec: number,
   engine.stop()
   log.phase = sim.phase
   log.index = sim.index
-  return { params: p, metrics: scoreReplay(timeline, steps, log), log, timeline, wallSeconds: Math.round((performance.now() - started) / 100) / 10 }
+  const rtf = engine.decodeStats.audioSec ? Math.round((engine.decodeStats.decodeMs / 1000 / engine.decodeStats.audioSec) * 1000) / 1000 : null
+  return { params: p, metrics: scoreReplay(timeline, steps, log), log, timeline, wallSeconds: Math.round((performance.now() - started) / 100) / 10, rtf }
 }

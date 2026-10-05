@@ -96,7 +96,7 @@ export interface FollowerOptions {
   idleLastWord: number
   /** Energy silence after a fully heard line that confirms it is over. */
   confirmSilenceSec: number
-  /** The finished line is held at fill 1 this long before it completes (unless the next line starts). */
+  /** Hold a finished line at fill 1 this long before it completes (0: the UI shows the hold instead, without delaying the session). */
   holdSec: number
   /** Unexplained symbols (no word reported) before looking further ahead. */
   lostSymbols: number
@@ -126,8 +126,8 @@ export const DEFAULT_FOLLOWER: FollowerOptions = {
   maxHeard: 500,
   idleSec: 1.0,
   idleLastWord: 0.6,
-  confirmSilenceSec: 0.2,
-  holdSec: 0.15,
+  confirmSilenceSec: 0.15,
+  holdSec: 0,
   lostSymbols: 35,
   lostWindowSteps: 12,
   lostSkipCost: 2,
