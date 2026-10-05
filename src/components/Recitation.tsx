@@ -1,5 +1,6 @@
 import { ArrowDownRight, Volume1, VolumeX } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
+import { useRef } from 'react'
 import { resolveLine } from '@/content/lines'
 import { useLocale, useT } from '@/i18n'
 import { cn } from '@/lib/cn'
@@ -154,8 +155,13 @@ export function Recitation({
   // The companion's voice leads while it speaks; otherwise follow the user's own recitation.
   const word = spoken >= 0 ? spoken : heardWord ?? -1
   const you = spoken < 0 && (heardWord ?? -1) >= 0
-  // Which time through a repeated line (tasbih ×3): from the companion or from what was heard.
-  const repNow = live ? live.rep : (heardRep ?? 0)
+  // How many times a repeated line (tasbih ×3) has been said: from the companion
+  // or from what was heard. It only ever goes up within a line.
+  const repSeen = live ? live.rep : (heardRep ?? 0)
+  const repMax = useRef({ id: '', n: 0 })
+  if (repMax.current.id !== step.id) repMax.current = { id: step.id, n: 0 }
+  repMax.current.n = Math.max(repMax.current.n, repSeen)
+  const repsDone = repMax.current.n
   const count = (x: string) => x.split(/\s+/).filter(Boolean).length
   const arabicWords = count(line.arabic)
   const al = ALIGN[locale]?.[step.recitationId]
@@ -183,7 +189,11 @@ export function Recitation({
                   {Array.from({ length: step.repeat }, (_, i) => (
                     <span
                       key={i}
-                      className={cn('size-2 rounded-full transition-all duration-300', i < repNow ? 'bg-mint' : i === repNow ? 'scale-125 bg-mint' : 'bg-mint/25')}
+                      // Filled = said; ringed = the one being said now; faint = still to come.
+                      className={cn(
+                        'size-2.5 rounded-full transition-all duration-300',
+                        i < repsDone ? 'bg-mint' : i === repsDone ? 'animate-breathe ring-2 ring-mint ring-inset' : 'ring-1 ring-mint/35 ring-inset',
+                      )}
                     />
                   ))}
                 </span>
