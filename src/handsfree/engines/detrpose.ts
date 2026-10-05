@@ -9,7 +9,11 @@ export const DETRPOSE_URL = import.meta.env.VITE_POSE_MODEL_URL ?? `${import.met
  * docs/hands-free.md for the model contract. With `maxFrameMs`, it declines
  * (and the app falls back) if a frame takes longer than that on this device.
  */
-export async function createDetrPoseEngine({ maxFrameMs }: { maxFrameMs?: number } = {}): Promise<PoseEngine> {
+export async function createDetrPoseEngine({
+  maxFrameMs,
+  letterbox = false,
+  frameTimeoutMs = 1500,
+}: { maxFrameMs?: number; letterbox?: boolean; frameTimeoutMs?: number } = {}): Promise<PoseEngine> {
   const worker = new Worker(new URL('../pose-worker.ts', import.meta.url), { type: 'module' })
   const waiting = new Map<number, (kp: Keypoint[] | null) => void>()
 
@@ -42,9 +46,21 @@ export async function createDetrPoseEngine({ maxFrameMs }: { maxFrameMs?: number
     throw err
   }
 
+  // Consecutive failures (errors, timeouts, a crashed worker or a lost GPU device).
+  let failures = 0
+  worker.onerror = (e) => {
+    e.preventDefault()
+    failures = Infinity
+    for (const resolve of waiting.values()) resolve(null)
+    waiting.clear()
+  }
   worker.onmessage = (e: MessageEvent<WorkerOut>) => {
     const msg = e.data
-    if (msg.type !== 'pose' && msg.type !== 'none') return
+    if (msg.type !== 'pose' && msg.type !== 'none' && msg.type !== 'failed') return
+    if (msg.type === 'failed') {
+      failures++
+      console.warn('[detrpose] frame failed', msg.message)
+    } else failures = 0
     waiting.get(msg.timestamp)?.(msg.type === 'pose' ? msg.keypoints : null)
     waiting.delete(msg.timestamp)
   }
@@ -56,10 +72,18 @@ export async function createDetrPoseEngine({ maxFrameMs }: { maxFrameMs?: number
       const bitmap = await createImageBitmap(video)
       return new Promise((resolve) => {
         waiting.set(timestamp, resolve)
-        worker.postMessage({ type: 'frame', bitmap, timestamp }, [bitmap])
+        worker.postMessage({ type: 'frame', bitmap, timestamp, letterbox }, [bitmap])
         // A busy worker drops frames; don't wait forever.
-        setTimeout(() => waiting.get(timestamp) && (waiting.delete(timestamp), resolve(null)), 1500)
+        setTimeout(() => {
+          if (!waiting.get(timestamp)) return
+          waiting.delete(timestamp)
+          failures++
+          resolve(null)
+        }, frameTimeoutMs)
       })
+    },
+    get healthy() {
+      return failures < 5
     },
     dispose() {
       worker.terminate()

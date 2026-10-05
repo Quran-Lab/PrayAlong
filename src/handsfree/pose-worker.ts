@@ -3,7 +3,9 @@
  * Runs DETRPose off the main thread so the 3D stage never stutters.
  *
  * Model contract (DETRPose `tools/deployment/export_onnx.py`, opset 16):
- *   in   images             float32 [1,3,640,640]  RGB, 0..1, plain resize (no letterbox, no mean/std)
+ *   in   images             float32 [1,3,640,640]  RGB, 0..1, no mean/std. Trained on a plain
+ *                                                  (stretching) resize; `letterbox` keeps the aspect
+ *                                                  instead and maps the points back.
  *   in   orig_target_sizes  int64   [1,2]          [w, h] — we pass [1,1] to get normalized coords
  *   out  scores             float32 [1,Q]
  *   out  labels             int64   [1,Q]
@@ -13,14 +15,15 @@ import type * as Ort from 'onnxruntime-web'
 
 const SIZE = 640
 
-type In = { type: 'load'; url: string } | { type: 'frame'; bitmap: ImageBitmap; timestamp: number }
+type In = { type: 'load'; url: string } | { type: 'frame'; bitmap: ImageBitmap; timestamp: number; letterbox?: boolean }
 export type WorkerOut =
   | { type: 'ready'; backend: 'webgpu' | 'wasm'; ms: number }
   | { type: 'benchmarking' }
   | { type: 'missing' }
   | { type: 'error'; message: string }
-  | { type: 'pose'; keypoints: { x: number; y: number }[]; score: number; timestamp: number }
+  | { type: 'pose'; keypoints: { x: number; y: number; v: number }[]; score: number; timestamp: number }
   | { type: 'none'; timestamp: number }
+  | { type: 'failed'; message: string; timestamp: number }
 
 let ort: typeof Ort
 let session: Ort.InferenceSession | null = null
@@ -107,14 +110,22 @@ async function load(url: string) {
   }
 }
 
-async function infer(bitmap: ImageBitmap, timestamp: number) {
+async function infer(bitmap: ImageBitmap, timestamp: number, letterbox = false) {
   if (!session || busy) {
     bitmap.close()
     return post({ type: 'none', timestamp })
   }
   busy = true
   try {
-    ctx.drawImage(bitmap, 0, 0, SIZE, SIZE)
+    // Letterbox: keep the aspect, pad the rest grey; plain: stretch.
+    const k = letterbox ? SIZE / Math.max(bitmap.width, bitmap.height) : 0
+    const dw = letterbox ? bitmap.width * k : SIZE
+    const dh = letterbox ? bitmap.height * k : SIZE
+    if (letterbox) {
+      ctx.fillStyle = 'rgb(114,114,114)'
+      ctx.fillRect(0, 0, SIZE, SIZE)
+    }
+    ctx.drawImage(bitmap, 0, 0, dw, dh)
     bitmap.close()
     const { data } = ctx.getImageData(0, 0, SIZE, SIZE)
     const plane = SIZE * SIZE
@@ -132,10 +143,20 @@ async function infer(bitmap: ImageBitmap, timestamp: number) {
     let best = 0
     for (let i = 1; i < scores.length; i++) if (scores[i]! > scores[best]!) best = i
     if (scores[best]! < 0.4) return post({ type: 'none', timestamp })
-    const kps = Array.from({ length: 17 }, (_, k) => ({ x: keypoints[(best * 17 + k) * 2]!, y: keypoints[(best * 17 + k) * 2 + 1]! }))
+    // DETRPose has no per-keypoint confidence: use the person score, and
+    // treat points outside the frame as not visible.
+    const sx = SIZE / dw
+    const sy = SIZE / dh
+    const kps = Array.from({ length: 17 }, (_, j) => {
+      const x = keypoints[(best * 17 + j) * 2]! * sx
+      const y = keypoints[(best * 17 + j) * 2 + 1]! * sy
+      const inside = x >= 0 && x <= 1 && y >= 0 && y <= 1
+      return { x, y, v: inside ? scores[best]! : 0 }
+    })
     post({ type: 'pose', keypoints: kps, score: scores[best]!, timestamp })
   } catch (err) {
-    post({ type: 'error', message: err instanceof Error ? err.message : String(err) })
+    // Answer this frame right away so the caller never waits out a timeout.
+    post({ type: 'failed', message: err instanceof Error ? err.message : String(err), timestamp })
   } finally {
     busy = false
   }
@@ -143,5 +164,5 @@ async function infer(bitmap: ImageBitmap, timestamp: number) {
 
 self.onmessage = (e: MessageEvent<In>) => {
   if (e.data.type === 'load') load(e.data.url)
-  else infer(e.data.bitmap, e.data.timestamp)
+  else infer(e.data.bitmap, e.data.timestamp, e.data.letterbox)
 }

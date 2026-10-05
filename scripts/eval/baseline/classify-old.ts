@@ -1,5 +1,5 @@
 import type { PoseClass } from '@/sequence/types'
-import { KP, type Keypoint, type Reading } from './types'
+import { KP, type Keypoint, type Reading } from '../../../src/handsfree/types'
 
 const mid = (a: Keypoint, b: Keypoint): Keypoint => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })
 const dist = (a: Keypoint, b: Keypoint) => Math.hypot(a.x - b.x, a.y - b.y)
@@ -14,10 +14,7 @@ const dist = (a: Keypoint, b: Keypoint) => Math.hypot(a.x - b.x, a.y - b.y)
  * automatic calibration); it lets us recognise a bow seen head-on, where the
  * torso foreshortens instead of tilting.
  */
-export function classifyPose(raw: readonly Keypoint[], standingTorso?: number, aspect = 1): Reading {
-  // Square units: normalized x and y are different lengths on a 4:3 frame,
-  // so scale x by the frame's aspect before measuring any distance.
-  const kp = aspect === 1 ? raw : raw.map((k) => ({ ...k, x: k.x * aspect }))
+export function classifyPose(kp: readonly Keypoint[], standingTorso?: number): Reading {
   const p = (i: number) => kp[i]!
   const shoulders = mid(p(KP.leftShoulder), p(KP.rightShoulder))
   const hips = mid(p(KP.leftHip), p(KP.rightHip))
@@ -49,10 +46,8 @@ export function classifyPose(raw: readonly Keypoint[], standingTorso?: number, a
   else if (tilt < 32 && wristsUp) pose = 'hands-raised'
   else if (tilt < 32 && kneeDrop > 0.55 && shinDrop > 0.5) pose = 'standing'
 
-  // Salam: the nose swings past the ears. In the camera's (unmirrored)
-  // frames the worshipper's right is image-left. Only the compatibility
-  // engine uses this; the sequence decoder learns the direction from the
-  // first salam instead (decoder.ts).
+  // Salam: the nose swings past the ears. The camera sees a mirror image of
+  // the worshipper, so their right is image-left.
   const ears = mid(p(KP.leftEar), p(KP.rightEar))
   const shoulderWidth = Math.max(dist(p(KP.leftShoulder), p(KP.rightShoulder)), 1e-3)
   const swing = (nose.x - ears.x) / shoulderWidth
@@ -61,8 +56,7 @@ export function classifyPose(raw: readonly Keypoint[], standingTorso?: number, a
   return { pose, headTurn }
 }
 
-/** Torso length, for the standing calibration (same units as classifyPose with this aspect). */
-export function torsoLength(raw: readonly Keypoint[], aspect = 1) {
-  const kp = aspect === 1 ? raw : raw.map((k) => ({ ...k, x: k.x * aspect }))
+/** Torso length, for the standing calibration. */
+export function torsoLength(kp: readonly Keypoint[]) {
   return dist(mid(kp[KP.leftShoulder]!, kp[KP.rightShoulder]!), mid(kp[KP.leftHip]!, kp[KP.rightHip]!))
 }

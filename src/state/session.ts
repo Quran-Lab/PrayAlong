@@ -74,8 +74,13 @@ interface SessionState {
   setHandsFree: (on: boolean) => void
   setDemo: (on: boolean) => void
   updateSettings: (patch: Partial<Settings>) => void
-  /** A stable pose reported by the hands-free engine. */
+  /** A stable pose reported by demo mode (or the compatibility engine). */
   onPose: (pose: PoseClass) => void
+  /**
+   * The hands-free decoder recognised a movement: go to this step. Only
+   * ever moves forward; starts the prayer from 'ready'.
+   */
+  followTo: (index: number) => void
 }
 
 const fresh = (prayer: PrayerId) => ({ prayer, sequence: buildSequence(prayer), phase: 'ready' as Phase, index: 0 })
@@ -144,6 +149,12 @@ export const useSession = create<SessionState>()(
         // Only listen for the *next* movement, so a misread can never skip ahead.
         const target = nextPoseChange(sequence.steps, index)
         if (target >= 0 && sequence.steps[target]!.pose === pose) set({ index: target })
+      },
+      followTo: (target) => {
+        const { phase, index, sequence } = get()
+        if (phase === 'complete' || target < 0 || target >= sequence.steps.length) return
+        if (phase === 'ready') return set({ phase: 'praying', index: target })
+        if (target > index) set({ index: target })
       },
     }),
     {

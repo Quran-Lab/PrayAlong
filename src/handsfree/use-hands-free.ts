@@ -1,85 +1,61 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { PoseClass } from '@/sequence/types'
-import { classifyPose, torsoLength } from './classify'
-import { createDetrPoseEngine } from './engines/detrpose'
-import { createMediaPipeEngine } from './engines/mediapipe'
-import type { PoseEngine } from './engines/types'
+import type { PoseClass, Step } from '@/sequence/types'
+import type { Blocker } from './advice'
+import type { Advance, Evidence, SegmentKind } from './decoder'
+import { HandsFreeEngine, type CheckResult, type EngineStatus, type Live } from './engine'
 import { PoseStabilizer } from './stabilizer'
-import { KP, type Framing, type HandsFreeStatus, type Keypoint } from './types'
+import type { Framing, HandsFreeStatus } from './types'
 
-const FPS = 15
 const DEMO_KEYS: Record<string, PoseClass> = { '1': 'hands-raised', '2': 'standing', '3': 'bowing', '4': 'prostrating', '5': 'sitting' }
 
-type EngineChoice = { id: 'mediapipe' } | { id: 'detrpose'; maxFrameMs?: number }
+const toStatus = (s: EngineStatus): HandsFreeStatus => (s === 'lost' ? 'camera-lost' : s)
 
-/** A frame budget for DETRPose to be the default (~8 fps or better). */
-const DETRPOSE_BUDGET_MS = 120
-
-/**
- * Engine order. Tracking starts right away with MediaPipe (GPU via WebGL,
- * then CPU); on WebGPU devices DETRPose — the stronger model — warms up in
- * the background and takes over if a frame fits the budget. Force either
- * with `?engine=` or VITE_POSE_ENGINE. DETRPose on WebAssembly is the last
- * resort.
- */
-const forcedEngine = () => new URLSearchParams(location.search).get('engine') ?? import.meta.env.VITE_POSE_ENGINE
-
-function engineOrder(): EngineChoice[] {
-  const wanted = forcedEngine()
-  if (wanted === 'detrpose') return [{ id: 'detrpose' }, { id: 'mediapipe' }]
-  return [{ id: 'mediapipe' }, { id: 'detrpose' }]
-}
-
-/** Upgrade to DETRPose on WebGPU in the background (unless an engine is forced). */
-const shouldUpgrade = () => !forcedEngine() && 'gpu' in navigator
-
-async function startEngine(): Promise<PoseEngine> {
-  let lastError: unknown
-  for (const choice of engineOrder()) {
-    try {
-      return choice.id === 'mediapipe' ? await createMediaPipeEngine() : await createDetrPoseEngine({ maxFrameMs: choice.maxFrameMs })
-    } catch (err) {
-      lastError = err
-      console.warn(`[hands-free] ${choice.id} unavailable`, err)
-    }
-  }
-  throw lastError
-}
-
-function framingOf(kp: Keypoint[] | null): Framing {
-  if (!kp) return 'none'
-  const needed = [KP.leftShoulder, KP.rightShoulder, KP.leftHip, KP.rightHip, KP.leftKnee, KP.rightKnee, KP.leftAnkle, KP.rightAnkle]
-  const seen = needed.filter((i) => {
-    const p = kp[i]!
-    return (p.v ?? 1) > 0.5 && p.x > 0 && p.x < 1 && p.y > 0 && p.y < 1
-  }).length
-  return seen >= 7 ? 'full' : seen >= 3 ? 'partial' : 'none'
-}
+export type CheckState = { state: 'idle' } | { state: 'running'; stage: 'bowing' | 'sitting' } | { state: 'done'; result: CheckResult }
 
 /**
- * Camera → pose engine → pose class → calm, stable pose changes.
- * Falls back gracefully: GPU → CPU, MediaPipe ⇄ DETRPose, and finally to
- * timed guidance (status says why). Demo mode skips the camera entirely.
+ * Camera -> vision worker (body + face) -> calibrated features -> sequence
+ * decoder -> step changes. See docs/hands-free.md.
+ *
+ * The session tells the hook where the prayer is (`phase`, `index`) and the
+ * hook reports movements through `onAdvance(index)`. Voice (or anything
+ * else) can add evidence with `addEvidence`. Demo mode skips the camera and
+ * reports poses through `onPose`, as before.
  */
 export function useHandsFree({
   enabled,
   demo,
   facingMode,
+  steps,
+  phase,
+  index,
   onPose,
+  onAdvance,
 }: {
   enabled: boolean
   demo: boolean
   facingMode: 'user' | 'environment'
+  steps: readonly Step[]
+  phase: 'ready' | 'praying' | 'complete'
+  index: number
+  /** Demo mode and the compatibility engine: a stable pose change. */
   onPose: (pose: PoseClass) => void
+  /** A recognised movement: go to this step. */
+  onAdvance: (index: number, reason: Advance['reason']) => void
 }) {
   const [status, setStatus] = useState<HandsFreeStatus>('off')
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [pose, setPose] = useState<PoseClass | null>(null)
-  const [framing, setFraming] = useState<Framing>('none')
+  const [live, setLive] = useState<Live | null>(null)
   const [engineLabel, setEngineLabel] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const [check, setCheck] = useState<CheckState>({ state: 'idle' })
   const onPoseRef = useRef(onPose)
   onPoseRef.current = onPose
+  const onAdvanceRef = useRef(onAdvance)
+  onAdvanceRef.current = onAdvance
+  const engine = useRef<HandsFreeEngine | null>(null)
+  const where = useRef({ phase, index, steps })
+  where.current = { phase, index, steps }
   const stabilizer = useRef(new PoseStabilizer())
 
   const emit = useCallback((p: PoseClass | null, t: number) => {
@@ -104,7 +80,6 @@ export function useHandsFree({
     if (!enabled || !demo) return
     stabilizer.current.reset()
     setStatus('demo')
-    setFraming('full')
     const onKey = (e: KeyboardEvent) => {
       const p = DEMO_KEYS[e.key]
       if (p && !(e.target as HTMLElement).closest('input, textarea')) actOut(p)
@@ -119,102 +94,104 @@ export function useHandsFree({
       if (!enabled) {
         setStatus('off')
         setPose(null)
+        setLive(null)
       }
       return
     }
     stabilizer.current.reset()
-    let cancelled = false
-    let media: MediaStream | null = null
-    let engine: PoseEngine | null = null
-    let timer = 0
-    let standingTorso: number | undefined
-    const video = document.createElement('video')
-    video.muted = true
-    video.playsInline = true
-
-    const loop = async () => {
-      if (cancelled || !engine) return
-      const started = performance.now()
-      if (video.readyState >= 2) {
-        try {
-          const kp = await engine.detect(video, started)
-          if (cancelled) return
-          setFraming(framingOf(kp))
-          if (kp) {
-            const reading = classifyPose(kp, standingTorso)
-            // For tuning (and Raufa's CV work): the latest raw reading.
-            ;(window as unknown as { __handsFree?: unknown }).__handsFree = { engine: engine.id, keypoints: kp, reading, standingTorso }
-            if (reading.pose === 'standing') {
-              const len = torsoLength(kp)
-              standingTorso = standingTorso ? standingTorso * 0.9 + len * 0.1 : len
-            }
-            emit(reading.pose, started)
-          } else {
-            ;(window as unknown as { __handsFree?: unknown }).__handsFree = { engine: engine.id, keypoints: null }
-            emit(null, started)
-          }
-        } catch (err) {
-          console.warn('[hands-free] frame failed', err)
+    const e = new HandsFreeEngine(where.current.steps, facingMode, {
+      onStatus: (s) => setStatus(toStatus(s)),
+      onStream: setStream,
+      onLabel: setEngineLabel,
+      onLive: (l) => {
+        setLive(l)
+        setPose(l.pose)
+      },
+      onPose: (p) => {
+        setPose(p)
+        onPoseRef.current(p)
+      },
+      onAdvance: (adv) => {
+        const { phase: ph, index: i, steps: st } = where.current
+        if (adv.index >= 0) {
+          // Forward only: never undo where the session already is.
+          if (ph === 'praying' && adv.index <= i) return
+          onAdvanceRef.current(adv.index, adv.reason)
+        } else if (ph === 'praying' && st[i + 1] && st[i + 1]!.posture === st[i]!.posture) {
+          onAdvanceRef.current(i + 1, 'line')
         }
-      }
-      timer = window.setTimeout(loop, Math.max(0, 1000 / FPS - (performance.now() - started)))
-    }
-
-    ;(async () => {
-      if (!navigator.mediaDevices?.getUserMedia) return setStatus('no-camera')
-      setStatus('starting')
-      try {
-        media = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode, width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: false,
-        })
-      } catch (err) {
-        if (cancelled) return
-        const name = (err as DOMException)?.name
-        return setStatus(name === 'NotAllowedError' || name === 'SecurityError' ? 'denied' : 'no-camera')
-      }
-      if (cancelled) return media.getTracks().forEach((t) => t.stop())
-      setStream(media)
-      video.srcObject = media
-      await video.play().catch(() => {})
-      setStatus('loading')
-      try {
-        engine = await startEngine()
-      } catch {
-        if (!cancelled) setStatus('no-model')
-        return
-      }
-      if (cancelled) return engine.dispose()
-      setEngineLabel(engine.label)
-      setStatus('watching')
-      loop()
-
-      // Tracking already works; now try the stronger model on WebGPU and
-      // switch over only if this device runs it fast enough.
-      if (shouldUpgrade() && engine.id !== 'detrpose') {
-        createDetrPoseEngine({ maxFrameMs: DETRPOSE_BUDGET_MS })
-          .then((stronger) => {
-            if (cancelled) return stronger.dispose()
-            const previous = engine
-            engine = stronger
-            previous?.dispose()
-            setEngineLabel(stronger.label)
-          })
-          .catch((err) => console.info('[hands-free] staying on', engine?.label, '—', err?.message))
-      }
-    })()
-
+      },
+    })
+    engine.current = e
+    e.sync(where.current.phase, where.current.index)
+    void e.start()
     return () => {
-      cancelled = true
-      clearTimeout(timer)
-      engine?.dispose()
-      media?.getTracks().forEach((t) => t.stop())
+      engine.current = null
+      e.dispose()
       setStream(null)
-      setFraming('none')
+      setLive(null)
+      setCheck({ state: 'idle' })
     }
-  }, [enabled, demo, facingMode, attempt, emit])
+    // The prayer's steps only change between prayers (a new engine then).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, demo, facingMode, attempt, steps])
 
-  const retry = useCallback(() => setAttempt((n) => n + 1), [])
+  // Keep the decoder in step with the session.
+  useEffect(() => {
+    engine.current?.sync(phase, index)
+  }, [phase, index])
 
-  return { status, stream, pose, framing, engineLabel, actOut, retry }
+  const retry = useCallback(() => {
+    if (engine.current && status === 'camera-lost') engine.current.retryCamera()
+    else setAttempt((n) => n + 1)
+  }, [status])
+
+  /** Voice or other evidence for the decoder (see decoder.ts). */
+  const addEvidence = useCallback((ev: Omit<Evidence, 'at'> & { at?: number }) => engine.current?.addEvidence(ev), [])
+
+  const recalibrate = useCallback(() => engine.current?.recalibrate(), [])
+
+  const startCheck = useCallback(() => {
+    const e = engine.current
+    if (!e) return
+    setCheck({ state: 'running', stage: 'bowing' })
+    e.startCheck((result) => setCheck({ state: 'done', result }))
+  }, [])
+
+  // While the check runs, show which part it waits for.
+  useEffect(() => {
+    if (check.state !== 'running') return
+    const id = setInterval(() => {
+      const run = engine.current?.check
+      if (run && !run.done && run.stage !== 'done' && run.stage !== check.stage) setCheck({ state: 'running', stage: run.stage })
+    }, 200)
+    return () => clearInterval(id)
+  }, [check])
+
+  const framing: Framing = !live ? 'none' : live.blocker === 'no-person' ? 'none' : live.blocker ? 'partial' : 'full'
+  const expected: SegmentKind | null = live?.decoder.expected ?? null
+
+  return {
+    status,
+    stream,
+    pose,
+    framing,
+    engineLabel,
+    actOut,
+    retry,
+    addEvidence,
+    recalibrate,
+    startCheck,
+    check,
+    /** What the camera waits for next, and how close it is (0..1). */
+    expected,
+    expectedPosture: live?.decoder.expectedPosture ?? null,
+    progress: live?.decoder.progress ?? 0,
+    blocker: (live?.blocker ?? null) as Blocker,
+    calibrated: live?.calibrated ?? false,
+    /** No usable view of the person for 8 s. */
+    lost: live?.decoder.lost ?? false,
+    /** Timers must not cross a posture boundary right now (sujud, nobody in view). */
+    hold: live?.hold ?? false,
+  }
 }
