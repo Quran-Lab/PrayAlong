@@ -14,6 +14,8 @@ export interface VoiceLineAudio {
   dur: number
   /** [start, end] seconds of each displayed word. */
   words: [number, number][]
+  /** Varied takes of the same line (scripts/voice-augment.mjs); one is picked per occurrence. */
+  variants?: { src: string; dur: number; words: [number, number][] }[]
 }
 export type VoiceManifest = Record<string, VoiceLineAudio>
 
@@ -61,7 +63,11 @@ export interface TimelineOptions {
   perturb: boolean
   /** Level of the companion's voice reaching the microphone (speaker bleed). */
   companionGain: number
+  /** Consecutive Quran lines in one breath (no pause between ayat). */
+  joined: boolean
 }
+
+const isQuranLine = (id: string) => /^(fatiha|kawthar|ikhlas|asr|kafirun|nasr|masad|falaq|nas)-\d/.test(id)
 
 export const DEFAULT_TIMELINE: TimelineOptions = {
   seed: 1,
@@ -73,6 +79,7 @@ export const DEFAULT_TIMELINE: TimelineOptions = {
   quietGain: 1,
   perturb: false,
   companionGain: 0.5,
+  joined: false,
 }
 
 export function rng(seed: number) {
@@ -93,14 +100,15 @@ export function buildTimeline(steps: readonly Step[], audio: VoiceManifest, opti
   const keywords: Timeline['keywords'] = []
   let t = o.lead
   const place = (kind: Clip['kind'], lineId: string, step: number, rep: number, gain: number, upToWord?: number) => {
-    const a = (kind === 'companion' ? companion : audio)?.[lineId]
-    if (!a) throw new Error(`no audio for ${lineId}`)
+    const line = (kind === 'companion' ? companion : audio)?.[lineId]
+    if (!line) throw new Error(`no audio for ${lineId}`)
+    const a = line.variants?.length ? line.variants[Math.floor(rand() * line.variants.length)]! : line
     const dur = upToWord === undefined ? a.dur : Math.min(a.dur, a.words[upToWord]![1] + 0.05)
     const words = a.words.slice(0, upToWord === undefined ? undefined : upToWord + 1)
     const clip: Clip = {
       kind,
       lineId,
-      key: kind === 'companion' ? `companion:${lineId}` : lineId,
+      key: kind === 'companion' ? `companion:${a.src}` : a.src,
       step,
       rep,
       start: t,
@@ -143,7 +151,10 @@ export function buildTimeline(steps: readonly Step[], audio: VoiceManifest, opti
       }
       place(rep < Math.max(1, step.repeat) ? 'line' : 'extra', step.recitationId, i, rep, gain)
     }
-    t += between(o.pause)
+    // Ayat said in one breath (people often join 108:1-3 and 112:1-4).
+    const next = steps[i + 1]
+    const joinedNext = o.joined && next && next.posture === step.posture && isQuranLine(step.recitationId) && isQuranLine(next.recitationId)
+    t += between(joinedNext ? [0.02, 0.15] : o.pause)
   })
   return { clips, duration: t + o.tail, keywords }
 }
@@ -249,7 +260,10 @@ const r2 = (v: number) => Math.round(v * 100) / 100
 
 export interface ReplayMetrics {
   words: { total: number; reported: number; recall: number; lagP50: number; lagP95: number; lagMax: number; early: number }
-  lineDone: { total: number; onTime: number; early: number; late: number; missing: number; accuracy: number }
+  /** beforeEnd: completed before the last word had ended (must be 0); lag: completion minus last word end. */
+  lineDone: { total: number; onTime: number; early: number; late: number; missing: number; accuracy: number; beforeEnd: number; lagP50: number; lagP95: number }
+  /** Repeated lines (tasbih): count reported exactly; share of repetitions whose last word was shown. */
+  reps: { steps: number; countExact: number; repsShown: number }
   session: { steps: number; arrivals: number; premature: number; late: number; arrivalLagP50: number; arrivalLagP95: number; byReason: Record<string, number>; completed: boolean }
   keywords: { takbirTotal: number; takbirHit: number; takbirRecall: number; falseEvents: number; falsePerMin: number; byKind: Record<string, { truth: number; hit: number; false: number }> }
   audioMinutes: number
@@ -278,9 +292,17 @@ export function scoreReplay(tl: Timeline, steps: readonly Step[], log: ReplayLog
 
   // Line done.
   const doneAt = new Map<number, number>()
-  for (const { e, t } of log.events) if (e.kind === 'lineDone' && !doneAt.has(e.step)) doneAt.set(e.step, t)
-  let onTime = 0, earlyDone = 0, late = 0, missing = 0, totalLines = 0
-  steps.forEach((_, i) => {
+  const doneReps = new Map<number, number>()
+  for (const { e, t } of log.events) {
+    if (e.kind === 'lineDone' && !doneAt.has(e.step)) {
+      doneAt.set(e.step, t)
+      doneReps.set(e.step, e.reps)
+    }
+  }
+  let onTime = 0, earlyDone = 0, late = 0, missing = 0, totalLines = 0, beforeEnd = 0
+  const doneLags: number[] = []
+  let repSteps = 0, repsExact = 0, repWords = 0, repWordsSeen = 0
+  steps.forEach((step, i) => {
     const lineClips = tl.clips.filter((c) => c.kind === 'line' && c.step === i)
     if (!lineClips.length) return
     totalLines++
@@ -288,11 +310,25 @@ export function scoreReplay(tl: Timeline, steps: readonly Step[], log: ReplayLog
     const lastEnd = last.words.at(-1)?.[1] ?? last.start + last.dur
     // A movement phrase can finish the line first (salam moves on as it ends).
     const left = log.actions.find((x) => x.a.type === 'goTo' && x.a.index === i + 1 && ['takbir', 'tasmi', 'salam'].includes(x.a.reason))
-    const t = doneAt.get(i) ?? left?.t
+    const own = doneAt.get(i)
+    const t = own ?? left?.t
+    if (own !== undefined) {
+      doneLags.push(own - lastEnd)
+      if (own < lastEnd - 0.05) beforeEnd++
+    }
     if (t === undefined) missing++
     else if (t < lastEnd - 0.4) earlyDone++
     else if (t > lastEnd + 3) late++
     else onTime++
+    // Repetitions: counted right, and each one shown as it is said.
+    if (step.repeat > 1) {
+      repSteps++
+      if (doneReps.get(i) === lineClips.length) repsExact++
+      for (const c of lineClips) {
+        repWords++
+        if (wordEvents.has(`${i}:${c.rep}:${c.words.length - 1}`)) repWordsSeen++
+      }
+    }
   })
 
   // Session arrivals.
@@ -348,7 +384,18 @@ export function scoreReplay(tl: Timeline, steps: readonly Step[], log: ReplayLog
   const minutes = tl.duration / 60
   return {
     words: { total: totalWords, reported: lags.length, recall: r2(lags.length / Math.max(1, totalWords)), lagP50: r2(pct(lags, 50)), lagP95: r2(pct(lags, 95)), lagMax: r2(Math.max(...lags)), early },
-    lineDone: { total: totalLines, onTime, early: earlyDone, late, missing, accuracy: r2(onTime / Math.max(1, totalLines)) },
+    lineDone: {
+      total: totalLines,
+      onTime,
+      early: earlyDone,
+      late,
+      missing,
+      accuracy: r2(onTime / Math.max(1, totalLines)),
+      beforeEnd,
+      lagP50: r2(pct(doneLags, 50)),
+      lagP95: r2(pct(doneLags, 95)),
+    },
+    reps: { steps: repSteps, countExact: repsExact, repsShown: r2(repWordsSeen / Math.max(1, repWords)) },
     session: {
       steps: steps.length,
       arrivals: arrivals.size,

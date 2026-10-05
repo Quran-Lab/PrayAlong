@@ -25,6 +25,10 @@ export interface ReplayParams {
   source: 'feed' | 'mic'
   /** False starts, a forgotten quiet line, tasbih x1 / x5. */
   perturb: boolean
+  /** Tasbih repetitions back to back (0 to 80 ms apart). */
+  tight: boolean
+  /** Consecutive ayat in one breath. */
+  joined: boolean
   /** Another voice recites each line first (the companion from the speakers). */
   companion: string | null
   /** Silence the microphone while the companion speaks (the app's gate option). */
@@ -40,6 +44,8 @@ export const DEFAULT_REPLAY: ReplayParams = {
   quietGain: 1,
   source: 'feed',
   perturb: false,
+  tight: false,
+  joined: false,
   companion: null,
   gate: false,
 }
@@ -55,6 +61,8 @@ export function replayParams(q: URLSearchParams): ReplayParams {
     quietGain: num('quietGain', 1),
     source: q.get('source') === 'mic' ? 'mic' : 'feed',
     perturb: q.has('perturb'),
+    tight: q.has('tight'),
+    joined: q.has('joined'),
     companion: q.get('companion'),
     gate: q.has('gate'),
   }
@@ -82,9 +90,9 @@ export async function prepareReplay(p: ReplayParams): Promise<{ steps: Step[]; t
   const companion = p.companion ? (manifest.voices?.[p.companion]?.lines as VoiceManifest | undefined) : undefined
   if (p.companion && !companion) throw new Error(`no audio for companion ${p.companion}`)
   const steps = buildSequence(p.prayer).steps
-  const timeline = buildTimeline(steps, lines, { seed: p.seed, quietGain: p.quietGain, perturb: p.perturb }, companion)
+  const timeline = buildTimeline(steps, lines, { seed: p.seed, quietGain: p.quietGain, perturb: p.perturb, joined: p.joined, ...(p.tight ? { repPause: [0, 0.08] as [number, number] } : {}) }, companion)
   const pcm = new Map<string, Float32Array>()
-  const keys = new Map(timeline.clips.map((c) => [c.key, (c.kind === 'companion' ? companion! : lines)[c.lineId]!.src]))
+  const keys = new Map(timeline.clips.map((c) => [c.key, c.key.replace(/^companion:/, '')]))
   await Promise.all([...keys].map(async ([key, src]) => pcm.set(key, await decodeClip(new URL(`audio/${src}`, document.baseURI).href))))
   return { steps, timeline, pcm: renderTimeline(timeline, pcm, { sampleRate: SR, gain: p.gain, snrDb: p.snrDb, seed: p.seed }) }
 }

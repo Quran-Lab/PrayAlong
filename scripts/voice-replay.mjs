@@ -18,9 +18,10 @@ import { dirname, extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 import { createServer } from 'vite'
+import { augment } from './voice-augment.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const OUT = join(ROOT, 'test-results/voice')
+const OUT = join(ROOT, 'test-results/voice', process.argv.includes('--out') ? process.argv[process.argv.indexOf('--out') + 1] : '')
 const args = process.argv.slice(2)
 const flag = (k) => args.includes(`--${k}`)
 const opt = (k, d) => (args.includes(`--${k}`) ? args[args.indexOf(`--${k}`) + 1] : d)
@@ -39,8 +40,8 @@ function findAudio() {
 const AUDIO = findAudio()
 
 // Matrix: each speaker on a jahri prayer, clean / noisy / quiet / both.
-const single = opt('prayer', null) || opt('speaker', null) || opt('snr', null) || opt('gain', null) || opt('quiet', null) || flag('perturb') || opt('companion', null)
-const C = (prayer, speaker, extra = {}) => ({ prayer, speaker, snr: null, gain: '1', quiet: '1', seed: '1', perturb: false, companion: null, gate: false, ...extra })
+const single = opt('prayer', null) || opt('speaker', null) || opt('snr', null) || opt('gain', null) || opt('quiet', null) || flag('perturb') || opt('companion', null) || opt('aug', null)
+const C = (prayer, speaker, extra = {}) => ({ prayer, speaker, snr: null, gain: '1', quiet: '1', seed: '1', perturb: false, companion: null, gate: false, aug: null, tight: false, joined: false, ...extra })
 const configs = single
   ? [
       C(opt('prayer', 'fajr'), opt('speaker', 'aisha'), {
@@ -51,7 +52,21 @@ const configs = single
         perturb: flag('perturb'),
         companion: opt('companion', null),
         gate: flag('gate'),
+        aug: opt('aug', null),
+        tight: flag('tight'),
+        joined: flag('joined'),
       }),
+    ]
+  : flag('real')
+  ? [
+      // Real-like takes (scripts/voice-augment.mjs): every speaker, every preset,
+      // tasbih back to back and ayat joined where people join them.
+      ...['aisha', 'yusuf', 'ahmad', 'maryam'].map((speaker, k) => C('fajr', speaker, { aug: 'real', seed: String(11 + k), tight: true, joined: k % 2 === 0, perturb: true })),
+      C('maghrib', 'yusuf', { aug: 'fast', seed: '21', tight: true, joined: true }),
+      C('isha', 'aisha', { aug: 'slow', seed: '22' }),
+      C('fajr', 'ahmad', { aug: 'room', seed: '23', tight: true }),
+      C('fajr', 'maryam', { aug: 'quiet', seed: '24', snr: '15' }),
+      C('dhuhr', 'yusuf', { aug: 'real', seed: '25', quiet: '0.3', tight: true }),
     ]
   : flag('stress')
   ? [
@@ -94,11 +109,15 @@ const base = server.resolvedUrls.local[0]
 console.log(`vite ${base}  audio ${AUDIO}`)
 await mkdir(OUT, { recursive: true })
 
-const TYPES = { '.mp3': 'audio/mpeg', '.json': 'application/json' }
-async function serveAudio(page) {
+const TYPES = { '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.json': 'application/json' }
+async function serveAudio(page, c) {
+  // Augmented takes are rendered once per preset + seed and served in place of public/audio.
+  const dir = c?.aug
+    ? await augment({ audioDir: AUDIO, outDir: join(ROOT, 'test-results/aug'), preset: c.aug, voices: [c.speaker, ...(c.companion ? [c.companion] : [])], seed: Number(c.seed) })
+    : AUDIO
   await page.route('**/audio/**', async (route) => {
     const rel = decodeURIComponent(new URL(route.request().url()).pathname.replace(/^.*?\/audio\//, ''))
-    const file = join(AUDIO, rel)
+    const file = join(dir, rel)
     if (!existsSync(file)) return route.fulfill({ status: 404 })
     await route.fulfill({ body: await readFile(file), contentType: TYPES[extname(file)] ?? 'application/octet-stream' })
   })
@@ -106,10 +125,10 @@ async function serveAudio(page) {
 
 const query = (c, extra = '') =>
   `?lab&voice&replay&run&prayer=${c.prayer}&speaker=${c.speaker}&seed=${c.seed}&gain=${c.gain}&quietGain=${c.quiet}` +
-  `${c.snr ? `&snr=${c.snr}` : ''}${c.perturb ? '&perturb' : ''}${c.companion ? `&companion=${c.companion}` : ''}${c.gate ? '&gate' : ''}${extra}`
+  `${c.snr ? `&snr=${c.snr}` : ''}${c.perturb ? '&perturb' : ''}${c.companion ? `&companion=${c.companion}` : ''}${c.gate ? '&gate' : ''}${c.tight ? '&tight' : ''}${c.joined ? '&joined' : ''}${extra}`
 const name = (c) =>
   `${c.prayer}-${c.speaker}-${c.snr ? `snr${c.snr}` : 'clean'}-g${c.gain}${c.quiet !== '1' ? `-q${c.quiet}` : ''}` +
-  `${c.perturb ? `-perturb${c.seed}` : ''}${c.companion ? `-companion-${c.gate ? 'gated' : 'open'}` : ''}${mic ? '-mic' : ''}`
+  `${c.perturb ? `-perturb${c.seed}` : ''}${c.companion ? `-companion-${c.gate ? 'gated' : 'open'}` : ''}${c.aug ? `-${c.aug}${c.seed}` : ''}${c.tight ? '-tight' : ''}${c.joined ? '-joined' : ''}${mic ? '-mic' : ''}`
 
 async function waitResult(page, label) {
   const t0 = Date.now()
@@ -134,7 +153,7 @@ async function runOne(c) {
     // Render the WAV in a plain page first, then play it as the microphone.
     const b = await chromium.launch()
     const p = await b.newPage()
-    await serveAudio(p)
+    await serveAudio(p, c)
     await p.goto(base + query(c).replace('&run', ''))
     await p.waitForFunction(() => !!window.__voiceWav)
     const b64 = await p.evaluate(() => window.__voiceWav())
@@ -150,7 +169,7 @@ async function runOne(c) {
   const context = await browser.newContext({ permissions: mic ? ['microphone'] : [] })
   const page = await context.newPage()
   page.on('pageerror', (e) => console.log(`  ${label} pageerror`, e.message))
-  await serveAudio(page)
+  await serveAudio(page, c)
   await page.goto(base + query(c, mic ? '&source=mic' : ''))
   const isolated = await page.evaluate(() => self.crossOriginIsolated)
   const result = await waitResult(page, label)
@@ -193,6 +212,9 @@ const rows = results
       lagP50: m.words.lagP50,
       lagP95: m.words.lagP95,
       lineDone: `${m.lineDone.onTime}/${m.lineDone.total}`,
+      beforeEnd: m.lineDone.beforeEnd,
+      endLag: `${m.lineDone.lagP50}/${m.lineDone.lagP95}`,
+      reps: `${m.reps.countExact}/${m.reps.steps} shown ${m.reps.repsShown}`,
       early: m.lineDone.early,
       takbir: `${m.keywords.takbirHit}/${m.keywords.takbirTotal}`,
       falseKw: m.keywords.falseEvents,
