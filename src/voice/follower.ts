@@ -302,9 +302,11 @@ export class Follower {
     const lastAt = this.heard.at(-1)?.at
     if (lastAt === undefined) return []
     if (this.pending) return this.evaluate(at, true)
-    if (this.idleDoneFor === this.count && at - lastAt > 2.5 * this.opts.idleSec) return []
+    // Keep evaluating until the slowest idle rule (3 s without symbols while
+    // noise keeps the energy gate open) has had its chance, then stop.
+    if (this.idleDoneFor === this.count && at - lastAt > 3.5 * this.opts.idleSec) return []
     if (at - lastAt < this.opts.idleSec / 2) return []
-    if (at - lastAt >= 2.5 * this.opts.idleSec) this.idleDoneFor = this.count
+    if (at - lastAt >= 3.5 * this.opts.idleSec) this.idleDoneFor = this.count
     return this.evaluate(at, true)
   }
 

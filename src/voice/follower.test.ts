@@ -414,5 +414,44 @@ describe('Follower', () => {
     const steps = evs.filter((e) => e.kind === 'word').map((e) => (e as { step: number }).step)
     expect(steps).toEqual([...steps].sort((a, b) => a - b))
   })
-})
 
+  it('finishes al-Kawthar 1 without its pausal r, even when background noise keeps the gate open', () => {
+    // Owner log: cursor on "l-kawthar" at fill 0.86, no lineDone (the final r never decoded).
+    const steps = stepsOf('fajr')
+    const i = steps.findIndex((s) => s.lineId === 'kawthar-1')
+    for (const noisy of [false, true]) {
+      const f = new Follower(steps)
+      f.setAnchor(i)
+      const text = LINES['kawthar-1']!.words.join('')
+      const evs: FollowerEvent[] = []
+      const at = feed(f, [...text.slice(0, -1)].map((c) => c), 0, evs)
+      let doneAt = Infinity
+      for (let t = at + 0.1; t < at + 6; t += 0.1) {
+        for (const e of f.level(t, noisy)) if (e.kind === 'lineDone' && e.step === i) doneAt = Math.min(doneAt, t)
+      }
+      for (const e of evs) if (e.kind === 'lineDone' && e.step === i) doneAt = Math.min(doneAt, at)
+      expect(doneAt - at, noisy ? 'noisy gate' : 'quiet').toBeLessThan(noisy ? 3.6 : 1.6)
+    }
+  })
+
+  it('counts a ruku tasbih repetition heard only as its tail ("rabbil azim")', () => {
+    // Owner log: rep 1 done, then "ra l 'a Zi m" left the cursor at done 1, fill 1.
+    const steps = stepsOf('fajr')
+    const i = steps.findIndex((s) => s.lineId === 'ruku')
+    const f = new Follower(steps)
+    f.setAnchor(i)
+    const evs: FollowerEvent[] = []
+    let at = feed(f, tokensOf('ruku'), 0, evs)
+    for (let t = at + 0.1; t < at + 0.8; t += 0.1) evs.push(...f.level(t, false))
+    at += 0.8
+    expect(f.snapshot().repsDone).toBe(1)
+    at = feed(f, ['رَ', 'ل', 'عَ', 'ظِ', 'م'], at, evs)
+    for (let t = at + 0.1; t < at + 0.8; t += 0.1) evs.push(...f.level(t, false))
+    at += 0.8
+    expect(f.snapshot().repsDone).toBe(2)
+    at = feed(f, tokensOf('ruku'), at, evs)
+    for (let t = at + 0.1; t < at + 2; t += 0.1) evs.push(...f.level(t, false))
+    const done = evs.find((e) => e.kind === 'lineDone' && e.step === i) as Extract<FollowerEvent, { kind: 'lineDone' }> | undefined
+    expect(done?.reps).toBe(3)
+  })
+})
