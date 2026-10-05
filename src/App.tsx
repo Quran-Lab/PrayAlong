@@ -28,6 +28,7 @@ import { usePrayerClock } from '@/lib/use-prayer-clock'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import type { PrayerId, Step } from '@/sequence/types'
 import { PACE_FACTOR, currentStep, useSession } from '@/state/session'
+import { optionalWords, useBurstFollow } from '@/voice/burst'
 import { useVoiceFollow } from '@/voice/use-voice' // [voice]
 
 // The 3D stack is the heaviest part of the app; let the UI paint first.
@@ -116,6 +117,19 @@ export function App() {
     onEvidence: (e) => (e.kind === 'takbir' || e.kind === 'tasmi' || e.kind === 'salam') && hands.addEvidence({ kind: e.kind, confidence: e.confidence, at: e.at }),
   })
   const voiceDriving = voiceOn && voice.status === 'listening'
+  // Speech-burst follow: counts lines and repetitions from when you speak, for the
+  // moments the phoneme follower loses you (short lines, garbled takbirs, tasbih x3).
+  const onStep = voiceDriving && voice.cursor?.step === index ? voice.cursor : null
+  const burst = useBurstFollow({
+    enabled: voiceDriving && phase === 'praying',
+    index,
+    speaking: voice.speaking,
+    follower: onStep ? { wordIndex: onStep.wordIndex, repsDone: onStep.repsDone } : null,
+    followerDone: doneStep === index,
+    log: (m) => localStorage.getItem('prayalong:voiceDebug') !== '0' && console.log(`%c${m}`, 'color:#e0a050'),
+  })
+  // The follower counts the optional basmala before a surah as words of its first verse.
+  const skip = optionalWords(sequence.steps[index]?.recitationId ?? '')
   // Listen mode: when a line is finished and the next begins, keep the finished line on
   // screen fully green for a moment, so the last word is seen as said.
   const [shownIndex, setShownIndex] = useState(index)
@@ -336,9 +350,9 @@ export function App() {
                   {phase === 'praying' && (
                     <motion.div key="praying" className="w-full" exit={{ opacity: 0 }}>
                       <Recitation step={held ? sequence.steps[shownIndex]! : step} next={sequence.steps[shownIndex + 1]} timedMs={timedMs} distance={following} speaking={speaking}
-                        heardWord={held ? 9999 : voiceDriving && voice.cursor?.step === index ? voice.cursor.wordIndex : null}
-                        heardRep={held ? sequence.steps[shownIndex]!.repeat : voiceDriving && voice.cursor?.step === index ? voice.cursor.repsDone : null}
-                        heardFill={held ? 1 : voiceDriving && voice.cursor?.step === index ? voice.cursor.fill : null}
+                        heardWord={held ? 9999 : onStep ? (onStep.wordIndex < skip ? -1 : onStep.wordIndex - skip) : null}
+                        heardRep={held ? sequence.steps[shownIndex]!.repeat : voiceDriving ? Math.max(onStep?.repsDone ?? 0, burst.reps) : null}
+                        heardFill={held ? 1 : onStep ? (onStep.wordIndex < skip ? 0 : onStep.fill) : null}
                         listening={voiceDriving}
                       />
                     </motion.div>

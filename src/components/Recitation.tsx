@@ -183,14 +183,13 @@ export function Recitation({
   // or from what was heard. It only ever goes up within a line.
   const count = (x: string) => x.split(/\s+/).filter(Boolean).length
   const arabicWords = count(line.arabic)
-    // A repetition counts as said once its last word is complete.
   // heardRep is the number of repetitions already finished (from the recognizer).
   const repSeen = live ? live.rep : (heardRep ?? 0)
   const repMax = useRef({ id: '', n: 0 })
   if (repMax.current.id !== step.id) repMax.current = { id: step.id, n: 0 }
   repMax.current.n = Math.max(repMax.current.n, repSeen)
   const repsDone = repMax.current.n
-const al = ALIGN[locale]?.[step.recitationId]
+  const al = ALIGN[locale]?.[step.recitationId]
 
   return (
     <div className="relative mx-auto grid w-full max-w-[46rem] px-5 text-center" aria-live="polite">
