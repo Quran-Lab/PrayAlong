@@ -24,7 +24,7 @@ const opt = (k, d) => (args.includes(`--${k}`) ? args[args.indexOf(`--${k}`) + 1
 const OUT = join(ROOT, 'test-results/voice', opt('out', `app-${opt('set', 'std')}`))
 const parallel = Number(opt('parallel', '3'))
 /** Silence before the prayer: the model loads meanwhile (audio before it is ready is dropped). */
-const LEAD = Number(opt('lead', '8'))
+const LEAD = Number(opt('lead', '15'))
 
 const C = (prayer, speaker, extra = {}) => ({ prayer, speaker, snr: null, gain: '1', quiet: '1', seed: '1', perturb: false, aug: null, tight: false, joined: false, amin: null, ...extra })
 const SETS = {
@@ -128,6 +128,16 @@ async function runOne(c) {
       if (msg.includes('[voice]')) window.__logs.push({ t: performance.now(), msg: msg.slice(0, 300) })
       log(...a)
     }
+    // When the speech model is ready (audio before that is not decoded).
+    const W = window.Worker
+    window.Worker = class extends W {
+      constructor(...a) {
+        super(...a)
+        this.addEventListener('message', (e) => {
+          if (e.data?.type === 'ready' && window.__readyAt === undefined) window.__readyAt = performance.now()
+        })
+      }
+    }
     const gum = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
     navigator.mediaDevices.getUserMedia = async (cs) => {
       const s = await gum(cs)
@@ -153,9 +163,11 @@ async function runOne(c) {
     const done = await page.evaluate(() => window.__moves.at(-1)?.phase === 'complete')
     if (done || Date.now() - t0 > (seconds + 25) * 1000) break
   }
-  const { moves, logs, micT0 } = await page.evaluate(() => ({ moves: window.__moves, logs: window.__logs, micT0: window.__micT0 }))
+  const { moves, logs, micT0, readyAt } = await page.evaluate(() => ({ moves: window.__moves, logs: window.__logs, micT0: window.__micT0, readyAt: window.__readyAt }))
   await browser.close()
-  const result = { label, config: c, timeline, moves, logs, micT0, lead: LEAD }
+  const result = { label, config: c, timeline, moves, logs, micT0, lead: LEAD, readyAt }
+  // The model must be ready before the prayer audio starts, or the run measures the load, not the App.
+  result.readyLate = readyAt === undefined || audioT(result, readyAt) > timeline.clips[0].start - 0.5
   result.score = score(result)
   await writeFile(join(OUT, `${label}.json`), JSON.stringify(result, null, 1))
   return result
@@ -244,6 +256,7 @@ await Promise.all(
         const r = await runOne(c)
         results.push(r)
         const s = r.score
+        if (r.readyLate) console.log(`  ${r.label}: model ready only at ${r.readyAt === undefined ? 'never' : audioT(r, r.readyAt).toFixed(1)} s of prayer audio (raise --lead)`)
         console.log(`done ${r.label}: early ${s.early} ${JSON.stringify(s.earlyWhy)} late ${s.late} skipped ${s.skipped} back ${s.back} | reps ok ${s.reps.ok}/${s.reps.steps} early ${s.reps.early} late ${s.reps.late} | lag p50 ${s.lagP50} p95 ${s.lagP95} | complete ${s.completed}`)
       } catch (e) {
         console.log(`FAIL ${name(c)}: ${e.message}`)

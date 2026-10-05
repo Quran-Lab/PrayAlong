@@ -8,10 +8,13 @@ import { useSession } from '@/state/session'
  *
  * A short line (takbir, tasbih, tasmi', "rabbighfir li") said with a pause
  * after it counts as said once the person has spoken about as long as the
- * line takes at a brisk pace; a repeated line counts one repetition per such
- * stretch of speech. After a line before a movement is said, the next burst of
- * speech is the takbir and moves the prayer on as it starts. Long lines are
- * left to the phoneme follower unless it has clearly lost the person.
+ * line takes at a brisk pace. A repeated line counts one repetition per burst
+ * of speech (bursts closer than GAP_MS are one burst; a burst shorter than
+ * half the line is not a repetition), or the phoneme follower's count when it
+ * is higher (repetitions said back to back, with no pause between them). After
+ * a line before a movement is said, the next burst of speech is the takbir and
+ * moves the prayer on as it starts. Long lines are left to the phoneme
+ * follower unless it has clearly lost the person.
  */
 
 const LINES = (phonemes as { lines: Record<string, { words: string[]; optional?: number }> }).lines
@@ -22,21 +25,69 @@ export const optionalWords = (lineId: string) => LINES[lineId]?.optional ?? 0
 /** The line's own words (without the optional basmala). */
 const ownWords = (lineId: string) => LINES[lineId]?.words.slice(optionalWords(lineId)) ?? []
 
-/** Speech time a line needs at a brisk pace (ms): ~25 ms per phonetic character. */
-export function briskMs(lineId: string): number | null {
-  const words = ownWords(lineId)
+/**
+ * A brisk pace, ms per phonetic character. The reciters in the app's audio
+ * take 73-123 ms per character on these lines; 1.5x their speed is about 55.
+ */
+const MS_PER_CHAR = 50
+/** Speech time a line needs at a brisk pace (ms); `withOptional` counts the basmala too. */
+export function briskMs(lineId: string, withOptional = false): number | null {
+  const words = withOptional ? LINES[lineId]?.words ?? [] : ownWords(lineId)
   if (!words.length) return null
-  return Math.max(350, words.join('').length * 25)
+  return Math.max(450, words.join('').length * MS_PER_CHAR)
 }
 
 export const wordCount = (lineId: string) => ownWords(lineId).length
 
 /** Silence after speech before a line counts as finished (ms). */
 export const SILENCE_MS = 700
+/** Shorter silences than this do not split a burst (a breath inside a line). */
+export const GAP_MS = 300
+/** A burst shorter than this share of the line is not a repetition. */
+const BURST_MIN = 0.5
 /** Speech at the start of the next burst before it counts as the takbir (ms). */
 const TAKBIR_ONSET_MS = 250
 /** Lines up to this many words are short enough to follow by speech alone. */
 const SHORT_WORDS = 3
+
+/** Bursts of speech on one step (pure; the hook below drives it). */
+export class BurstCount {
+  /** Closed bursts (ms of speech each). */
+  readonly bursts: number[] = []
+  private cur = 0
+  private since = 0
+  private quietAt = -Infinity
+  speechMs = 0
+
+  private on = false
+
+  speech(on: boolean, now: number) {
+    if (on) {
+      if (this.on) return
+      // A short breath inside a line does not end the burst.
+      if (this.cur > 0 && now - this.quietAt >= GAP_MS) this.close()
+      this.on = true
+      this.since = now
+    } else if (this.on) {
+      const d = now - this.since
+      this.cur += d
+      this.speechMs += d
+      this.on = false
+      this.quietAt = now
+    }
+  }
+
+  /** End the open burst (after enough silence). */
+  close() {
+    if (this.cur > 0) this.bursts.push(this.cur)
+    this.cur = 0
+  }
+
+  /** Repetitions said: one per burst at least half as long as the line. */
+  reps(need: number): number {
+    return this.bursts.filter((b) => b >= BURST_MIN * need).length + (this.cur >= BURST_MIN * need ? 1 : 0)
+  }
+}
 
 export interface BurstInput {
   enabled: boolean
@@ -52,7 +103,7 @@ export interface BurstInput {
 /** Returns the repetitions counted by speech alone on the current step. */
 export function useBurstFollow({ enabled, index, speaking, follower, followerDone, log }: BurstInput) {
   const [reps, setReps] = useState(0)
-  const st = useRef({ step: -1, speechMs: 0, since: 0, carry: false, done: false, onsetTimer: 0, silenceTimer: 0 })
+  const st = useRef({ step: -1, count: new BurstCount(), carry: false, done: false, onsetTimer: 0, silenceTimer: 0 })
   const followerRef = useRef(follower)
   followerRef.current = follower
   const doneRef = useRef(followerDone)
@@ -65,7 +116,7 @@ export function useBurstFollow({ enabled, index, speaking, follower, followerDon
     window.clearTimeout(s.onsetTimer)
     // Speech already going when the step starts is the end of the previous line
     // (e.g. the last verse of al-Fatiha running into amin): it never counts here.
-    st.current = { step: index, speechMs: 0, since: 0, carry: speaking, done: false, onsetTimer: 0, silenceTimer: 0 }
+    st.current = { step: index, count: new BurstCount(), carry: speaking, done: false, onsetTimer: 0, silenceTimer: 0 }
     setReps(0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, enabled])
@@ -88,7 +139,7 @@ export function useBurstFollow({ enabled, index, speaking, follower, followerDon
 
     if (speaking) {
       window.clearTimeout(s.silenceTimer)
-      s.since = now
+      if (!s.carry) s.count.speech(true, now)
       // The line before a movement is said: this burst is the takbir.
       if ((s.done || doneRef.current) && movesNext) {
         s.onsetTimer = window.setTimeout(() => advance('takbir onset'), TAKBIR_ONSET_MS)
@@ -102,32 +153,31 @@ export function useBurstFollow({ enabled, index, speaking, follower, followerDon
       s.carry = false
       return
     }
-    if (s.since) s.speechMs += now - s.since
-    s.since = 0
-    const need = briskMs(step.recitationId)
-    if (!need || s.done || doneRef.current) return
+    s.count.speech(false, now)
+    if (s.done || doneRef.current || !briskMs(step.recitationId)) return
     s.silenceTimer = window.setTimeout(() => {
+      s.count.close()
       const words = wordCount(step.recitationId)
       const f = followerRef.current
       const skip = optionalWords(step.recitationId)
       // Still in the basmala: that speech is not the line itself.
-      if (f && f.wordIndex < skip) {
-        s.speechMs = 0
-        return
-      }
+      if (f && f.wordIndex < skip) return
+      // Not known to be past the basmala: the speech must cover it as well.
+      const need = briskMs(step.recitationId, skip > 0 && !f)!
       const frac = f && words ? (f.wordIndex - skip + 1) / words : 0
       const short = words <= SHORT_WORDS
+      const repeat = Math.max(1, step.repeat)
+      const counted = Math.min(repeat, Math.max(s.count.reps(need), f?.repsDone ?? 0))
       // Long lines: only when the follower is near the end, or has clearly lost the person.
-      const trust = short || frac >= 0.7 || (frac < 0.35 && s.speechMs >= 1.3 * need * step.repeat)
-      const counted = Math.min(step.repeat, Math.floor(s.speechMs / need))
+      const trust = short || frac >= 0.7 || (frac < 0.35 && s.count.speechMs >= 1.3 * need * repeat)
       if (short) setReps(counted)
-      if (!trust || counted < step.repeat) return
+      if (!trust || (short ? counted : Math.floor(s.count.speechMs / need)) < repeat) return
       s.done = true
-      log(`[voice] burst line done step ${index} ${step.recitationId} speech ${Math.round(s.speechMs)} ms (need ${need} x${step.repeat}) follower ${f ? `#${f.wordIndex}` : 'lost'}`)
+      log(`[voice] burst line done step ${index} ${step.recitationId} bursts ${s.count.bursts.map(Math.round).join('+')} ms (need ${need} x${repeat}) follower ${f ? `#${f.wordIndex} reps ${f.repsDone}` : 'lost'}`)
       // Same posture next: move on now. A movement next: wait for the takbir burst
       // (App's short fallback moves on if none comes).
       if (!movesNext) advance('line said')
-      else setReps(step.repeat)
+      else setReps(repeat)
     }, SILENCE_MS)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [speaking, enabled])
