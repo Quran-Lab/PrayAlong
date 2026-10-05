@@ -447,7 +447,21 @@ person, fajr / maghrib, before / after the resync work): model ready 10 s in
 8.4, 7.5 / 6.8, 6.0; 25 s in 8.1, 9.3 / 5.8, 5.8; 40 s in 35.3, 26.6 / 14.9,
 15.2.
 
-**Live App** (`voice-app.mjs`): see the 2026-10-05 evening batch below.
+**Live App** (`voice-app.mjs`, the App with every layer, one browser, the
+decoder within 0.4 s of the microphone in every run counted here):
+
+| set | prayers | early moves | late moves | tasbih left right | completed |
+| --- | --- | --- | --- | --- | --- |
+| standard (clean, noise 10 and 5 dB, -20 dB, quiet lines) | 8 | 0 | 0 | 72/72 | 8/8 |
+| amin left out / after a pause / joined | 6 | 1 | 6 | 60/60 | 6/6 |
+| real-like (tempo, pitch, room, laptop, quiet, slow, x1/x5) | 9 | 13 | 7 | 80/86 | 9/9 |
+
+In the amin set, the early move is the quiet amin of rak'ah 3 timing out
+during the pause; the 6 late moves come from one stretch where outside load
+put the decoder 30 s behind. In the real-like set, before 179899a (burst
+counts alone moved on), there were 78 early moves and 16 tasbih steps left
+early; most of what remains is the slow take (last words held 2-3x), which
+now errs late (8 tasbih steps wait for 6 s of silence or the takbir).
 
 ## Limits
 
