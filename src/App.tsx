@@ -39,6 +39,8 @@ const BODY_GRACE_MS = 6000
 const MOVE_GRACE_MS = 3000
 /** Listen mode: no progress after the last word of a line for this long: move on. */
 const STUCK_MS = 7000
+/** Listen mode: how long a finished line stays on screen, fully lit, after the next starts. */
+const LINE_HOLD_MS = 260
 
 const stepMs = (step: Step, pace: keyof typeof PACE_FACTOR) => Math.max(step.timing.minMs, step.timing.expectedMs * PACE_FACTOR[pace])
 
@@ -114,6 +116,18 @@ export function App() {
     onEvidence: (e) => (e.kind === 'takbir' || e.kind === 'tasmi' || e.kind === 'salam') && hands.addEvidence({ kind: e.kind, confidence: e.confidence, at: e.at }),
   })
   const voiceDriving = voiceOn && voice.status === 'listening'
+  // Listen mode: when a line is finished and the next begins, keep the finished line on
+  // screen fully green for a moment, so the last word is seen as said.
+  const [shownIndex, setShownIndex] = useState(index)
+  useEffect(() => {
+    if (voiceDriving && index === shownIndex + 1) {
+      const id = setTimeout(() => setShownIndex(index), LINE_HOLD_MS)
+      return () => clearTimeout(id)
+    }
+    setShownIndex(index)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, voiceDriving])
+  const held = shownIndex !== index && phase === 'praying'
   // Listen mode safety net: the last word of the line is done (fill 1) but the follower has
   // made no progress for a while (e.g. a repeated tasbih it fails to count): move on.
   const cursorKey = voice.cursor ? `${voice.cursor.step}:${voice.cursor.rep}:${voice.cursor.wordIndex}:${voice.cursor.fill >= 0.99}` : ''
@@ -321,10 +335,10 @@ export function App() {
                   {phase === 'ready' && <ReadyPanel key="ready" clock={clock} handsFree={handsFree} onHandsFree={toggleHandsFree} />}
                   {phase === 'praying' && (
                     <motion.div key="praying" className="w-full" exit={{ opacity: 0 }}>
-                      <Recitation step={step} next={sequence.steps[index + 1]} timedMs={timedMs} distance={following} speaking={speaking}
-                        heardWord={voiceDriving && voice.cursor?.step === index ? voice.cursor.wordIndex : null}
-                        heardRep={voiceDriving && voice.cursor?.step === index ? voice.cursor.repsDone : null}
-                        heardFill={voiceDriving && voice.cursor?.step === index ? voice.cursor.fill : null}
+                      <Recitation step={held ? sequence.steps[shownIndex]! : step} next={sequence.steps[shownIndex + 1]} timedMs={timedMs} distance={following} speaking={speaking}
+                        heardWord={held ? 9999 : voiceDriving && voice.cursor?.step === index ? voice.cursor.wordIndex : null}
+                        heardRep={held ? sequence.steps[shownIndex]!.repeat : voiceDriving && voice.cursor?.step === index ? voice.cursor.repsDone : null}
+                        heardFill={held ? 1 : voiceDriving && voice.cursor?.step === index ? voice.cursor.fill : null}
                         listening={voiceDriving}
                       />
                     </motion.div>
