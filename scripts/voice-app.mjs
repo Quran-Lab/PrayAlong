@@ -117,7 +117,7 @@ async function runOne(c) {
     try {
       const k = 'prayalong:session'
       const s = JSON.parse(localStorage.getItem(k) || 'null') ?? { state: {}, version: 0 }
-      s.state.settings = { ...(s.state.settings ?? {}), voice: false, guide: false, repeatAfter: false, ambience: false, sounds: false }
+      s.state.settings = { ...(s.state.settings ?? {}), voice: false, guide: false, repeatAfter: false, sounds: false }
       s.state.demo = true
       localStorage.setItem(k, JSON.stringify(s))
     } catch {}

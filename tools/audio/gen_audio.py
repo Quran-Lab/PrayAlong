@@ -1,10 +1,9 @@
-"""Generate PrayAlong's voice and ambience files into public/audio/.
+"""Generate PrayAlong's voice files into public/audio/.
 
     EL=<elevenlabs key> python tools/audio/gen_audio.py voices.json content.json [--only yusuf,ahmad]
 
 voices.json maps each companion to a voice:
-  {"yusuf": {"voice_id": "..."} | {"generated_voice_id": "...", "description": "..."}, ...,
-   "ambience": {"fajr": ["path/a.mp3", ...], ...}}
+  {"yusuf": {"voice_id": "..."} | {"generated_voice_id": "...", "description": "..."}, ...}
 content.json comes from scripts/content-dump.test.ts (lines + guide texts).
 
 Every line is spoken with eleven_v4 with character timestamps, which become
@@ -85,10 +84,10 @@ def main():
     content = json.load(open(sys.argv[2], encoding='utf-8'))
     only = sys.argv[sys.argv.index('--only') + 1].split(',') if '--only' in sys.argv else None
     man_path = os.path.join(OUT, 'manifest.json')
-    manifest = json.load(open(man_path, encoding='utf-8')) if os.path.exists(man_path) else {'version': 1, 'voices': {}, 'ambience': {}}
+    manifest = json.load(open(man_path, encoding='utf-8')) if os.path.exists(man_path) else {'version': 1, 'voices': {}}
     jobs = []
     for companion, spec in voices.items():
-        if companion == 'ambience' or (only and companion not in only):
+        if only and companion not in only:
             continue
         vid = save_voice(companion, spec)
         print(companion, 'voice', vid, flush=True)
@@ -109,13 +108,6 @@ def main():
             if kind == 'line': v['lines'][key] = clip
             else: v['guide'].setdefault(locale, {})[key] = clip
             if n % 20 == 0: print(f'{n + 1}/{len(jobs)}', flush=True)
-    for prayer, takes in voices.get('ambience', {}).items():
-        manifest['ambience'][prayer] = []
-        for i, src in enumerate(takes):
-            rel = f'ambience/{prayer}/{i}.mp3'
-            os.makedirs(os.path.join(OUT, 'ambience', prayer), exist_ok=True)
-            subprocess.run(['ffmpeg', '-v', 'quiet', '-y', '-i', src, '-af', 'loudnorm=I=-24:TP=-3:LRA=8', '-ac', '2', '-ar', '44100', '-b:a', '96k', os.path.join(OUT, rel)], check=True)
-            manifest['ambience'][prayer].append(rel)
     json.dump(manifest, open(man_path, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     print('wrote', man_path)
 

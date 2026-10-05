@@ -1,4 +1,4 @@
-import { Settings2, Wind } from 'lucide-react'
+import { Settings2 } from 'lucide-react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { AlertDialog, Direction, Tooltip as RadixTooltip } from 'radix-ui'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
@@ -45,16 +45,6 @@ const STUCK_MS = 7000
 const LINE_HOLD_MS = 260
 
 const stepMs = (step: Step, pace: keyof typeof PACE_FACTOR) => Math.max(step.timing.minMs, step.timing.expectedMs * PACE_FACTOR[pace])
-
-/** Wind with a slash: ambience muted. */
-function WindOff({ className }: { className?: string }) {
-  return (
-    <span className={`relative inline-grid ${className ?? ''}`}>
-      <Wind className="size-full" />
-      <span className="absolute top-1/2 left-1/2 h-[2px] w-[120%] -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded bg-current" />
-    </span>
-  )
-}
 
 export function App() {
   const t = useT()
@@ -274,15 +264,6 @@ export function App() {
               </div>
               {wide ? <PrayerChips clock={clock} onRequestSwitch={setPendingSwitch} /> : <PrayerMenu clock={clock} onRequestSwitch={setPendingSwitch} />}
               <div className="flex flex-1 items-center justify-end gap-1.5 sm:gap-2">
-                <Button
-                  variant="quiet"
-                  size="icon"
-                  aria-label={settings.ambience ? t('ambience.mute') : t('ambience.unmute')}
-                  aria-pressed={!settings.ambience}
-                  onClick={() => session.updateSettings({ ambience: !settings.ambience })}
-                >
-                  {settings.ambience ? <Wind className="size-[18px]" /> : <WindOff className="size-[18px] opacity-60" />}
-                </Button>
                 <Button variant="quiet" size="icon" aria-label={t('settings.title')} onClick={() => setSettingsOpen(true)}>
                   <Settings2 className="size-[18px]" />
                 </Button>

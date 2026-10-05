@@ -25,8 +25,6 @@ export interface Settings {
   voice: boolean
   /** The companion briefly says what to do at each movement, in your language. */
   guide: boolean
-  /** Quiet sounds of the hour from the window (no music). */
-  ambience: boolean
   /** 0..1 */
   volume: number
   /** Raise the hands going into ruku and rising from it (raf' al-yadayn). */
@@ -109,7 +107,6 @@ export const useSession = create<SessionState>()(
         characterId: 'yusuf',
         voice: true,
         guide: true,
-        ambience: true,
         volume: 0.9,
         raiseHands: true,
         repeatAfter: true,
@@ -171,13 +168,13 @@ export const useSession = create<SessionState>()(
     }),
     {
       name: 'prayalong:session',
-      version: 3,
+      version: 4,
       partialize: (s) => ({ settings: s.settings }),
       // Older saves predate languages and companions; keep only what still fits.
-      migrate: (persisted, version) => {
-        const p = persisted as { settings: Partial<Settings> }
-        // v3: real field-recorded ambience ships; turn it on for everyone once.
-        if (version < 3 && p?.settings) p.settings.ambience = true
+      migrate: (persisted) => {
+        const p = persisted as { settings: Partial<Settings> & { ambience?: unknown } }
+        // v4: no more ambience.
+        if (p?.settings) delete p.settings.ambience
         return p as { settings: Settings }
       },
       merge: (persisted, current) => ({

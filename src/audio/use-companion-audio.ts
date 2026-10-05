@@ -53,12 +53,12 @@ function plan(step: Step, voice: string, locale: Locale, settings: Settings, lis
 }
 
 /**
- * The companion's voice and the room's ambience, following the session.
+ * The companion's voice, following the session.
  * Returns what is being spoken (for word highlighting) and how long the
  * current step's audio lasts (so timers never cut a recitation short).
  */
 export function useCompanionAudio(opts: { phase: string; step: Step; next?: Step; prayer: PrayerId; voice: string; locale: Locale; settings: Settings; listen?: boolean }) {
-  const { phase, step, next, prayer, voice, locale, settings, listen = false } = opts
+  const { phase, step, next, voice, locale, settings, listen = false } = opts
   const [ready, setReady] = useState(false)
   const [speaking, setSpeaking] = useState<Speaking | null>(null)
   const [unlocked, setUnlocked] = useState(false)
@@ -82,15 +82,7 @@ export function useCompanionAudio(opts: { phase: string; step: Step; next?: Step
   }, [unlocked])
 
   useEffect(() => audio.setVolume(settings.volume), [settings.volume, unlocked])
-  useEffect(() => audio.setAmbienceLevel(phase === 'praying' ? 0.07 : 0.42), [phase, unlocked])
 
-  // The room: ambience of the hour.
-  const takes = ready ? getManifest()?.ambience[prayer] : undefined
-  useEffect(() => {
-    if (!unlocked || !settings.ambience || !takes?.length) return audio.stopAmbience()
-    void audio.startAmbience(prayer, takes)
-  }, [unlocked, settings.ambience, prayer, takes])
-  useEffect(() => () => audio.stopAmbience(0.5), [])
 
   // The voice: each line as it comes.
   const planned = ready && settings.voice ? plan(step, voice, locale, settings, listen) : null

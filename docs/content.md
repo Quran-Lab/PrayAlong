@@ -237,13 +237,4 @@ Rising, Prostration, Sitting).
   a light voice EQ and loudness normalisation (`tools/audio/gen_audio.py`).
   Per-word timings come from the TTS character alignment; meaning and
   pronunciation word links come from `tools/audio/gen_align.py`.
-- **Ambience**: real field recordings from Freesound, all CC0 (public
-  domain), cut to two minutes, set quietly and shuffled with crossfades in
-  the app:
-  - Fajr: 466242, 632439, 518670, 477643
-  - Dhuhr: 650337, 796198, 464315, 641306
-  - Asr: 514550, 327499, 245833, 465280
-  - Maghrib: 702475, 855326, 580941
-  - Isha: 479041, 522299, 500332, 699142
 
-  (Freesound sound ids; see https://freesound.org/s/<id>/.)
