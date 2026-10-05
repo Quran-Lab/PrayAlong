@@ -97,7 +97,7 @@ self.onmessage = (event) => {
     case "record":
       // Opt-in session recording: the raw microphone (before the companion
       // gate) at 16 kHz, kept in this worker until taken. Never uploaded.
-      recording = m.on ? { chunks: [], frac: 0, last: 0, startAt: audioSec } : recording;
+      recording = m.on ? { chunks: [], resample: makeResampler(), startAt: audioSec } : recording;
       if (!m.on && recording) recording.stopped = true;
       break;
     case "take": {
@@ -265,27 +265,63 @@ function observe(samples, rate) {
   levelSpeech = levelSpeech || speech;
 }
 
-/** Linear resampling to 16 kHz, continuous across batches, as 16-bit PCM. */
+/** The session recording, at 16 kHz through the same resampler as the decoder. */
 function keepRecording(input, rate) {
   const r = recording;
   if (!r || r.stopped) return;
-  const step = rate / SAMPLE_RATE;
+  const pcm = r.resample(input, rate);
+  const out = new Int16Array(pcm.length);
+  for (let i = 0; i < pcm.length; i++) out[i] = Math.max(-32768, Math.min(32767, Math.round(pcm[i] * 32767)));
+  r.chunks.push(out);
+}
+
+/**
+ * Streaming windowed-sinc resampler to 16 kHz. The decoder's own resampler
+ * (fed 48 kHz microphone audio) roughly doubled the phoneme error rate on
+ * short utterances, so the stream always gets 16 kHz from here.
+ */
+function makeResampler() {
+  let rs = null;
+  return (input, rate) => resample(input, rate, rs && rs.rate === rate ? rs : (rs = newResampler(rate)));
+}
+function newResampler(rate) {
+  const step = rate / SAMPLE_RATE; // input samples per output sample
+  const fc = (0.47 * SAMPLE_RATE) / rate; // cut-off, cycles per input sample (7.5 kHz)
+  const half = Math.ceil(12 / (2 * fc)); // taps each side: 12 zero crossings
+  return { rate, step, fc, half, buf: new Float32Array(0), pos: half };
+}
+const to16k = makeResampler();
+function resample(input, rate, rs) {
+  if (rate === SAMPLE_RATE) return input;
+  {
+  }
+  const { step, fc, half } = rs;
+  const buf = new Float32Array(rs.buf.length + input.length);
+  buf.set(rs.buf);
+  buf.set(input, rs.buf.length);
   const out = [];
-  let pos = r.frac;
-  let prev = r.last;
-  while (pos < input.length) {
-    const i = Math.floor(pos);
-    const a = i === 0 ? prev : input[i - 1];
-    const b = input[i];
-    // pos is measured so that index -1 is the previous batch's last sample.
-    const t = pos - i;
-    const v = a + (b - a) * t;
-    out.push(Math.max(-32768, Math.min(32767, Math.round(v * 32767))));
+  let pos = rs.pos; // next output position, in buf samples
+  while (pos + half < buf.length) {
+    const c = Math.floor(pos);
+    let acc = 0;
+    let norm = 0;
+    for (let k = c - half + 1; k <= c + half; k++) {
+      const d = pos - k;
+      const x = 2 * fc * d;
+      const sinc = x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x);
+      const w = 0.5 + 0.5 * Math.cos((Math.PI * d) / (half + 1));
+      const h = sinc * w;
+      acc += (buf[k] || 0) * h;
+      norm += h;
+    }
+    out.push(acc / norm);
     pos += step;
   }
-  r.frac = pos - input.length;
-  r.last = input[input.length - 1];
-  r.chunks.push(Int16Array.from(out));
+  // Keep what the next call still needs (the window left of the next output).
+  const keepFrom = Math.max(0, Math.floor(pos) - half);
+  rs.buf = buf.slice(keepFrom);
+  rs.pos = pos - keepFrom;
+  return Float32Array.from(out);
 }
 
 function accept(input, rate) {
@@ -304,7 +340,7 @@ function accept(input, rate) {
   }
   if (!recognizer || !stream) return;
   segAudioSec += dur;
-  stream.acceptWaveform(rate, samples);
+  stream.acceptWaveform(SAMPLE_RATE, to16k(samples, rate));
   decode(false);
 }
 
