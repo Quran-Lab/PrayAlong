@@ -8,6 +8,7 @@ import type { PoseClass, PrayerId, PrayerSequence, Step } from '@/sequence/types
 export type Phase = 'ready' | 'praying' | 'complete'
 export type Pace = 'slow' | 'normal' | 'brisk'
 export type TextSize = 'm' | 'l' | 'xl'
+export type Mode = 'teach' | 'pray'
 
 export interface Settings {
   /** 'auto' follows the browser language. */
@@ -21,16 +22,15 @@ export interface Settings {
   /** Soft chime + haptic when hands-free follows a movement. */
   sounds: boolean
   characterId: string
-  /** The companion recites each line aloud (quiet lines softly). */
-  voice: boolean
-  /** The companion briefly says what to do at each movement, in your language. */
-  guide: boolean
+  /**
+   * teach: the companion says how to do each movement and recites each line for you to
+   * repeat. pray: you recite, PrayAlong follows quietly (the microphone is never muted).
+   */
+  mode: Mode
   /** 0..1 */
   volume: number
   /** Raise the hands going into ruku and rising from it (raf' al-yadayn). */
   raiseHands: boolean
-  /** Listen mode: the companion recites each line first, then you say it. */
-  repeatAfter: boolean
   /** Keep this session's microphone audio and voice log on this device, to save and send for debugging. */
   recordSessions: boolean
 }
@@ -105,11 +105,9 @@ export const useSession = create<SessionState>()(
         pace: 'normal',
         sounds: true,
         characterId: 'yusuf',
-        voice: true,
-        guide: true,
+        mode: 'teach',
         volume: 0.9,
         raiseHands: true,
-        repeatAfter: true,
         recordSessions: false,
       },
 
@@ -168,13 +166,19 @@ export const useSession = create<SessionState>()(
     }),
     {
       name: 'prayalong:session',
-      version: 4,
+      version: 5,
       partialize: (s) => ({ settings: s.settings }),
       // Older saves predate languages and companions; keep only what still fits.
       migrate: (persisted) => {
-        const p = persisted as { settings: Partial<Settings> & { ambience?: unknown } }
-        // v4: no more ambience.
-        if (p?.settings) delete p.settings.ambience
+        const p = persisted as { settings: Partial<Settings> & Record<string, unknown> }
+        if (p?.settings) {
+          // v4: no more ambience. v5: two modes replace the voice, guide and repeat-after switches.
+          delete p.settings.ambience
+          if (!p.settings.mode) p.settings.mode = p.settings.repeatAfter === false && p.settings.guide === false ? 'pray' : 'teach'
+          delete p.settings.voice
+          delete p.settings.guide
+          delete p.settings.repeatAfter
+        }
         return p as { settings: Settings }
       },
       merge: (persisted, current) => ({

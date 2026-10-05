@@ -9,6 +9,7 @@ import { useCompanionSpeaking } from '@/audio/engine'
 import { useCompanionAudio } from '@/audio/use-companion-audio'
 import { CompletePanel, ReadyPanel } from '@/components/Panels'
 import { PostureDock } from '@/components/PostureDock'
+import { PostureGuide } from '@/components/PostureGuide'
 import { PrayerChips, PrayerMenu } from '@/components/PrayerSelector'
 import { Recitation } from '@/components/Recitation'
 import { SettingsSheet } from '@/components/SettingsSheet'
@@ -340,7 +341,10 @@ export function App() {
                         heardRep={held ? sequence.steps[shownIndex]!.repeat : voiceDriving ? Math.max(onStep?.repsDone ?? 0, burst.reps) : null}
                         heardFill={held ? 1 : onStep ? (onStep.wordIndex < skip ? 0 : onStep.fill) : null}
                         listening={voiceDriving}
+                        quiet={settings.mode === 'pray'}
                       />
+                      {/* Up close: how to fold the feet, the toes in sujud, the tashahhud finger. */}
+                      <PostureGuide posture={posture} character={character.id} teach={settings.mode === 'teach'} />
                     </motion.div>
                   )}
                   {phase === 'complete' && <CompletePanel key="complete" clock={clock} />}

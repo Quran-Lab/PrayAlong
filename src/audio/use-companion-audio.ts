@@ -29,16 +29,17 @@ function plan(step: Step, voice: string, locale: Locale, settings: Settings, lis
   const clips: { clip: Clip; gain: number; isLine: boolean; rep: number }[] = []
   // The takbir that announces a movement: in Listen mode you say it yourself.
   if (!listen && step.cue && TAKBIR_CUES.has(step.cue) && m.lines['takbir']) clips.push({ clip: m.lines['takbir'], gain: 1, isLine: false, rep: 0 })
-  if (settings.guide && step.cue && step.groupIndex === 0) {
+  const teach = settings.mode === 'teach'
+  if (teach && step.cue && step.groupIndex === 0) {
     // One instruction per movement (how to bow, sit on the left foot, ...); each salam gets its own side.
     const key = step.posture === 'salam-right' ? 'salamRight' : step.posture === 'salam-left' ? 'salamLeft' : postureKey(step.posture)
     const g = m.guide[locale]?.[`voice.${key}`]
     if (g) clips.push({ clip: g, gain: 1, isLine: false, rep: 0 })
   }
-  // Listen mode: the movement guidance, then (with "repeat after me") the line once;
-  // you recite after it. The mic is muted only while the companion speaks.
+  // Listening (Teach me): the movement guidance, then the line once; you repeat it after.
+  // The mic is muted only while the companion speaks.
   if (listen) {
-    if (settings.repeatAfter) clips.push({ clip: line, gain: step.voice === 'quiet' ? QUIET_GAIN : 1, isLine: true, rep: 0 })
+    if (teach) clips.push({ clip: line, gain: step.voice === 'quiet' ? QUIET_GAIN : 1, isLine: true, rep: 0 })
     if (!clips.length) return null
     const spoken = clips.reduce((t, c) => t + c.clip.dur * 1000, 0) + REPEAT_GAP * 1000 * (clips.length - 1)
     return { clips, ms: spoken }
@@ -48,7 +49,7 @@ function plan(step: Step, voice: string, locale: Locale, settings: Settings, lis
   const spoken = clips.reduce((t, c) => t + c.clip.dur * 1000, 0) + REPEAT_GAP * 1000 * (clips.length - 1)
   // Pray at the user's pace, not the voice's: leave time to say the line
   // after the companion (repeat-after-me while learning, a breath otherwise).
-  const yours = settings.guide ? line.dur * 1000 * step.repeat * PACE_ROOM[settings.pace] : line.dur * 1000 * 0.35
+  const yours = teach ? line.dur * 1000 * step.repeat * PACE_ROOM[settings.pace] : line.dur * 1000 * 0.35
   return { clips, ms: spoken + yours }
 }
 
@@ -85,7 +86,8 @@ export function useCompanionAudio(opts: { phase: string; step: Step; next?: Step
 
 
   // The voice: each line as it comes.
-  const planned = ready && settings.voice ? plan(step, voice, locale, settings, listen) : null
+  // Pray with me: the companion stays quiet, so the microphone never misses you.
+  const planned = ready && settings.mode === 'teach' ? plan(step, voice, locale, settings, listen) : null
   const stepId = step.id
   const live = useRef(0)
   useEffect(() => {
@@ -108,7 +110,7 @@ export function useCompanionAudio(opts: { phase: string; step: Step; next?: Step
     if (after) audio.preload(after.src)
     return () => audio.stopSpeaking()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, stepId, unlocked, ready, settings.voice, settings.guide, voice, locale, listen])
+  }, [phase, stepId, unlocked, ready, settings.mode, voice, locale, listen])
 
   return { speaking, audioMs: phase === 'praying' && unlocked ? (planned?.ms ?? null) : null }
 }

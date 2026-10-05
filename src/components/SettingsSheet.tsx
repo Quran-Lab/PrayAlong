@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn'
 import { methodLabel } from '@/lib/prayer-times'
 import type { PrayerClock } from '@/lib/use-prayer-clock'
 import { display, useSession, type Pace, type TextSize } from '@/state/session'
+import { ModePicker } from './ModePicker'
 import { CHARACTERS } from './stage/characters'
 import { Sheet } from './ui/Sheet'
 import { Kbd, Segmented, Switch } from './ui/primitives'
@@ -62,10 +63,11 @@ export function SettingsSheet({ open, onOpenChange, clock }: { open: boolean; on
           </div>
         </Section>
 
+        <Section title={t('settings.mode')}>
+          <ModePicker compact />
+        </Section>
+
         <Section title={t('settings.sound')}>
-          <Switch label={t('settings.voice')} checked={settings.voice} onCheckedChange={(v) => update({ voice: v })} />
-          <Switch label={t('settings.guide')} checked={settings.guide} onCheckedChange={(v) => update({ guide: v })} />
-          <Switch label={t('settings.repeatAfter')} checked={settings.repeatAfter} onCheckedChange={(v) => update({ repeatAfter: v })} />
           <Switch label={t('settings.record')} checked={settings.recordSessions} onCheckedChange={(v) => update({ recordSessions: v })} />
           <label className="flex items-center justify-between gap-4 pt-1 text-sm text-ink-soft">
             {t('settings.volume')}

@@ -7,6 +7,7 @@ import { useLocale, useT } from '@/i18n'
 import { formatTime } from '@/lib/prayer-times'
 import type { PrayerClock } from '@/lib/use-prayer-clock'
 import { display, useSession } from '@/state/session'
+import { ModePicker } from './ModePicker'
 import { Button, Kbd } from './ui/primitives'
 
 const rise = {
@@ -51,6 +52,9 @@ export function ReadyPanel({ clock, handsFree }: { clock: PrayerClock; handsFree
       <p className="mt-3 max-w-md font-serif text-[length:var(--text-body)] leading-relaxed text-balance text-ink-soft">
         {t('ready.body')} {handsFree ? t('ready.bodyHandsFree') : t('ready.bodyListen')}
       </p>
+      <div className="mt-6 w-full max-w-[30rem]">
+        <ModePicker />
+      </div>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
         <Button variant="primary" size="lg" onClick={begin}>
           <Play className="size-4 fill-current" />

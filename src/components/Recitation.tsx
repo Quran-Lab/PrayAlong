@@ -144,6 +144,7 @@ export function Recitation({
   heardRep = null,
   heardFill = null,
   listening = false,
+  quiet = false,
 }: {
   step: Step
   next?: Step
@@ -158,6 +159,8 @@ export function Recitation({
   heardFill?: number | null
   /** Listen mode is on: show what to say to move on. */
   listening?: boolean
+  /** Pray with me: just the line, no preview of the next one. */
+  quiet?: boolean
 }) {
   const t = useT()
   const locale = useLocale()
@@ -170,7 +173,7 @@ export function Recitation({
   // With Arabic as the only script, it becomes the hero.
   const arabicHero = show.arabic && !show.transliteration
   const long = (arabicHero ? line.arabic : line.transliteration).length > 46
-  const upcoming = next && next.recitationId !== step.recitationId ? resolveLine(next.recitationId, locale) : null
+  const upcoming = !quiet && next && next.recitationId !== step.recitationId ? resolveLine(next.recitationId, locale) : null
   const live = speaking?.stepId === step.id ? speaking : null
   const spoken = useSpokenWord(live)
   // The companion's voice leads while it speaks; otherwise follow the user's own recitation.
