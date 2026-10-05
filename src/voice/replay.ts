@@ -65,6 +65,8 @@ export interface TimelineOptions {
   companionGain: number
   /** Consecutive Quran lines in one breath (no pause between ayat). */
   joined: boolean
+  /** Amin after al-Fatiha: said normally, left out, after a long pause (4-6 s), or joined to the last verse. */
+  amin: 'normal' | 'skip' | 'pause' | 'joined'
 }
 
 const isQuranLine = (id: string) => /^(fatiha|kawthar|ikhlas|asr|kafirun|nasr|masad|falaq|nas)-\d/.test(id)
@@ -80,6 +82,7 @@ export const DEFAULT_TIMELINE: TimelineOptions = {
   perturb: false,
   companionGain: 0.5,
   joined: false,
+  amin: 'normal',
 }
 
 export function rng(seed: number) {
@@ -132,6 +135,8 @@ export function buildTimeline(steps: readonly Step[], audio: VoiceManifest, opti
     const sameAsPrev = steps[i - 1]?.posture === step.posture
     // Perturbations: a forgotten quiet line, a tasbih said once or five times.
     if (o.perturb && step.voice === 'quiet' && !keyword && sameAsPrev && step.repeat === 1 && rand() < 0.1) return
+    if (step.recitationId === 'amin' && o.amin === 'skip') return
+    if (step.recitationId === 'amin' && o.amin === 'pause') t += between([4, 6])
     let reps = Math.max(1, step.repeat)
     if (o.perturb && reps === 3) {
       const r = rand()
@@ -154,7 +159,8 @@ export function buildTimeline(steps: readonly Step[], audio: VoiceManifest, opti
     // Ayat said in one breath (people often join 108:1-3 and 112:1-4).
     const next = steps[i + 1]
     const joinedNext = o.joined && next && next.posture === step.posture && isQuranLine(step.recitationId) && isQuranLine(next.recitationId)
-    t += between(joinedNext ? [0.02, 0.15] : o.pause)
+    const aminJoined = o.amin === 'joined' && next?.recitationId === 'amin'
+    t += between(joinedNext || aminJoined ? [0.02, 0.15] : o.pause)
   })
   return { clips, duration: t + o.tail, keywords }
 }
@@ -348,7 +354,12 @@ export function scoreReplay(tl: Timeline, steps: readonly Step[], log: ReplayLog
     // Moving while saying "Allahu akbar": ready once "Allahu" has been said.
     if (takbir) return takbir.words[0]?.[1] ?? takbir.start + takbir.dur / 2
     if (i === 0) return tl.clips[0]!.start
-    return lastWordEnd(i - 1)
+    // A line left out (amin not said): ready once the line before it was said.
+    for (let j = i - 1; j >= 0; j--) {
+      const end = lastWordEnd(j)
+      if (end !== null) return end
+    }
+    return null
   }
   const byReason: Record<string, number> = {}
   const arrivalLags: number[] = []
