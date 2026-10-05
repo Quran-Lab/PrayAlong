@@ -22,6 +22,9 @@ import type { FollowerEvent, KeywordKind } from './types'
 
 /** Listen mode: the least time an aloud line nobody has started waits before the timer moves on. */
 const UNSTARTED_MS = 8000
+/** A repeated line with its count heard: silence before the next line (same posture) or the movement. */
+export const REPS_DONE_SAME_MS = 1200
+export const REPS_DONE_MOVE_MS = 2000
 /** Listening began late: how long the one resync stays available, and what it needs. */
 const RESYNC_WINDOW_MS = 90_000
 const RESYNC_MIN_CONFIDENCE = 0.85
@@ -337,6 +340,17 @@ export class VoiceDriver {
     const here = s.steps[i]!
     const after = s.steps[i + 1]
     const elapsed = now - this.arrivedAt
+    // A repeated line (tasbih) whose count the follower has heard: once the person
+    // is quiet, move on promptly (the next line in the same posture after
+    // REPS_DONE_SAME_MS, a movement after REPS_DONE_MOVE_MS when its takbir was
+    // not heard), instead of waiting for the long silence of an unfinished count.
+    if (here.repeat > 1 && !this.lineDone && (this.repsDone.get(i) ?? 0) >= here.repeat) {
+      const quiet = now - Math.max(this.lastSpeechAt, this.lastWordAt, this.arrivedAt)
+      const same = !!after && after.pose === here.pose && after.posture === here.posture
+      if (!same && mode !== 'full' && after) return null
+      if (quiet < (same ? REPS_DONE_SAME_MS : REPS_DONE_MOVE_MS)) return null
+      return after ? this.move(i + 1, 'repsDone') : { type: 'finish', reason: 'repsDone' }
+    }
     const talking = now - this.lastSpeechAt < this.cfg.speechHoldMs
     const reading = now - this.lastWordAt < this.cfg.wordHoldMs
     if (talking || reading) return null

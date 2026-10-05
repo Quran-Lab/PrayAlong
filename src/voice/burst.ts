@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import phonemes from '@/content/phonemes.json'
 import { useSession } from '@/state/session'
+import { REPS_DONE_MOVE_MS, REPS_DONE_SAME_MS } from './driver'
 
 /**
  * Speech-burst follow: a safety layer next to the phoneme follower that only
@@ -103,7 +104,7 @@ export interface BurstInput {
 /** Returns the repetitions counted by speech alone on the current step. */
 export function useBurstFollow({ enabled, index, speaking, follower, followerDone, log }: BurstInput) {
   const [reps, setReps] = useState(0)
-  const st = useRef({ step: -1, count: new BurstCount(), carry: false, done: false, confirmed: false, onsetTimer: 0, silenceTimer: 0 })
+  const st = useRef({ step: -1, count: new BurstCount(), carry: false, done: false, confirmed: false, moveAfter: 0, moveWhy: '', onsetTimer: 0, silenceTimer: 0 })
   const followerRef = useRef(follower)
   followerRef.current = follower
   const doneRef = useRef(followerDone)
@@ -116,7 +117,7 @@ export function useBurstFollow({ enabled, index, speaking, follower, followerDon
     window.clearTimeout(s.onsetTimer)
     // Speech already going when the step starts is the end of the previous line
     // (e.g. the last verse of al-Fatiha running into amin): it never counts here.
-    st.current = { step: index, count: new BurstCount(), carry: speaking, done: false, confirmed: false, onsetTimer: 0, silenceTimer: 0 }
+    st.current = { step: index, count: new BurstCount(), carry: speaking, done: false, confirmed: false, moveAfter: 0, moveWhy: '', onsetTimer: 0, silenceTimer: 0 }
     setReps(0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, enabled])
@@ -157,7 +158,13 @@ export function useBurstFollow({ enabled, index, speaking, follower, followerDon
       return
     }
     s.count.speech(false, now)
-    if (s.done || doneRef.current || !briskMs(step.recitationId)) return
+    if (doneRef.current || !briskMs(step.recitationId)) return
+    // Counted earlier and the person spoke again (a fourth tasbih, or the takbir
+    // not yet recognised): wait for the same silence again before moving.
+    if (s.done) {
+      if (s.moveAfter) s.silenceTimer = window.setTimeout(() => advance(s.moveWhy), s.moveAfter + SILENCE_MS)
+      return
+    }
     s.silenceTimer = window.setTimeout(() => {
       s.count.close()
       const words = wordCount(step.recitationId)
@@ -179,9 +186,21 @@ export function useBurstFollow({ enabled, index, speaking, follower, followerDon
       const trust = short || frac >= 0.7 || (lost && s.count.speechMs >= 3 * need * repeat)
       if (short) setReps(counted)
       if (!trust || (short ? counted : Math.floor(s.count.speechMs / need)) < repeat) return
+      // A repeated line counted by bursts: only once the follower has heard at
+      // least one of its repetitions (the speech is this line, not something else).
+      if (repeat > 1 && (f?.repsDone ?? 0) < 1) return
       s.done = true
       s.confirmed = (f?.repsDone ?? 0) >= repeat
       log(`[voice] burst line done step ${index} ${step.recitationId} bursts ${s.count.bursts.map(Math.round).join('+')} ms (need ${need} x${repeat}) follower ${f ? `#${f.wordIndex} reps ${f.repsDone}` : 'lost'}`)
+      if (repeat > 1) {
+        // Repetitions counted: after REPS_DONE_SAME_MS of silence the next line, or
+        // REPS_DONE_MOVE_MS the movement when its takbir was not recognised.
+        setReps(repeat)
+        s.moveAfter = (movesNext ? REPS_DONE_MOVE_MS : REPS_DONE_SAME_MS) - SILENCE_MS
+        s.moveWhy = movesNext ? 'reps counted, no takbir heard' : 'reps counted'
+        s.silenceTimer = window.setTimeout(() => advance(s.moveWhy), s.moveAfter)
+        return
+      }
       // Same posture next: move on now. A movement next: wait for the takbir burst
       // (App's short fallback moves on if none comes).
       if (!movesNext) advance('line said')

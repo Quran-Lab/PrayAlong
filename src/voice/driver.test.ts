@@ -555,3 +555,30 @@ describe('resync after a late start (model ready after the prayer began)', () =>
     expect(at(d, 1, clear(idx('fatiha-4')), 120_000)?.reason).not.toBe('resync')
   })
 })
+
+describe('a tasbih whose count was heard', () => {
+  it('moves on 2 s after the last repetition when its takbir is not heard', () => {
+    const r = idx('ruku')
+    const d = driver()
+    d.sync(view(r), 0)
+    d.onLevel(true, 100)
+    d.setReps(r, 3)
+    d.onLevel(true, 6000)
+    d.onLevel(false, 6100)
+    expect(d.tick(view(r), 7900)).toBeNull()
+    expect(d.tick(view(r), 8100)).toEqual({ type: 'goTo', index: r + 1, reason: 'repsDone' })
+  })
+
+  it('waits while the count is short (no early move)', () => {
+    const r = idx('ruku')
+    const d = driver()
+    d.sync(view(r), 0)
+    d.onLevel(true, 100)
+    d.setReps(r, 2)
+    d.onLevel(true, 4000)
+    d.onLevel(false, 4100)
+    expect(d.tick(view(r), 6100)).toBeNull()
+    expect(d.tick(view(r), 9000)).toBeNull()
+  })
+})
+
