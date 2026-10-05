@@ -442,6 +442,15 @@ export class Performer {
       if (mesh.isSkinnedMesh && mesh.geometry.attributes.skinIndex) meshes.push(mesh)
     })
     const total = meshes.reduce((n, m) => n + m.geometry.attributes.position!.count, 0)
+    // The cuff of a sleeve rides on the forearm but reaches past the wrist:
+    // when the palms rest on the rug (sujud) it must stay above it too.
+    const cuff = (['left', 'right'] as const).map((side) => {
+      const fore = h.raw[`${side}LowerArm`], hand = h.raw[`${side}Hand`]
+      if (!fore || !hand) return null
+      const wrist = worldPos(hand)
+      return { side, fore, wrist, reach: 0.3 * worldPos(fore).distanceTo(wrist) }
+    })
+    const p = v()
     for (const mesh of meshes) {
       const { skinIndex, skinWeight, position } = mesh.geometry.attributes
       const bones = mesh.skeleton.bones
@@ -450,7 +459,9 @@ export class Performer {
         for (let k = 1; k < 4; k++) if (skinWeight!.getComponent(i, k) > skinWeight!.getComponent(i, best)) best = k
         const bone = bones[skinIndex!.getComponent(i, best)]
         const side = bone && handBones.left.has(bone) ? 'left' : bone && handBones.right.has(bone) ? 'right' : null
+        const sleeve = cuff.find((c) => c && c.fore === bone)
         if (side) hands[side].push({ mesh, index: i })
+        else if (sleeve && mesh.localToWorld(mesh.getVertexPosition(i, p)).distanceTo(sleeve.wrist) < sleeve.reach) hands[sleeve.side].push({ mesh, index: i })
         else if (bone && supportBones.has(bone)) body.push({ mesh, index: i })
         else if (bone && headBones.has(bone)) face.push({ mesh, index: i })
       }

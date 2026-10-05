@@ -16,7 +16,10 @@ applied to whichever character is loaded:
   the knees land on the mat and the shins fold under the thighs instead of
   over them. Straight standing legs stay as modelled.
 - **Robe drapes**: optional morph targets `drape_sit`, `drape_kneel` and
-  `drape_sujud` fade in with those postures (see step 9 below).
+  `drape_sujud` fade in with those postures; `*_tuck` targets press hidden
+  parts (folded shins and feet) under the rug and stop grounding on them.
+- **Sleeve cuffs**: the cuff of a sleeve counts with the palm when the hands
+  rest on the rug, so a wide cuff never sinks through it.
 
 Tested on three unrelated third-party rigs (a Mixamo mannequin, a Ready
 Player Me avatar and a stylised cartoon character) with no per-character
@@ -55,49 +58,44 @@ point in tashahhud.
 5. `meshy_rig.py`: Meshy auto-rig (body, spine, head, legs, toes).
 6. `swap_hands.py`: Meshy fingers are fused, so the hands are replaced by the
    CC0 Quaternius Universal Base Characters hands (3 joints per finger),
-   scaled and aligned at the wrist, coloured with the character's skin. Also
-   renames the spine to Mixamo names, smooths the skirt weights so long
-   robes drape when kneeling, and recomputes normals.
-7. `cuff.py`: cleans the sleeve ends left by the hand swap (drops loose
-   shards, fills notches and pinholes, snaps the edge to one round hem, adds
-   a short inturned hem ring with a cloth texel) and sets the hand colour to
-   the face and feet skin as the app renders it (sRGB texel to linear).
+   scaled and aligned at the wrist. Also renames the spine to Mixamo names,
+   smooths the skirt weights so long robes drape when kneeling, and
+   recomputes normals. Under long sleeves Meshy shows only part of the hand,
+   so the hand is never sized below 0.78 of the forearm (`HAND_MIN_RATIO`;
+   Maryam's came out at 0.61 and looked swallowed by her cuffs).
+7. `cuff.py`: cleans the sleeve ends left by the hand swap: drops leftover
+   bits of the old hands and loose shards, fills notches and pinholes, snaps
+   the edge to one round hem and adds a short inturned hem ring that shades
+   like the sleeve. Also colours the hands with the face and feet skin as
+   the app renders it (the texel is sRGB; the material factor is linear).
 8. `reweight.py`: rebuilds the upper-body skin weights straight in the GLB
    (vertex order kept). Meshy weights the collar to the head and the chest
    to the upper arms, which shreds the sleeves in takbir and lifts a hump
    behind the neck in ruku. Sleeves are found by flood fill from the cuff
-   and weighted along the arm (cuff fully forearm); torso, neck and head
-   follow a vertical profile on the spine chain (rigid head from the chin);
-   the skirt keeps its leg weights; seams are relaxed with a Laplace solve.
-9. Robe drapes for the floor postures (corrective morph targets
-   `drape_sit`, `drape_kneel`, `drape_sujud`, faded in by the performer):
-   - `pose-seq.test.ts` dumps the real Performer moving from qiyam into
-     jalsah, kneel and sujud, frame by frame (run it with a vitest config
-     whose `include` points at it; env `POSE_GLB`, `POSES`, `POSE_OUT`);
-   - `prep_cloth.py` marks what may move (the skirt below the waist; torso,
-     sleeves and bare feet ride with the skin);
-   - `clothsim.py` (Blender, `blenv`) replays that motion as a point cache
-     and simulates the skirt as cloth over capsules on the posed thighs,
-     shins, feet and seat, with self collision and the rug as a floor that
-     rises to the knees; the cloth below the knees may shrink so the
-     standing-length hem gathers under the legs;
-   - `bake_morph.py` smooths the settled cloth lightly and stores
-     `S^-1 (settled - skinned)` per vertex as a morph target in rest space,
-     with matching normal deltas. Grounding counts morphs, so the body comes
-     down onto the settled cloth.
+   and weighted along the arm with a wide, soft blend across the elbow
+   (`ELB`, 8.5 cm each side); the cuff follows the forearm only, so it never
+   opens. Torso, neck and head follow a vertical profile on the spine chain
+   (rigid head from the chin); the skirt keeps its leg weights; seams are
+   relaxed with a Laplace solve.
+9. `strip_attrs.py` drops Meshy's unused colour and second UV layers;
+   `clean_robe_tex.py` (Maryam, Aisha) paints out dark marks Meshy left on
+   the robe texture where its own hands touched the cloth (they read as
+   slits), filling from the surrounding cloth only.
 10. Compress: `npx @gltf-transform/cli optimize in.glb public/avatars/x.glb
    --compress meshopt --texture-compress webp --texture-size 2048
    --simplify false --join false --instance false --palette false`.
 11. `validate_glb.py` on the uncompressed file; `render_turn.py` for turntables.
 
-The uncompressed results live in `prayalong-assets/final/<id>_drape.glb`.
+`glbio.py` is the small GLB reader and writer these scripts share. Robe
+drapes for the floor postures (morph targets `drape_sit`, `drape_kneel`,
+`drape_sujud`, faded in by the performer, which also grounds on them) are
+in progress; the rig already supports them.
 
 Credits: hands from Quaternius Universal Base Characters (CC0). Bodies
 generated with Meshy from PrayAlong's own concept art.
 
-Known rough edges: the cloth on the floor is simulated on a coarse mesh, so
-the hem pooled behind the knees still shows some small crumples, most of
-all on Maryam's wide abaya. The heads are large by design (soft chibi
+Known rough edges: on the floor the long robes still fold as skinned
+cloth (the drapes above will replace that). The heads are large by design (soft chibi
 proportions), so the cap dominates the view from above in sujud.
 
 Portraits for the picker (`public/avatars/<id>.webp`) are cropped from

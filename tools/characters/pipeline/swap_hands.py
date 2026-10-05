@@ -75,6 +75,11 @@ for side, toward in (('Left', Vector((-1, 0, 0))), ('Right', Vector((1, 0, 0))))
     P = np.array([body.matrix_world @ me.vertices[i].co for i in hv])
     tipdist = np.linalg.norm(P - np.array(wrist), axis=1)
     L = float(np.percentile(tipdist, 99))
+    # Under long sleeves Meshy only shows part of the hand, so the measured
+    # length comes out short (Maryam: 0.61 of the forearm). Real hands are
+    # about 0.8 of the forearm: never go below that.
+    min_ratio = float(os.environ.get('HAND_MIN_RATIO', '0.78'))
+    L = max(L, min_ratio * (wrist - elbow).length)
     n = (toward - d * toward.dot(d)).normalized()
     targets[side] = dict(wrist=wrist, d=d, n=n, L=L)
     print(side, 'hand length', round(L, 3))

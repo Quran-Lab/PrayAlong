@@ -152,8 +152,9 @@ export const PRAYER_POSES: Record<PoseName, PrayerPose> = {
   qiyam: {
     // Gaze lowered towards the place of prostration.
     fk: { ...straightLegs, neck: [8, 0, 0], head: [10, 0, 0] },
-    left: { anchor: 'chest', offset: [0.004, 0, 0], pole: [1, -0.5, -0.4], fingers: [-1, 0.1, 0.1], palm: [0, 0, -1] },
-    right: { anchor: 'chest', offset: [-0.006, 0.012, 0.016], pole: [-1, -0.5, -0.4], fingers: [1, 0.05, 0.1], palm: [0, 0, -1] },
+    // Folded on the robe, not into it: the forearms rest 1 to 2 cm off the chest.
+    left: { anchor: 'chest', offset: [0.004, 0, 0.014], pole: [1, -0.5, -0.4], fingers: [-1, 0.1, 0.1], palm: [0, 0, -1] },
+    right: { anchor: 'chest', offset: [-0.006, 0.012, 0.03], pole: [-1, -0.5, -0.4], fingers: [1, 0.05, 0.1], palm: [0, 0, -1] },
     eyesClosed: 1,
     contacts: ['feet', 'toes'],
   },
