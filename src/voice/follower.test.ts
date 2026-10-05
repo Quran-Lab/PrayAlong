@@ -180,6 +180,27 @@ describe('Follower', () => {
     }
   })
 
+  it('reports the word in progress and how far through it, ending the line at fill 1', () => {
+    const i = idx('fatiha-2')
+    const f = new Follower(fajr)
+    f.setAnchor(i)
+    const text = [...LINES['fatiha-2']!.words.join('')]
+    const w0 = [...LINES['fatiha-2']!.words[0]!].length
+    // Half of the first word.
+    f.push([text.slice(0, Math.ceil(w0 / 2)).join('')], 0.5)
+    let s = f.snapshot()
+    expect(s.step).toBe(i)
+    expect(s.wordIndex).toBe(0)
+    expect(s.fill).toBeGreaterThan(0.2)
+    expect(s.fill).toBeLessThan(1)
+    // The rest of the line: last word, full.
+    f.push([text.slice(Math.ceil(w0 / 2)).join('')], 2)
+    s = f.snapshot()
+    expect(s.step).toBe(i)
+    expect(s.wordIndex).toBe(LINES['fatiha-2']!.words.length - 1)
+    expect(s.fill).toBe(1)
+  })
+
   it('never reports progress backwards after an external re-anchor', () => {
     const start = idx('fatiha-1')
     const f = new Follower(fajr)

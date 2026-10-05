@@ -142,10 +142,16 @@ interface Alignment {
 
 export interface FollowerSnapshot {
   anchor: number
-  /** Step and word the person is on now (word = next to complete). */
+  /** Step, repetition and word the person is on now (the word in progress). */
   step: number
   wordIndex: number
   rep: number
+  /**
+   * How far through `wordIndex` (0..1), in phoneme positions of the aligned
+   * skeleton: the finest unit the model gives. 1 on the last word of a line
+   * means the line has been said to its end.
+   */
+  fill: number
   heard: number
   cost: number
 }
@@ -170,7 +176,7 @@ export class Follower {
   private lastDone = -1
   private started = new Set<number>()
   private last: Alignment | null = null
-  private lastSnapshot: FollowerSnapshot = { anchor: 0, step: 0, wordIndex: 0, rep: 0, heard: 0, cost: 0 }
+  private lastSnapshot: FollowerSnapshot = { anchor: 0, step: 0, wordIndex: 0, rep: 0, fill: 0, heard: 0, cost: 0 }
 
   constructor(steps: FollowStep[] = [], opts: Partial<FollowerOptions> = {}) {
     this.opts = { ...DEFAULT_FOLLOWER, ...opts, keywordCost: { ...DEFAULT_FOLLOWER.keywordCost, ...opts.keywordCost } }
@@ -356,7 +362,7 @@ export class Follower {
     }
     this.boundary = new Uint8Array(this.T.length + 1)
     for (const b of bounds) this.boundary[b] = 1
-    this.lastSnapshot = { anchor: this.anchor, step: this.anchor, wordIndex: 0, rep: 0, heard: this.heard.length, cost: 0 }
+    this.lastSnapshot = { anchor: this.anchor, step: this.anchor, wordIndex: 0, rep: 0, fill: 0, heard: this.heard.length, cost: 0 }
   }
 
   /** First heard index that belongs after step `step` on the given alignment. */
@@ -591,12 +597,21 @@ export class Follower {
       }
     }
 
-    // Snapshot for the UI.
-    const cu = units[cur]
+    // Snapshot for the UI: the word in progress and how far through it.
+    // A line whose last phoneme has just been heard stays on its last word
+    // with fill 1 until the next line actually starts.
+    let cu = units[cur]
+    const prev = units[cur - 1]
+    if (cu && prev && al.end === prev.end) cu = prev
     if (cu) {
       let wordIndex = cu.words.findIndex((w) => w.end > al.end)
-      if (wordIndex < 0) wordIndex = cu.words.length
-      this.lastSnapshot = { anchor: this.anchor, step: cu.step, rep: cu.rep, wordIndex, heard: this.heard.length, cost: round(al.cost) }
+      let fill = 1
+      if (wordIndex < 0) wordIndex = cu.words.length - 1
+      else {
+        const w = cu.words[wordIndex]!
+        fill = w.end > w.start ? Math.min(1, Math.max(0, (al.end - w.start) / (w.end - w.start))) : 1
+      }
+      this.lastSnapshot = { anchor: this.anchor, step: cu.step, rep: cu.rep, wordIndex, fill: round(fill), heard: this.heard.length, cost: round(al.cost) }
     }
     return events
   }
