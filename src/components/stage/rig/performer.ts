@@ -1,6 +1,6 @@
 import * as THREE from 'three'
-import type { Humanoid, HumanBone } from './humanoid'
-import { PRAYER_POSES, waypoints, type Dir3, type HandSpec, type PoseName, type PrayerPose } from './prayer-poses'
+import { FINGER_CHAINS, type Humanoid, type HumanBone } from './humanoid'
+import { GRIPS, PRAYER_POSES, waypoints, type Dir3, type HandSpec, type PoseName, type PrayerPose } from './prayer-poses'
 
 /** Characters are scaled to this standing height so framing is consistent. */
 export const STAGE_HEIGHT = 1.65
@@ -70,6 +70,8 @@ interface Metrics {
   foreheadOffset: THREE.Vector3 // from head bone, rest frame
   restWorld: Map<HumanBone, THREE.Quaternion>
   hands: { left: HandRest; right: HandRest }
+  /** Per finger bone: the axis that curls it towards the palm (normalized space). */
+  curlAxis: Map<HumanBone, THREE.Vector3>
 }
 
 /** A sparse set of skinned vertices, re-skinned each frame to find what touches the rug. */
@@ -182,7 +184,8 @@ export class Performer {
     humanoid.scene.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) {
         o.castShadow = true
-        o.receiveShadow = true
+        // Textures carry their own soft shading; self-shadowing (cap on face) only darkens them.
+        o.receiveShadow = false
       }
     })
     this.measure()
@@ -308,6 +311,23 @@ export class Performer {
       foreheadOffset,
       restWorld,
       hands: { left: hand('left'), right: hand('right') },
+      curlAxis: new Map(),
+    }
+    // Curl axes: finger direction × palm normal, so a positive angle folds
+    // each joint towards the palm. Rigs without fingers simply skip this.
+    for (const side of ['left', 'right'] as const) {
+      const rest = this.metrics.hands[side]
+      const palm = v().set(0, 1, 0).applyQuaternion(rest.frame)
+      for (const chain of FINGER_CHAINS(side)) {
+        chain.forEach((bone, i) => {
+          const a = P(bone)
+          const b = chain[i + 1] ? P(chain[i + 1]!) : null
+          if (!a) return
+          const dir = b ? b.clone().sub(a) : a.clone().sub(P(chain[i - 1] ?? `${side}Hand`) ?? a)
+          if (dir.lengthSq() < 1e-10) return
+          this.metrics.curlAxis.set(bone, dir.normalize().cross(palm).normalize())
+        })
+      }
     }
   }
 
@@ -431,6 +451,7 @@ export class Performer {
       this.fkCurrent.set(bone, (this.fkCurrent.get(bone) ?? q()).copy(from).slerp(to, e))
     }
     for (const bone of Object.keys(h.raw) as HumanBone[]) h.setRotation(bone, this.fkCurrent.get(bone) ?? q())
+    this.poseFingers(target, e)
 
     // Gentle breathing so the figure never looks frozen.
     const breath = Math.sin(this.clock * 1.5) * 0.7 * DEG
@@ -465,6 +486,25 @@ export class Performer {
     h.setExpression('blink', this.eyes)
     h.setExpression('relaxed', this.eyes * 0.6)
     h.finish(dt)
+  }
+
+  /** Blend each hand's finger shape from the previous posture's grip to this one's. */
+  private poseFingers(target: PrayerPose, e: number) {
+    const axes = this.metrics.curlAxis
+    if (!axes.size) return
+    const from = PRAYER_POSES[this.from]
+    for (const side of ['left', 'right'] as const) {
+      const a = GRIPS[from[side].grip ?? 'relaxed']
+      const b = GRIPS[target[side].grip ?? 'relaxed']
+      FINGER_CHAINS(side).forEach((chain, f) =>
+        chain.forEach((bone, j) => {
+          const axis = axes.get(bone)
+          if (!axis) return
+          const deg = THREE.MathUtils.lerp(a[f]![j]!, b[f]![j]!, e)
+          this.humanoid.setRotation(bone, q().setFromAxisAngle(axis, deg * DEG))
+        }),
+      )
+    }
   }
 
   private ground(target: PrayerPose) {

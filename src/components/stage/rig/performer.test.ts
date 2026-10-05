@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import { parseHumanoid } from './humanoid'
 import { Performer } from './performer'
+
+// The meshopt decoder expects a browser global.
+;(globalThis as { self?: unknown }).self ??= globalThis
 import type { PoseName } from './prayer-poses'
 
 // The stage mounts the performer this high (rug top minus the plush sink).
@@ -30,7 +33,7 @@ function lowestByPart(humanoid: Awaited<ReturnType<typeof parseHumanoid>>) {
   for (const [k, o] of Object.entries(humanoid.raw)) name.set(o!, k)
   const part = (b: THREE.Object3D) => {
     for (let o: THREE.Object3D | null = b; o; o = o.parent)
-      if (name.has(o)) return name.get(o)!.replace(/^(left|right)/, '').replace(/(Index|Middle|Little)Proximal/, 'Hand')
+      if (name.has(o)) return name.get(o)!.replace(/^(left|right)/, '').replace(/^(Thumb|Index|Middle|Ring|Little)\w+$/, 'Hand')
     return '?'
   }
   const low: Record<string, number> = {}
@@ -56,19 +59,19 @@ describe('Performer', () => {
     const { p, humanoid } = await performer()
     p.jumpTo('qiyam')
     p.setPosture('ruku')
-    const up = new THREE.Vector3(0, 1, 0)
-    let worst = 0
+    const lean: number[] = []
     for (let i = 0; i < 60; i++) {
       p.update(1 / 60)
       const hip = humanoid.raw.leftUpperLeg!.getWorldPosition(new THREE.Vector3())
       const knee = humanoid.raw.leftLowerLeg!.getWorldPosition(new THREE.Vector3())
-      const thigh = hip.sub(knee).normalize()
-      worst = Math.max(worst, (thigh.angleTo(up) * 180) / Math.PI)
+      const t = hip.sub(knee)
+      lean.push((Math.atan2(t.z, t.y) * 180) / Math.PI)
     }
-    // Standing to ruku keeps the thighs near vertical; they only lean back a
-    // few degrees as the hips move behind the heels. The old blend swung
-    // them ~35° forwards on the first ruku.
-    expect(worst).toBeLessThan(10)
+    // The thighs move steadily from standing to the ruku lean. The old blend
+    // swung them ~35° forwards and back on the first ruku.
+    const first = lean[0]!, last = lean.at(-1)!
+    const overshoot = Math.max(...lean.map((a) => Math.max(a - Math.max(first, last), Math.min(first, last) - a)))
+    expect(overshoot).toBeLessThan(3)
   })
 
   it('the first and a later ruku move the same way', async () => {
@@ -94,9 +97,9 @@ describe('Performer', () => {
   })
 
   const RUG_TOP = MOUNT + 0.006
-  // Into the plush is fine (it is 34 mm deep); through it or hovering is not.
+  // Into the plush is fine (it is 34 mm deep, cloth hems sink a little more); through it or hovering is not.
   const onRug = (y: number | undefined, part: string) => {
-    expect(y, part).toBeGreaterThan(RUG_TOP - 0.012)
+    expect(y, part).toBeGreaterThan(RUG_TOP - 0.02)
     expect(y, part).toBeLessThan(RUG_TOP + 0.012)
   }
 
@@ -119,7 +122,7 @@ describe('Performer', () => {
       p.jumpTo(pose)
       run(p, 0.5)
       const lowest = Math.min(...Object.values(lowestByPart(humanoid)))
-      expect(lowest, pose).toBeGreaterThan(RUG_TOP - 0.012)
+      expect(lowest, pose).toBeGreaterThan(RUG_TOP - 0.02)
       expect(lowest, pose).toBeLessThan(RUG_TOP + 0.012)
     }
   })

@@ -22,6 +22,22 @@ export type HandAnchor =
   | 'thighs' // resting on the thighs while sitting
   | 'ground' // flat beside the head in sujud
 
+/**
+ * How the fingers are held. Degrees of curl per finger (thumb, index,
+ * middle, ring, little) for the three joints, root to tip.
+ */
+export type Grip = 'relaxed' | 'flat' | 'grip' | 'point'
+export const GRIPS: Record<Grip, readonly (readonly [number, number, number])[]> = {
+  // A soft, natural hand at rest.
+  relaxed: [[8, 10, 6], [10, 14, 8], [14, 18, 10], [16, 20, 12], [20, 22, 14]],
+  // Palms flat on the mat in sujud, fingers together towards the qibla.
+  flat: [[4, 4, 2], [2, 2, 1], [2, 2, 1], [2, 2, 1], [3, 3, 1]],
+  // Holding the knees in ruku.
+  grip: [[14, 12, 8], [28, 30, 18], [32, 34, 20], [34, 36, 22], [36, 38, 24]],
+  // Tashahhud: index finger straight, the others folded, thumb over the middle finger.
+  point: [[30, 26, 18], [0, 2, 2], [80, 95, 55], [85, 95, 55], [88, 95, 55]],
+}
+
 export interface HandSpec {
   anchor: HandAnchor
   /** Fine offset in fractions of body height (character space). */
@@ -31,6 +47,8 @@ export interface HandSpec {
   /** Direction the fingers point, and the direction the palm faces. */
   fingers: Dir3
   palm: Dir3
+  /** Finger shape (defaults to relaxed). */
+  grip?: Grip
 }
 
 export interface PrayerPose {
@@ -87,8 +105,13 @@ const sittingLegs = {
 } as const
 
 const handsOnThighs: Pick<PrayerPose, 'left' | 'right'> = {
-  left: { anchor: 'thighs', pole: [0.35, 0, -1], fingers: [0, -0.2, 1], palm: [0, -1, 0] },
-  right: { anchor: 'thighs', pole: [-0.35, 0, -1], fingers: [0, -0.2, 1], palm: [0, -1, 0] },
+  left: { anchor: 'thighs', pole: [0.35, 0, -1], fingers: [0, -0.2, 1], palm: [0, -1, 0], grip: 'flat' },
+  right: { anchor: 'thighs', pole: [-0.35, 0, -1], fingers: [0, -0.2, 1], palm: [0, -1, 0], grip: 'flat' },
+}
+/** Tashahhud: the right index finger points towards the qibla. */
+const handsTashahhud: Pick<PrayerPose, 'left' | 'right'> = {
+  left: handsOnThighs.left,
+  right: { ...handsOnThighs.right, grip: 'point' },
 }
 
 const armsAtSides: Pick<PrayerPose, 'left' | 'right'> = {
@@ -96,7 +119,7 @@ const armsAtSides: Pick<PrayerPose, 'left' | 'right'> = {
   right: { anchor: 'side', pole: [-0.2, 0, -1], fingers: [0, -1, 0.05], palm: [1, 0, 0] },
 }
 
-const sitting = (headPitch: number, headYaw = 0): PrayerPose => ({
+const sitting = (headPitch: number, headYaw = 0, hands = handsOnThighs): PrayerPose => ({
   fk: {
     ...sittingLegs,
     spine: [3, headYaw * 0.06, 0],
@@ -104,7 +127,7 @@ const sitting = (headPitch: number, headYaw = 0): PrayerPose => ({
     neck: [headPitch * 0.4, headYaw * 0.4, 0],
     head: [headPitch * 0.6, headYaw * 0.5, 0],
   },
-  ...handsOnThighs,
+  ...hands,
   eyesClosed: headYaw ? 0.6 : 1,
   contacts: ['knees', 'toes', 'feet'],
 })
@@ -146,8 +169,8 @@ export const PRAYER_POSES: Record<PoseName, PrayerPose> = {
       leftFoot: [-4, 6, 0],
       rightFoot: [-4, -6, 0],
     },
-    left: { anchor: 'knees', pole: [0.5, 0.2, -1], fingers: [0.05, -1, 0.15], palm: [0, 0, -1] },
-    right: { anchor: 'knees', pole: [-0.5, 0.2, -1], fingers: [-0.05, -1, 0.15], palm: [0, 0, -1] },
+    left: { anchor: 'knees', pole: [0.5, 0.2, -1], fingers: [0.05, -1, 0.15], palm: [0, 0, -1], grip: 'grip' },
+    right: { anchor: 'knees', pole: [-0.5, 0.2, -1], fingers: [-0.05, -1, 0.15], palm: [0, 0, -1], grip: 'grip' },
     eyesClosed: 1,
     contacts: ['feet', 'toes'],
   },
@@ -176,13 +199,13 @@ export const PRAYER_POSES: Record<PoseName, PrayerPose> = {
       head: [8, 0, 0],
       ...kneelingLegs(100, 108),
     },
-    left: { anchor: 'ground', pole: [1, 0.9, -0.2], fingers: [0, 0, 1], palm: [0, -1, 0] },
-    right: { anchor: 'ground', pole: [-1, 0.9, -0.2], fingers: [0, 0, 1], palm: [0, -1, 0] },
+    left: { anchor: 'ground', pole: [1, 0.9, -0.2], fingers: [0, 0, 1], palm: [0, -1, 0], grip: 'flat' },
+    right: { anchor: 'ground', pole: [-1, 0.9, -0.2], fingers: [0, 0, 1], palm: [0, -1, 0], grip: 'flat' },
     eyesClosed: 1,
     contacts: ['knees', 'toes'],
   },
   jalsah: sitting(12),
-  tashahhud: sitting(16),
+  tashahhud: sitting(16, 0, handsTashahhud),
   'salam-right': sitting(6, -76),
   'salam-left': sitting(6, 76),
 }

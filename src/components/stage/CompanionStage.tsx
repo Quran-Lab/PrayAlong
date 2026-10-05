@@ -52,7 +52,7 @@ export function CompanionStage(props: StageProps) {
       <ContactShadows position={[0, RUG.top + 0.001, RUG.center]} scale={[RUG.width + 0.4, RUG.length + 0.4]} blur={2.4} far={1.4} opacity={0.55} resolution={512} color="#0b3328" />
       {quality === 'high' && (
         <EffectComposer multisampling={4}>
-          <N8AO halfRes aoRadius={0.3} intensity={1.4} distanceFalloff={0.6} color="#0b2018" />
+          <N8AO halfRes aoRadius={0.16} intensity={0.7} distanceFalloff={0.5} color="#1b2a24" />
           <Vignette offset={0.32} darkness={0.55} />
         </EffectComposer>
       )}
@@ -167,7 +167,9 @@ function Glow({ color }: { color: string }) {
 function StageLights({ ambient }: { ambient: string }) {
   return (
     <>
-      <hemisphereLight args={['#fff4e6', '#1d3a2f', 0.85]} />
+      <hemisphereLight args={['#fff4e6', '#3a4a42', 1.0]} />
+      {/* Soft front fill: faces sit inside caps and hijabs and need light from the viewer's side. */}
+      <directionalLight position={[0.6, 1.5, 4]} intensity={0.9} color="#fff6ec" />
       <directionalLight
         position={[-2.4, 4.6, 3.4]}
         intensity={2.6}

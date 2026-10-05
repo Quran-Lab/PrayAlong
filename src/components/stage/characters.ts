@@ -24,12 +24,12 @@ export interface CharacterInfo {
 
 const thumb = (id: string) => `${import.meta.env.BASE_URL}avatars/${id}.webp`
 
-/** Built in Blender from tools/characters/ (soft clay chibi style). */
+/** Built with tools/characters/pipeline (Meshy bodies, Quaternius CC0 hands); see docs/characters.md. */
 export const CHARACTERS: readonly CharacterInfo[] = [
-  { id: 'yusuf', name: 'Yusuf', url: avatarUrl('yusuf.glb'), thumbnail: thumb('yusuf'), credit: 'PrayAlong' },
-  { id: 'maryam', name: 'Maryam', url: avatarUrl('maryam.glb'), thumbnail: thumb('maryam'), credit: 'PrayAlong' },
-  { id: 'ahmad', name: 'Ahmad', url: avatarUrl('ahmad.glb'), thumbnail: thumb('ahmad'), credit: 'PrayAlong' },
-  { id: 'aisha', name: 'Aisha', url: avatarUrl('aisha.glb'), thumbnail: thumb('aisha'), credit: 'PrayAlong' },
+  { id: 'yusuf', name: 'Yusuf', url: avatarUrl('yusuf.glb'), thumbnail: thumb('yusuf'), credit: 'PrayAlong · hands: Quaternius (CC0)' },
+  { id: 'maryam', name: 'Maryam', url: avatarUrl('maryam.glb'), thumbnail: thumb('maryam'), credit: 'PrayAlong · hands: Quaternius (CC0)' },
+  { id: 'ahmad', name: 'Ahmad', url: avatarUrl('ahmad.glb'), thumbnail: thumb('ahmad'), credit: 'PrayAlong · hands: Quaternius (CC0)' },
+  { id: 'aisha', name: 'Aisha', url: avatarUrl('aisha.glb'), thumbnail: thumb('aisha'), credit: 'PrayAlong · hands: Quaternius (CC0)' },
 ]
 
 export const DEFAULT_CHARACTER = CHARACTERS[0]!

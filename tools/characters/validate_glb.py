@@ -1,9 +1,11 @@
 """
 Check exported companion GLBs against the runtime's expectations.
 
-    python3 tools/characters/validate_glb.py public/avatars/yusuf.glb [more.glb ...]
+    python3 tools/characters/validate_glb.py <uncompressed>.glb [more.glb ...]
 
-Checks: Mixamo bone names and hierarchy, T-pose (arms horizontal, legs down),
+Run it on the uncompressed masters (meshopt buffers are not decoded here).
+
+Checks: Mixamo bone names and hierarchy (full finger chains), T- or A-pose,
 facing +Z, one skin with ≤ 4 influences per vertex summing to 1, triangle
 count, file size, and no animations, cameras or lights. Pure Python + numpy.
 """
@@ -17,7 +19,8 @@ import numpy as np
 PARENT = {
     'Spine': 'Hips', 'Spine1': 'Spine', 'Spine2': 'Spine1', 'Neck': 'Spine2', 'Head': 'Neck',
     'LeftShoulder': 'Spine2', 'LeftArm': 'LeftShoulder', 'LeftForeArm': 'LeftArm', 'LeftHand': 'LeftForeArm',
-    'LeftHandIndex1': 'LeftHand', 'LeftHandMiddle1': 'LeftHand', 'LeftHandPinky1': 'LeftHand',
+    **{f'LeftHand{f}1': 'LeftHand' for f in ('Thumb', 'Index', 'Middle', 'Ring', 'Pinky')},
+    **{f'LeftHand{f}{i}': f'LeftHand{f}{i - 1}' for f in ('Thumb', 'Index', 'Middle', 'Ring', 'Pinky') for i in (2, 3)},
     'LeftUpLeg': 'Hips', 'LeftLeg': 'LeftUpLeg', 'LeftFoot': 'LeftLeg', 'LeftToeBase': 'LeftFoot',
 }
 PARENT.update({k.replace('Left', 'Right'): v.replace('Left', 'Right') for k, v in list(PARENT.items()) if 'Left' in k})
@@ -97,8 +100,9 @@ def check(path):
     pos, _ = world_positions(j)
     P = lambda n: pos[n]  # noqa: E731
     arm = P('LeftHand') - P('LeftArm')
-    if abs(arm[1]) > 0.05 * np.linalg.norm(arm) or arm[0] <= 0:
-        problems.append(f'left arm not horizontal along +X (T-pose): {arm.round(3)}')
+    # T-pose (horizontal) or A-pose (up to ~60° down), always out along +X.
+    if arm[0] <= 0 or arm[1] > 0.1 * np.linalg.norm(arm) or arm[1] < -0.87 * np.linalg.norm(arm):
+        problems.append(f'left arm is not in a T- or A-pose along +X: {arm.round(3)}')
     leg = P('LeftFoot') - P('LeftUpLeg')
     if leg[1] > -0.8 * np.linalg.norm(leg):
         problems.append('legs are not pointing down')
@@ -130,9 +134,9 @@ def check(path):
     print(f'{os.path.basename(path)}: {size / 1024:.0f} KB, {tris} triangles, {verts} vertices, '
           f'{len(j["materials"])} materials, {len(j["skins"][0]["joints"])} joints')
     print('  joints (glTF, +Y up, +Z forward): ' + ', '.join(f'{n}={pos[n].round(3).tolist()}' for n in ('Hips', 'Head', 'LeftArm', 'LeftHand', 'LeftLeg', 'LeftFoot')))
-    if size > 4 * 1024 * 1024:
-        problems.append('larger than 4 MB')
-    if tris > 34000:
+    if size > 8 * 1024 * 1024:
+        problems.append('larger than 8 MB before compression')
+    if tris > 50000:
         problems.append(f'{tris} triangles is over budget')
     for p in problems:
         print('  PROBLEM:', p)

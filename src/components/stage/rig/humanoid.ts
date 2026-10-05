@@ -15,26 +15,53 @@ import type { VRM } from '@pixiv/three-vrm'
  *    "mixamorig:" prefix).
  */
 
+const FINGERS = ['Thumb', 'Index', 'Middle', 'Ring', 'Little'] as const
+const JOINTS = { Thumb: ['Metacarpal', 'Proximal', 'Distal'], other: ['Proximal', 'Intermediate', 'Distal'] } as const
+type Side = 'left' | 'right'
+type FingerBone<S extends Side> =
+  | `${S}Thumb${(typeof JOINTS.Thumb)[number]}`
+  | `${S}${Exclude<(typeof FINGERS)[number], 'Thumb'>}${(typeof JOINTS.other)[number]}`
+function fingerBones<S extends Side>(side: S): FingerBone<S>[] {
+  return FINGERS.flatMap((f) => (f === 'Thumb' ? JOINTS.Thumb : JOINTS.other).map((j) => `${side}${f}${j}`)) as FingerBone<S>[]
+}
+/** Finger chains, root to tip: [finger][joint]. */
+export const FINGER_CHAINS = (side: Side) =>
+  FINGERS.map((f) => ((f === 'Thumb' ? JOINTS.Thumb : JOINTS.other).map((j) => `${side}${f}${j}`) as HumanBone[]))
+
 export const HUMAN_BONES = [
   'hips', 'spine', 'chest', 'upperChest', 'neck', 'head',
   'leftShoulder', 'leftUpperArm', 'leftLowerArm', 'leftHand',
   'rightShoulder', 'rightUpperArm', 'rightLowerArm', 'rightHand',
   'leftUpperLeg', 'leftLowerLeg', 'leftFoot', 'leftToes',
   'rightUpperLeg', 'rightLowerLeg', 'rightFoot', 'rightToes',
-  'leftIndexProximal', 'leftMiddleProximal', 'leftLittleProximal',
-  'rightIndexProximal', 'rightMiddleProximal', 'rightLittleProximal',
+  ...fingerBones('left'),
+  ...fingerBones('right'),
 ] as const
 export type HumanBone = (typeof HUMAN_BONES)[number]
 
+const MIXAMO_FINGER = { Thumb: 'Thumb', Index: 'Index', Middle: 'Middle', Ring: 'Ring', Little: 'Pinky' } as const
+const MIXAMO_JOINT: Record<string, number> = { Metacarpal: 1, Proximal: 1, Intermediate: 2, Distal: 3 }
+const mixamoFingers = () => {
+  const out: Record<string, string> = {}
+  for (const side of ['left', 'right'] as const)
+    for (const f of FINGERS) {
+      const joints = f === 'Thumb' ? JOINTS.Thumb : JOINTS.other
+      joints.forEach((j, i) => {
+        // Mixamo numbers each chain 1..3 from the knuckle.
+        out[`${side}${f}${j}`] = `${side === 'left' ? 'Left' : 'Right'}Hand${MIXAMO_FINGER[f]}${f === 'Thumb' ? i + 1 : MIXAMO_JOINT[j]}`
+      })
+    }
+  return out
+}
+
 const MIXAMO: Record<HumanBone, string> = {
+  ...(mixamoFingers() as Record<string, string>),
   hips: 'Hips', spine: 'Spine', chest: 'Spine1', upperChest: 'Spine2', neck: 'Neck', head: 'Head',
   leftShoulder: 'LeftShoulder', leftUpperArm: 'LeftArm', leftLowerArm: 'LeftForeArm', leftHand: 'LeftHand',
   rightShoulder: 'RightShoulder', rightUpperArm: 'RightArm', rightLowerArm: 'RightForeArm', rightHand: 'RightHand',
   leftUpperLeg: 'LeftUpLeg', leftLowerLeg: 'LeftLeg', leftFoot: 'LeftFoot', leftToes: 'LeftToeBase',
   rightUpperLeg: 'RightUpLeg', rightLowerLeg: 'RightLeg', rightFoot: 'RightFoot', rightToes: 'RightToeBase',
-  leftIndexProximal: 'LeftHandIndex1', leftMiddleProximal: 'LeftHandMiddle1', leftLittleProximal: 'LeftHandPinky1',
-  rightIndexProximal: 'RightHandIndex1', rightMiddleProximal: 'RightHandMiddle1', rightLittleProximal: 'RightHandPinky1',
-}
+} as Record<HumanBone, string>
 
 const REQUIRED: HumanBone[] = [
   'hips', 'spine', 'head',
@@ -211,11 +238,13 @@ export async function loadHumanoid(url: string): Promise<Humanoid> {
 
 /** Load from a URL, or parse a GLB/VRM already in memory (tests, artifact builds). */
 export async function parseHumanoid(source: string | ArrayBuffer): Promise<Humanoid> {
-  const [{ GLTFLoader }, vrmModule] = await Promise.all([
+  const [{ GLTFLoader }, vrmModule, { MeshoptDecoder }] = await Promise.all([
     import('three/examples/jsm/loaders/GLTFLoader.js'),
     import('@pixiv/three-vrm'),
+    import('three/examples/jsm/libs/meshopt_decoder.module.js'),
   ])
   const loader = new GLTFLoader()
+  loader.setMeshoptDecoder(MeshoptDecoder)
   loader.register((parser) => new vrmModule.VRMLoaderPlugin(parser))
   const gltf = typeof source === 'string' ? await loader.loadAsync(source) : await loader.parseAsync(source, '')
   const vrm = gltf.userData.vrm as VRM | undefined
