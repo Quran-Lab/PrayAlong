@@ -76,6 +76,7 @@ export const en = {
   'line.aloud': 'aloud',
   'line.quietly': 'quietly',
   'line.next': 'Next',
+  'line.thenSay': 'Then say:',
   'line.say': 'Say',
   'line.times': '×{n}',
   'line.quran': 'Quran {ref}',

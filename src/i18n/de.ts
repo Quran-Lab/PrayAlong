@@ -73,6 +73,7 @@ export const de: Messages = {
   'line.aloud': 'laut',
   'line.quietly': 'leise',
   'line.next': 'Als Nächstes',
+  'line.thenSay': 'Dann sag:',
   'line.say': 'Sprich',
   'line.times': '×{n}',
   'line.quran': 'Koran {ref}',

@@ -248,6 +248,7 @@ export function App() {
                         heardWord={voiceDriving && voice.cursor?.step === index ? voice.cursor.wordIndex : null}
                         heardRep={voiceDriving && voice.cursor?.step === index ? voice.cursor.rep : null}
                         heardFill={voiceDriving && voice.cursor?.step === index ? voice.cursor.fill : null}
+                        listening={voiceDriving}
                       />
                     </motion.div>
                   )}

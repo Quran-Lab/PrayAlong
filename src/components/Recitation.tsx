@@ -1,4 +1,4 @@
-import { ArrowDownRight, Volume1, VolumeX } from 'lucide-react'
+import { ArrowDownRight, Mic, Volume1, VolumeX } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useRef } from 'react'
 import { resolveLine } from '@/content/lines'
@@ -136,6 +136,7 @@ export function Recitation({
   heardWord = null,
   heardRep = null,
   heardFill = null,
+  listening = false,
 }: {
   step: Step
   next?: Step
@@ -148,6 +149,8 @@ export function Recitation({
   heardRep?: number | null
   /** Listen mode: how far through the current word (0..1), from the phonemes heard. */
   heardFill?: number | null
+  /** Listen mode is on: show what to say to move on. */
+  listening?: boolean
 }) {
   const t = useT()
   const locale = useLocale()
@@ -262,7 +265,19 @@ export function Recitation({
             </div>
           )}
 
-          {upcoming && (
+          {/* Listen mode: before a movement, say exactly what moves the prayer on (e.g. "Allāhu Akbar, bow"). */}
+          {listening && next?.cue && next.posture !== step.posture ? (
+            <motion.p
+              key="move"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mt-6 inline-flex items-center gap-2 rounded-full border border-[var(--you)]/40 bg-[color-mix(in_oklab,var(--you)_10%,transparent)] px-4 py-1.5 text-[length:var(--text-body)] font-medium text-[var(--you)]"
+            >
+              <Mic className="size-4" />
+              {t('line.thenSay')} {t(`cue.${next.cue}`, { n: next.rakah })}
+            </motion.p>
+          ) : upcoming && (
             <p className="mt-6 max-w-[40ch] truncate text-[length:var(--text-meta)] text-ink-faint max-sm:hidden short:hidden">
               <span className="me-2 text-ink-muted">{t('line.next')}</span>
               {show.transliteration ? upcoming.transliteration : upcoming.arabic}
