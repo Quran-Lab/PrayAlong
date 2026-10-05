@@ -260,15 +260,17 @@ function score(r) {
   const late = arrivals.filter((a) => a.lag !== null && a.lag > 3)
   const skipped = arrivals.filter((a) => a.from >= 0 && a.index > a.from + 1)
   const back = arrivals.filter((a) => a.from >= 0 && a.index < a.from)
-  // Repeated lines: left only after the last repetition (and not long after).
+  // Repeated lines: left only after the last repetition said (extra ones
+  // included), and not more than 3 s after the person was ready for the next
+  // step (the end of its takbir's "Allahu" when one is said).
   const repSteps = [...new Set(lineClips.filter((c) => c.rep > 0).map((c) => c.step))]
   const reps = repSteps.map((i) => {
     const leave = arrivals.find((a) => a.from === i)
-    const end = lastEnd(i)
-    const said = lineClips.filter((c) => c.step === i).length
-    if (!leave) return { step: i, said, result: 'never left' }
-    const lag = leave.t - end
-    return { step: i, said, lag: +lag.toFixed(2), why: leave.why, result: lag < -0.3 ? 'early' : lag > 3 ? 'late' : 'ok' }
+    const said = tl.clips.filter((c) => (c.kind === 'line' || c.kind === 'extra') && c.step === i)
+    const end = said.at(-1).words.at(-1)?.[1] ?? said.at(-1).start + said.at(-1).dur
+    const ready = Math.max(end, readyAt(i + 1) ?? end)
+    if (!leave) return { step: i, said: said.length, result: 'never left' }
+    return { step: i, said: said.length, lag: +(leave.t - end).toFixed(2), lateBy: +(leave.t - ready).toFixed(2), why: leave.why, result: leave.t < end - 0.3 ? 'early' : leave.t > ready + 3 ? 'late' : 'ok' }
   })
   const lags = arrivals.map((a) => a.lag).filter((x) => x !== null).sort((a, b) => a - b)
   const pct = (p) => (lags.length ? lags[Math.min(lags.length - 1, Math.round(p * (lags.length - 1)))] : NaN)
