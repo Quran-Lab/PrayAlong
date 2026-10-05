@@ -371,6 +371,14 @@ export function scoreReplay(tl: Timeline, steps: readonly Step[], log: ReplayLog
   for (const k of ['takbir', 'tasmi', 'salam', 'amin']) byKind[k] = { truth: tl.keywords.filter((w) => w.kind === k).length, hit: 0, false: 0 }
   const used = new Set<number>()
   let falseEvents = 0
+  // The opening takbir is the first line of the prayer: it is heard when it
+  // begins the prayer (it is followed as a line, not reported as a keyword).
+  const opening = tl.keywords.findIndex((w) => w.kind === 'takbir')
+  const begin = log.actions.find((x) => x.a.type === 'begin')
+  if (opening === 0 && begin && begin.t >= tl.keywords[0]!.start - 0.3 && begin.t <= tl.keywords[0]!.end + 2.5) {
+    used.add(0)
+    byKind.takbir!.hit++
+  }
   for (const { e, t } of log.events) {
     if (!(e.kind in byKind)) continue
     const hit = tl.keywords.findIndex((w, wi) => !used.has(wi) && w.kind === e.kind && t >= w.start - 0.3 && t <= w.end + 2.5)
