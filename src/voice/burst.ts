@@ -103,7 +103,7 @@ export interface BurstInput {
 /** Returns the repetitions counted by speech alone on the current step. */
 export function useBurstFollow({ enabled, index, speaking, follower, followerDone, log }: BurstInput) {
   const [reps, setReps] = useState(0)
-  const st = useRef({ step: -1, count: new BurstCount(), carry: false, done: false, onsetTimer: 0, silenceTimer: 0 })
+  const st = useRef({ step: -1, count: new BurstCount(), carry: false, done: false, confirmed: false, onsetTimer: 0, silenceTimer: 0 })
   const followerRef = useRef(follower)
   followerRef.current = follower
   const doneRef = useRef(followerDone)
@@ -116,7 +116,7 @@ export function useBurstFollow({ enabled, index, speaking, follower, followerDon
     window.clearTimeout(s.onsetTimer)
     // Speech already going when the step starts is the end of the previous line
     // (e.g. the last verse of al-Fatiha running into amin): it never counts here.
-    st.current = { step: index, count: new BurstCount(), carry: speaking, done: false, onsetTimer: 0, silenceTimer: 0 }
+    st.current = { step: index, count: new BurstCount(), carry: speaking, done: false, confirmed: false, onsetTimer: 0, silenceTimer: 0 }
     setReps(0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, enabled])
@@ -140,8 +140,11 @@ export function useBurstFollow({ enabled, index, speaking, follower, followerDon
     if (speaking) {
       window.clearTimeout(s.silenceTimer)
       if (!s.carry) s.count.speech(true, now)
-      // The line before a movement is said: this burst is the takbir.
-      if ((s.done || doneRef.current) && movesNext) {
+      // The line before a movement is said: this burst is the takbir. Only when
+      // the follower agrees the line is complete (its lineDone, or its count of
+      // the repetitions): a count by bursts alone cannot tell a fourth tasbih
+      // from the takbir. Otherwise the driver's takbir and the posture timer move.
+      if ((doneRef.current || (s.done && s.confirmed)) && movesNext) {
         s.onsetTimer = window.setTimeout(() => advance('takbir onset'), TAKBIR_ONSET_MS)
       }
       return
@@ -162,17 +165,22 @@ export function useBurstFollow({ enabled, index, speaking, follower, followerDon
       const skip = optionalWords(step.recitationId)
       // Still in the basmala: that speech is not the line itself.
       if (f && f.wordIndex < skip) return
-      // Not known to be past the basmala: the speech must cover it as well.
-      const need = briskMs(step.recitationId, skip > 0 && !f)!
+      // Not known to be past the start of the line itself: the speech so far may
+      // be mostly the basmala, so it must cover that as well.
+      const need = briskMs(step.recitationId, skip > 0 && (!f || f.wordIndex <= skip))!
       const frac = f && words ? (f.wordIndex - skip + 1) / words : 0
       const short = words <= SHORT_WORDS
       const repeat = Math.max(1, step.repeat)
       const counted = Math.min(repeat, Math.max(s.count.reps(need), f?.repsDone ?? 0))
-      // Long lines: only when the follower is near the end, or has clearly lost the person.
-      const trust = short || frac >= 0.7 || (frac < 0.35 && s.count.speechMs >= 1.3 * need * repeat)
+      // Long lines: only when the follower is near the end, or has clearly lost
+      // the person (nothing of this line, and three times the brisk speech: a
+      // slow reciter pausing mid-line is not done).
+      const lost = !f || f.wordIndex <= skip
+      const trust = short || frac >= 0.7 || (lost && s.count.speechMs >= 3 * need * repeat)
       if (short) setReps(counted)
       if (!trust || (short ? counted : Math.floor(s.count.speechMs / need)) < repeat) return
       s.done = true
+      s.confirmed = (f?.repsDone ?? 0) >= repeat
       log(`[voice] burst line done step ${index} ${step.recitationId} bursts ${s.count.bursts.map(Math.round).join('+')} ms (need ${need} x${repeat}) follower ${f ? `#${f.wordIndex} reps ${f.repsDone}` : 'lost'}`)
       // Same posture next: move on now. A movement next: wait for the takbir burst
       // (App's short fallback moves on if none comes).

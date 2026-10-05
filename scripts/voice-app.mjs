@@ -103,6 +103,7 @@ async function runOne(c) {
   await p.waitForFunction(() => !!window.__voiceRender)
   const { wav, timeline } = await p.evaluate(() => window.__voiceRender())
   await b.close()
+  fixEnds(timeline, Buffer.from(wav, 'base64'), 0)
   const { buf, seconds } = withLead(Buffer.from(wav, 'base64'), LEAD)
   const wavPath = join(OUT, `${label}.wav`)
   await writeFile(wavPath, buf)
@@ -188,6 +189,40 @@ async function runOne(c) {
 /** Audio seconds of the take (0 = start of the prayer audio, after the lead). */
 const audioT = (r, perf) => (perf - r.micT0) / 1000 - r.lead
 
+/**
+ * Ground truth for where a line ends: its last word's label, or where the
+ * audio is last audible inside that word if earlier (stretched takes carry a
+ * faint labeled tail; see voice-augment.mjs). `lead`: seconds of silence the
+ * WAV has before the timeline's zero.
+ */
+function fixEnds(tl, wav, lead) {
+  const at = wav.indexOf('data')
+  const sr = wav.readUInt32LE(24)
+  const pcm = new Int16Array(wav.buffer.slice(wav.byteOffset + at + 8, wav.byteOffset + at + 8 + (wav.readUInt32LE(at + 4) & ~1)))
+  const hop = Math.round(sr / 100)
+  const rms = (j) => {
+    let q = 0
+    for (let k = j * hop; k < (j + 1) * hop && k < pcm.length; k++) q += pcm[k] * pcm[k]
+    return Math.sqrt(q / hop)
+  }
+  for (const c of tl.clips) {
+    const w = c.words?.at(-1)
+    if (!w || (c.kind !== 'line' && c.kind !== 'takbir')) continue
+    const a = Math.floor((w[0] + lead) * 100)
+    const b = Math.ceil((w[1] + lead) * 100)
+    let peak = 0
+    for (let j = Math.floor((c.start + lead) * 100); j < b; j++) peak = Math.max(peak, rms(j))
+    if (!peak) continue
+    const floor = peak * 10 ** (-35 / 20)
+    let last = -1
+    for (let j = b; j >= a; j--) if (rms(j) > floor) { last = j; break }
+    if (last >= 0) {
+      const end = (last + 1) / 100 - lead + 0.05
+      if (end < w[1]) w[1] = Math.max(w[0] + 0.05, end)
+    }
+  }
+}
+
 function score(r) {
   const tl = r.timeline
   const lineClips = tl.clips.filter((c) => c.kind === 'line')
@@ -256,6 +291,21 @@ function score(r) {
     byWhy,
     detail: { early, late, skipped, reps },
   }
+}
+
+// --rescore: score the saved runs again (ground-truth line ends from their WAVs).
+if (flag('rescore')) {
+  const { readdir } = await import('node:fs/promises')
+  for (const f of (await readdir(OUT)).filter((f) => f.endsWith('.json') && f !== 'summary.json')) {
+    const r = JSON.parse(await readFile(join(OUT, f), 'utf8'))
+    fixEnds(r.timeline, await readFile(join(OUT, f.replace(/\.json$/, '.wav'))), r.lead)
+    r.score = score(r)
+    await writeFile(join(OUT, f), JSON.stringify(r, null, 1))
+    const s = r.score
+    console.log(`rescored ${r.label}: early ${s.early} ${JSON.stringify(s.earlyWhy)} late ${s.late} | reps ok ${s.reps.ok}/${s.reps.steps} early ${s.reps.early} late ${s.reps.late} | lag p50 ${s.lagP50} p95 ${s.lagP95}`)
+  }
+  await server.close()
+  process.exit(0)
 }
 
 const results = []
