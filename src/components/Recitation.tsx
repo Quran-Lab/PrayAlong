@@ -102,7 +102,7 @@ function Words({
         return (
           <span
             key={i}
-            className={cn('transition-colors duration-200', range && (lit ? (you ? 'text-[var(--you)]' : 'text-mint') : k < range[0] ? (you ? 'text-[color-mix(in_oklab,var(--you)_72%,var(--color-ink))]' : 'text-[color-mix(in_oklab,var(--accent)_60%,var(--color-ink))]') : 'text-ink-muted'))}
+            className={cn('transition-colors duration-200', range && (lit ? (you ? 'text-[var(--you)]' : 'text-mint') : k < range[0] ? (you ? 'text-[var(--you)]' : 'text-[color-mix(in_oklab,var(--accent)_60%,var(--color-ink))]') : 'text-ink-muted'))}
           >
             {w}
           </span>
