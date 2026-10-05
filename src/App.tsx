@@ -245,9 +245,9 @@ export function App() {
                   {phase === 'praying' && (
                     <motion.div key="praying" className="w-full" exit={{ opacity: 0 }}>
                       <Recitation step={step} next={sequence.steps[index + 1]} timedMs={timedMs} distance={following} speaking={speaking}
-                        heardWord={voiceDriving && voice.cursor?.step === index ? voice.cursor.wordIndex - 1 : null}
+                        heardWord={voiceDriving && voice.cursor?.step === index ? voice.cursor.wordIndex : null}
                         heardRep={voiceDriving && voice.cursor?.step === index ? voice.cursor.rep : null}
-                        heardFill={voiceDriving && voice.cursor?.step === index ? ((voice.cursor as { fill?: number }).fill ?? null) : null}
+                        heardFill={voiceDriving && voice.cursor?.step === index ? voice.cursor.fill : null}
                       />
                     </motion.div>
                   )}

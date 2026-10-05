@@ -165,7 +165,7 @@ export function Recitation({
   const spoken = useSpokenWord(live)
   // The companion's voice leads while it speaks; otherwise follow the user's own recitation.
   const word = spoken >= 0 ? spoken : heardWord ?? -1
-  const you = spoken < 0 && (heardWord ?? -1) >= 0
+  const you = spoken < 0 && heardWord !== null && heardWord >= 0
   // How many times a repeated line (tasbih ×3) has been said: from the companion
   // or from what was heard. It only ever goes up within a line.
   const repSeen = live ? live.rep : (heardRep ?? 0)
