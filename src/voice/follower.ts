@@ -30,6 +30,11 @@ import type { FollowerEvent, FollowStep, KeywordKind } from './types'
 
 const LINES = (phonemeTable as { lines: Record<string, { words: string[] }> }).lines
 const SKELETONS = new Map<string, LineSkeleton>()
+/** The target phonemes of one word of a line (for logs). */
+export function targetWord(lineId: string, wordIndex: number): string {
+  return LINES[lineId]?.words[wordIndex] ?? ''
+}
+
 export function skeletonOf(lineId: string): LineSkeleton | null {
   let sk = SKELETONS.get(lineId)
   if (!sk) {
@@ -73,6 +78,10 @@ export interface FollowerOptions {
   idleSec: number
   /** Share of the last word that must have been heard for that. */
   idleLastWord: number
+  /** Energy silence after a fully heard line that confirms it is over. */
+  confirmSilenceSec: number
+  /** The finished line is held at fill 1 this long before it completes (unless the next line starts). */
+  holdSec: number
   /** Unexplained symbols (no word reported) before looking further ahead. */
   lostSymbols: number
   lostWindowSteps: number
@@ -88,10 +97,12 @@ export const DEFAULT_FOLLOWER: FollowerOptions = {
   lineMatch: { aloud: 0.5, quiet: 0.35 },
   wordMatch: 0.34,
   enterSymbols: 4,
-  keywordCost: { takbir: 0.24, tasmi: 0.26, salam: 0.22, amin: 0.12 },
+  keywordCost: { takbir: 0.3, tasmi: 0.28, salam: 0.22, amin: 0.12 },
   maxHeard: 500,
   idleSec: 1.0,
-  idleLastWord: 0.3,
+  idleLastWord: 0.6,
+  confirmSilenceSec: 0.25,
+  holdSec: 0.2,
   lostSymbols: 35,
   lostWindowSteps: 12,
   lostSkipCost: 2,
@@ -152,6 +163,8 @@ export interface FollowerSnapshot {
    * means the line has been said to its end.
    */
   fill: number
+  /** Repetitions of `step` said to their end (tasbih x3: 0, 1, 2, 3). */
+  repsDone: number
   heard: number
   cost: number
 }
@@ -169,6 +182,13 @@ export class Follower {
   /** Symbol count at the last word reported (or anchor move). */
   private progressN = 0
   private idleDoneFor = -1
+  private voicedAt = -Infinity
+  private pending = false
+  private committing = false
+  private fullFor = -1
+  private fullAt = Infinity
+  /** Repetitions fully said, per step (only ever goes up). */
+  private repsDone = new Map<number, number>()
   private stream = new SymbolStream()
   private spotter: KeywordSpotter
   /** Last word reported, as step*1e6 + rep*1e3 + word: reports only ever increase. */
@@ -176,7 +196,7 @@ export class Follower {
   private lastDone = -1
   private started = new Set<number>()
   private last: Alignment | null = null
-  private lastSnapshot: FollowerSnapshot = { anchor: 0, step: 0, wordIndex: 0, rep: 0, fill: 0, heard: 0, cost: 0 }
+  private lastSnapshot: FollowerSnapshot = { anchor: 0, step: 0, wordIndex: 0, rep: 0, fill: 0, repsDone: 0, heard: 0, cost: 0 }
 
   constructor(steps: FollowStep[] = [], opts: Partial<FollowerOptions> = {}) {
     this.opts = { ...DEFAULT_FOLLOWER, ...opts, keywordCost: { ...DEFAULT_FOLLOWER.keywordCost, ...opts.keywordCost } }
@@ -185,8 +205,15 @@ export class Follower {
   }
 
   setSteps(steps: FollowStep[], anchor = 0) {
+    const same = steps.length === this.steps.length && steps.every((s, i) => s.lineId === this.steps[i]?.lineId)
     this.steps = steps
     this.heard = []
+    if (!same) {
+      // A different prayer: nothing said so far applies.
+      this.repsDone.clear()
+      this.started.clear()
+      this.wordMark = -1
+    }
     this.reanchor(anchor)
   }
 
@@ -224,19 +251,25 @@ export class Follower {
   }
 
   /**
-   * Audio time `at` with no new symbols for a while: re-run the rules that
-   * need silence (a line whose last word was only partly heard is finished
-   * once the person has stopped).
+   * The energy gate, about ten times a second (`speech` at audio time `at`).
+   * Re-runs the rules that need silence: a fully heard line waiting for its
+   * confirmation, or a line whose last word was only partly heard, finished
+   * once the person has stopped.
    */
-  idle(at: number, speech = false): FollowerEvent[] {
+  level(at: number, speech = false): FollowerEvent[] {
+    if (speech) this.voicedAt = at
     const lastAt = this.heard.at(-1)?.at
-    if (lastAt === undefined || this.idleDoneFor === this.count) return []
-    // Energy says silence, or (noise keeps the energy gate open) the decoder
-    // has been quiet for twice as long.
-    const quietFor = at - lastAt
-    if (quietFor < (speech ? 2 : 1) * this.opts.idleSec) return []
-    this.idleDoneFor = this.count
+    if (lastAt === undefined) return []
+    if (this.pending) return this.evaluate(at, true)
+    if (this.idleDoneFor === this.count && at - lastAt > 2.5 * this.opts.idleSec) return []
+    if (at - lastAt < this.opts.idleSec / 2) return []
+    if (at - lastAt >= 2.5 * this.opts.idleSec) this.idleDoneFor = this.count
     return this.evaluate(at, true)
+  }
+
+  /** @deprecated use level() */
+  idle(at: number, speech = false): FollowerEvent[] {
+    return this.level(at, speech)
   }
 
   /** A decoder segment ended (real silence): do not collapse across it. */
@@ -257,10 +290,11 @@ export class Follower {
     }
     if (!this.lost && this.count - this.progressN > this.opts.lostSymbols) this.enterLost()
     if (this.heard.length > this.opts.maxHeard) {
-      // Lost: re-anchor where the alignment last put us.
-      const here = this.lastSnapshot.step
+      // Too much unexplained audio: keep only the recent part. The anchor
+      // stays with the session (moving it ahead would make the next sync
+      // re-anchor backwards and forget repetitions).
       this.heard = this.heard.slice(-60)
-      this.reanchor(Math.max(here, this.anchor))
+      this.reanchor(this.anchor, true)
     }
     const events = this.evaluate(at)
     // A keyword only counts when the expected lines do not already explain
@@ -299,6 +333,11 @@ export class Follower {
     return this.heard.length ? this.evaluate(at) : []
   }
 
+  /** Repetitions of `step` said to their end so far. */
+  repsOf(step: number): number {
+    return this.repsDone.get(step) ?? 0
+  }
+
   snapshot(): FollowerSnapshot {
     return this.lastSnapshot
   }
@@ -314,8 +353,12 @@ export class Follower {
     this.lastDone = keep ? Math.max(this.lastDone, this.anchor - 1) : this.anchor - 1
     // Still catching up (the voice is well past the new anchor): stay wide.
     if (!keep || this.lastSnapshot.step < this.anchor + 2) this.lost = false
+    this.pending = false
+    this.fullFor = -1
     if (!keep) {
-      this.wordMark = this.anchor * 1e6 - 1
+      // Repetition counts survive every re-anchor: only a new prayer (setSteps)
+      // clears them, so a repetition said is never taken back.
+      this.wordMark = Math.max(this.wordMark, this.anchor * 1e6 + (this.repsDone.get(this.anchor) ?? 0) * 1e3 - 1)
       this.started = new Set([...this.started].filter((s) => s < this.anchor))
     }
     this.progressN = this.count
@@ -344,7 +387,10 @@ export class Follower {
       const sk = skeletonOf(info.lineId)
       if (!sk || !sk.symbols.length) continue
       const reps = Math.max(1, info.repeat)
-      for (let rep = 0; rep < reps; rep++) {
+      // Repetitions already said are not in the window: new speech can only
+      // be the next repetition (or a restart of it), never an earlier one.
+      const firstRep = step === this.anchor ? Math.min(this.repsDone.get(step) ?? 0, reps - 1) : 0
+      for (let rep = firstRep; rep < reps; rep++) {
         const start = this.T.length
         this.T.push(...sk.symbols)
         this.units.push({
@@ -362,7 +408,7 @@ export class Follower {
     }
     this.boundary = new Uint8Array(this.T.length + 1)
     for (const b of bounds) this.boundary[b] = 1
-    this.lastSnapshot = { anchor: this.anchor, step: this.anchor, wordIndex: 0, rep: 0, fill: 0, heard: this.heard.length, cost: 0 }
+    this.lastSnapshot = { anchor: this.anchor, step: this.anchor, wordIndex: 0, rep: 0, fill: 0, repsDone: this.repsDone.get(this.anchor) ?? 0, heard: this.heard.length, cost: 0 }
   }
 
   /** First heard index that belongs after step `step` on the given alignment. */
@@ -560,6 +606,39 @@ export class Follower {
       }
     }
 
+    // A repetition said to its end (tasbih x3) is committed: its phonemes and
+    // its unit leave the window, so the next utterance can only be the next
+    // repetition. Confirmed like a line: the next one has begun, or quiet.
+    if (!this.committing) {
+      const own = units.filter((u) => u.step === this.anchor)
+      const first = own[0]
+      if (first && own.length > 1 && al.end >= first.end) {
+        const fi = units.indexOf(first)
+        const len = first.end - first.start
+        const heardEnough = unitMatched[fi]! >= Math.max(2, len * this.opts.lineMatch[first.voice])
+        const lastW = first.words.at(-1)
+        const endHeard = !lastW || wordHeardToEnd(al, lastW)
+        const nextBegun = unitMatched[fi + 1]! >= 2
+        const quiet = at - this.voicedAt >= this.opts.confirmSilenceSec
+        if (heardEnough && endHeard && (nextBegun || quiet)) {
+          this.repsDone.set(this.anchor, Math.max(this.repsDone.get(this.anchor) ?? 0, first.rep + 1))
+          let keepFrom = 0
+          for (let r = 0; r < al.rowCol.length; r++) {
+            const c = al.rowCol[r]!
+            if (c < first.end || (c === first.end && al.rowMatch[r])) keepFrom = r + 1
+          }
+          this.heard = this.heard.slice(keepFrom)
+          this.buildWindow()
+          this.committing = true
+          try {
+            return [...events, ...this.evaluate(at, idle)]
+          } finally {
+            this.committing = false
+          }
+        }
+      }
+    }
+
     // Line done: at most one per evaluation, strictly in order.
     const nextStep = this.lastDone + 1
     const stepUnits = units.filter((u) => u.step === nextStep)
@@ -569,20 +648,44 @@ export class Follower {
       const done = al.end >= lastUnit.end
       const matchedLast = unitMatched[units.indexOf(lastUnit)]! / Math.max(1, lastUnit.end - lastUnit.start)
       const laterMatched = units.filter((u) => u.step > nextStep && units.indexOf(u) <= cur).reduce((s, u) => s + unitMatched[units.indexOf(u)]!, 0)
-      const repsSaid = stepUnits.filter((u) => unitMatched[units.indexOf(u)]! >= Math.max(2, (u.end - u.start) * this.opts.lineMatch[voice])).length
-      const finishedHere = done && matchedLast >= this.opts.lineMatch[voice]
+      // Repetitions committed earlier are no longer in the window: count them in.
+      const repsSaid = stepUnits[0]!.rep + stepUnits.filter((u) => unitMatched[units.indexOf(u)]! >= Math.max(2, (u.end - u.start) * this.opts.lineMatch[voice])).length
+      const lastWord = lastUnit.words.at(-1)
+      // The last word must really have been said to its end: its final
+      // phoneme decoded (or nearly all of it with one of the last two), not
+      // just its onset reached by skipping the rest.
+      const lastWordHeard = !!lastWord && done && wordHeardToEnd(al, lastWord)
+      const nextStarted = laterMatched >= 2
+      const full = done && lastWordHeard && matchedLast >= this.opts.lineMatch[voice]
+      if (!full || this.fullFor !== nextStep) this.fullAt = full ? at : Infinity
+      this.fullFor = full ? nextStep : -1
+      // Confirmed once the person is quiet (energy) or the next line has
+      // begun, and after a short hold so the finished line is seen whole.
+      const quiet = at - this.voicedAt >= this.opts.confirmSilenceSec || (idle && at - (this.heard.at(-1)?.at ?? at) >= 0.6)
+      const finishedHere = full && (nextStarted || (quiet && at - this.fullAt >= this.opts.holdSec))
+      this.pending = full && !finishedHere
       const movedOn = laterMatched >= this.opts.enterSymbols && repsSaid > 0
       const movedOnUnheard = laterMatched >= 2 * this.opts.enterSymbols + 2
       // Silence after a partly heard last word (noise ate its end, or a
-      // trailing consonant the model dropped): the line is over.
-      const lastWord = lastUnit.words.at(-1)
+      // trailing consonant the model dropped): the line is over. Never on the
+      // onset of the word: most of it must have been heard.
       let stoppedInLastWord = false
-      if (idle && lastWord && al.end > lastWord.start && al.end < lastUnit.end && matchedLast >= this.opts.lineMatch[voice] * 0.8) {
+      if (idle && lastWord && al.end > lastWord.start && matchedLast >= this.opts.lineMatch[voice] * 0.8 && !finishedHere) {
         let m = 0
-        for (let c = lastWord.start + 1; c <= al.end; c++) m += al.colMatch[c]!
-        stoppedInLastWord = m / Math.max(1, lastWord.end - lastWord.start) >= this.opts.idleLastWord
+        for (let c = lastWord.start + 1; c <= Math.min(al.end, lastWord.end); c++) m += al.colMatch[c]!
+        const part = m / Math.max(1, lastWord.end - lastWord.start)
+        // Consonants of the last word not yet heard: "ghay" of "ghayruk" leaves
+        // r and k, so the person is mid-word (a held vowel), not done.
+        let missing = 0
+        for (let c = Math.max(al.end, lastWord.start) + 1; c <= lastWord.end; c++) if (!VOWELS.has(this.T[c - 1]!)) missing++
+        const silent = at - Math.max(this.voicedAt, this.heard.at(-1)?.at ?? 0)
+        const symbolGap = at - (this.heard.at(-1)?.at ?? at)
+        const mostly = part >= this.opts.idleLastWord && missing <= 1
+        stoppedInLastWord = mostly && (silent >= this.opts.idleSec || symbolGap >= 3 * this.opts.idleSec)
       }
       if (finishedHere || movedOn || movedOnUnheard || stoppedInLastWord) {
+        this.pending = false
+        this.repsDone.set(nextStep, Math.max(this.repsDone.get(nextStep) ?? 0, repsSaid))
         if (stoppedInLastWord && lastWord) {
           const wi = lastUnit.words.length - 1
           const mark = lastUnit.step * 1e6 + lastUnit.rep * 1e3 + wi
@@ -593,7 +696,7 @@ export class Follower {
         }
         this.lastDone = nextStep
         const conf = finishedHere ? matchedLast : stoppedInLastWord ? Math.min(0.7, matchedLast) : movedOn ? 0.6 : 0.35
-        events.push({ kind: 'lineDone', step: nextStep, lineId: lastUnit.lineId, confidence: round(conf), reps: repsSaid, at })
+        events.push({ kind: 'lineDone', step: nextStep, lineId: lastUnit.lineId, confidence: round(conf), reps: this.repsDone.get(nextStep) ?? repsSaid, at })
       }
     }
 
@@ -611,13 +714,40 @@ export class Follower {
         const w = cu.words[wordIndex]!
         fill = w.end > w.start ? Math.min(1, Math.max(0, (al.end - w.start) / (w.end - w.start))) : 1
       }
-      this.lastSnapshot = { anchor: this.anchor, step: cu.step, rep: cu.rep, wordIndex, fill: round(fill), heard: this.heard.length, cost: round(al.cost) }
+      // A completed line always shows its last word whole (the idle rule can
+      // finish a line whose last phonemes the model never emitted).
+      if (cu.step <= this.lastDone && cu.step >= this.anchor) {
+        const lastOfStep = [...units].reverse().find((u) => u.step === cu!.step)
+        if (lastOfStep) {
+          cu = lastOfStep
+          wordIndex = cu.words.length - 1
+          fill = 1
+        }
+      }
+      // Repetitions said to their end so far (live; never goes down).
+      const step = cu.step
+      const passed = (units.find((u) => u.step === step)?.rep ?? 0) + units.filter((u) => u.step === step && al.end >= u.end && unitMatched[units.indexOf(u)]! >= 2).length
+      const repsDone = Math.max(this.repsDone.get(step) ?? 0, passed)
+      this.repsDone.set(step, repsDone)
+      this.lastSnapshot = { anchor: this.anchor, step, rep: cu.rep, wordIndex, fill: round(fill), repsDone, heard: this.heard.length, cost: round(al.cost) }
     }
     return events
   }
 }
 
 const round = (v: number) => Math.round(v * 100) / 100
+
+/**
+ * A word said to its end: its final phoneme decoded, or nearly all of it
+ * with one of its last two (not just its onset reached by skipping the rest).
+ */
+function wordHeardToEnd(al: Alignment, w: { start: number; end: number }): boolean {
+  if (w.end <= w.start) return true
+  let m = 0
+  for (let c = w.start + 1; c <= w.end; c++) m += al.colMatch[c]!
+  const tail = al.colMatch[w.end]! + (w.end - 1 > w.start ? al.colMatch[w.end - 1]! : 0)
+  return al.colMatch[w.end] === 1 || (m / (w.end - w.start) >= 0.7 && tail > 0)
+}
 
 /**
  * Counts as "heard": the same symbol, or an accent-level consonant swap. A

@@ -77,6 +77,8 @@ function run(steps: FollowStep[], anchor: number, script: string[][], opts?: { r
     const evs: FollowerEvent[] = []
     at = feed(f, opts?.rate ? corrupt(tokens, opts.rate, rand) : tokens, at, evs)
     evs.push(...f.flush(at))
+    // Silence after the utterance, as the worker reports it (10 Hz).
+    for (let k = 1; k <= 6; k++) evs.push(...f.level(at + k * 0.1, false))
     follow(f, evs)
     all.push(...evs)
     f.segmentEnd()
@@ -199,6 +201,155 @@ describe('Follower', () => {
     expect(s.step).toBe(i)
     expect(s.wordIndex).toBe(LINES['fatiha-2']!.words.length - 1)
     expect(s.fill).toBe(1)
+  })
+
+  it('does not finish a line on the onset of its last word, even when that word is held long', () => {
+    // Owner report: thana-2 advanced as soon as "ghayruk" began.
+    const i = idx('thana-2')
+    const f = new Follower(fajr)
+    f.setAnchor(i)
+    const words = LINES['thana-2']!.words
+    const head = words.slice(0, -1).join('')
+    const last = [...words.at(-1)!] // e.g. gh-a-y-r-u-k
+    const evs: FollowerEvent[] = []
+    let at = 0
+    for (const chunk of [head.slice(0, 20), head.slice(20), last.slice(0, 3).join('')]) {
+      at += 0.4
+      evs.push(...f.level(at, true), ...f.push([chunk], at))
+    }
+    // "ghaaay..." held for two seconds: voiced, no new phonemes.
+    for (let k = 0; k < 20; k++) evs.push(...f.level((at += 0.1), true))
+    expect(evs.filter((e) => e.kind === 'lineDone')).toEqual([])
+    expect(f.snapshot().wordIndex).toBe(words.length - 1)
+    expect(f.snapshot().fill).toBeLessThan(1)
+    // "...ruk", then quiet: done within a few hundred milliseconds.
+    at += 0.1
+    evs.push(...f.level(at, true), ...f.push([last.slice(3).join('')], at))
+    const end = at
+    for (let k = 1; k <= 8; k++) evs.push(...f.level(end + k * 0.1, false))
+    const done = evs.find((e) => e.kind === 'lineDone') as Extract<FollowerEvent, { kind: 'lineDone' }>
+    expect(done?.step).toBe(i)
+    expect(done.at - end).toBeLessThanOrEqual(0.4)
+  })
+
+  describe('tasbih x3 (ruku)', () => {
+    const ruku = idx('ruku')
+    const reps = (f: Follower) => f.snapshot().repsDone
+    const sayRuku = (f: Follower, at: number, opts: { speechAfter?: boolean; upTo?: number } = {}) => {
+      const text = [...LINES.ruku!.words.join('')].slice(0, opts.upTo)
+      const evs: FollowerEvent[] = []
+      for (let c = 0; c < text.length; c += 3) {
+        at += 0.15
+        evs.push(...f.level(at, true), ...f.push([text.slice(c, c + 3).join('')], at))
+      }
+      return { at, evs }
+    }
+    const silence = (f: Follower, at: number, secs: number) => {
+      const evs: FollowerEvent[] = []
+      for (let k = 1; k <= secs * 10; k++) evs.push(...f.level(at + k * 0.1, false))
+      return evs
+    }
+
+    it('counts three back-to-back repetitions (no pause, no segment break) and finishes after the third', () => {
+      const f = new Follower(fajr)
+      f.setAnchor(ruku)
+      let at = 0
+      const evs: FollowerEvent[] = []
+      const seen: number[] = []
+      for (let r = 0; r < 3; r++) {
+        const out = sayRuku(f, at)
+        at = out.at
+        evs.push(...out.evs)
+        seen.push(reps(f))
+      }
+      expect(seen).toEqual([1, 2, 3])
+      expect(evs.filter((e) => e.kind === 'lineDone')).toEqual([])
+      evs.push(...silence(f, at, 0.6))
+      const done = evs.filter((e) => e.kind === 'lineDone') as Extract<FollowerEvent, { kind: 'lineDone' }>[]
+      expect(done.map((d) => [d.step, d.reps])).toEqual([[ruku, 3]])
+    })
+
+    it('counts three repetitions with pauses between them', () => {
+      const f = new Follower(fajr)
+      f.setAnchor(ruku)
+      let at = 0
+      const evs: FollowerEvent[] = []
+      const seen: number[] = []
+      for (let r = 0; r < 3; r++) {
+        const out = sayRuku(f, at)
+        evs.push(...out.evs, ...silence(f, out.at, 0.7))
+        f.segmentEnd()
+        at = out.at + 0.7
+        seen.push(reps(f))
+      }
+      expect(seen).toEqual([1, 2, 3])
+      const done = evs.filter((e) => e.kind === 'lineDone') as Extract<FollowerEvent, { kind: 'lineDone' }>[]
+      expect(done.map((d) => [d.step, d.reps])).toEqual([[ruku, 3]])
+    })
+
+    it('counts repetitions 2 and 3 even when they come out of the decoder imperfectly', () => {
+      // Owner log: after the first repetition the cursor stayed at its end
+      // (rep 0, last word, fill 1) while cost climbed and nothing counted.
+      let ok = 0
+      for (let seed = 1; seed <= 12; seed++) {
+        const f = new Follower(fajr)
+        f.setAnchor(ruku)
+        let at = 0
+        const text = LINES.ruku!.words.join('')
+        for (let r = 0; r < 3; r++) {
+          const toks = r === 0 ? [text] : corrupt([text], 0.25, rng(seed * 10 + r))
+          for (const t of toks.join('').match(/.{1,3}/gu) ?? []) {
+            at += 0.12
+            f.level(at, true)
+            f.push([t], at)
+          }
+          if (seed % 2) {
+            // a breath between repetitions
+            for (let k = 1; k <= 8; k++) f.level(at + k * 0.1, false)
+            at += 0.8
+            f.segmentEnd()
+          }
+        }
+        for (let k = 1; k <= 8; k++) f.level(at + k * 0.1, false)
+        if (f.repsOf(ruku) === 3) ok++
+      }
+      expect(ok).toBeGreaterThanOrEqual(11)
+    })
+
+    it('counts a third repetition that trails off quietly', () => {
+      const f = new Follower(fajr)
+      f.setAnchor(ruku)
+      let at = 0
+      const evs: FollowerEvent[] = []
+      for (let r = 0; r < 2; r++) {
+        const out = sayRuku(f, at)
+        evs.push(...out.evs)
+        at = out.at
+      }
+      // The third: "subhana rabbiyal a..." and the rest too soft to decode.
+      const len = [...LINES.ruku!.words.join('')].length
+      const out = sayRuku(f, at, { upTo: Math.round(len * 0.8) })
+      evs.push(...out.evs, ...silence(f, out.at, 1.5))
+      const done = evs.filter((e) => e.kind === 'lineDone') as Extract<FollowerEvent, { kind: 'lineDone' }>[]
+      expect(done.map((d) => [d.step, d.reps])).toEqual([[ruku, 3]])
+    })
+  })
+
+  it('locks onto a heavily accented thana-1 instead of waiting at the line start', () => {
+    // Owner log: thana-1 never aligned a word while cost kept rising.
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const i = idx('thana-1')
+      const f = new Follower(fajr)
+      f.setAnchor(i)
+      const evs: FollowerEvent[] = []
+      // 30% of characters substituted/dropped/inserted: a strong accent plus decoder errors.
+      const toks = corrupt(tokensOf('thana-1', rng(seed)), 0.3, rng(seed + 50))
+      let at = 0
+      for (const t of toks) evs.push(...f.level((at += 0.12), true), ...f.push([t], at))
+      for (let k = 1; k <= 12; k++) evs.push(...f.level(at + k * 0.1, false))
+      const words = evs.filter((e) => e.kind === 'word' && e.step === i).length
+      expect(words, `seed ${seed}`).toBeGreaterThanOrEqual(2)
+    }
   })
 
   it('never reports progress backwards after an external re-anchor', () => {

@@ -220,6 +220,121 @@ describe('VoiceCore: a whole prayer', () => {
   }
 })
 
+/** Drive a VoiceCore by hand: utterances as tokens at a steady pace, level ticks every 100 ms. */
+function harness(prayer: 'fajr', startAt: string) {
+  const seq = buildSequence(prayer).steps
+  const sim = new SessionSim(seq)
+  sim.phase = 'praying'
+  sim.index = seq.findIndex((s) => s.recitationId === startAt)
+  const actions: { a: DriverAction; t: number }[] = []
+  const core = new VoiceCore(seq, { mode: 'full', stepMs: (s) => s.timing.expectedMs }, { view: sim.view, apply: sim.apply, onAction: (a, t) => actions.push({ a, t: t / 1000 }) })
+  core.sync(0)
+  let t = 0
+  const tick = (speech: boolean) => {
+    t = Math.round((t + 0.1) * 10) / 10
+    core.level(speech, t, t * 1000)
+    core.tick(t * 1000)
+  }
+  return {
+    sim,
+    actions,
+    seq,
+    now: () => t,
+    core: () => core,
+    /** Say a line (or the first `frac` of it), at ~12 phoneme characters a second. */
+    say(lineId: string, frac = 1) {
+      const chars = [...LINES[lineId]!.words.join('')]
+      const n = Math.max(1, Math.round(chars.length * frac))
+      for (let c = 0; c < n; c += 2) {
+        tick(true)
+        tick(true)
+        // Tokens arrive ~0.4 s after the audio (decoder chunk): stamp them with the current clock.
+        core.tokens([chars.slice(c, Math.min(n, c + 2)).join('')], t, t * 1000)
+      }
+    },
+    silence(secs: number) {
+      for (let k = 0; k < Math.round(secs * 10); k++) tick(false)
+    },
+    endpoint() {
+      core.endpoint(t, t * 1000)
+    },
+  }
+}
+
+describe('VoiceCore: owner-reported scenarios', () => {
+  it('tahmid, 10 s with no takbir, then the sujud tasbih: moves to sujud within 1 s of its first words', () => {
+    const h = harness('fajr', 'tasmi')
+    h.say('tasmi')
+    h.silence(0.6)
+    h.say('tahmid')
+    h.silence(0.4)
+    const tahmid = h.seq.findIndex((s) => s.recitationId === 'tahmid')
+    expect(h.sim.index).toBe(tahmid)
+    // Ten seconds of quiet (no takbir); the 3 s fallback after a finished line may move it.
+    h.silence(10)
+    h.endpoint()
+    const sujud = tahmid + 1
+    if (h.sim.index !== sujud) {
+      const start = h.now()
+      h.say('sujud', 0.35)
+      expect(h.sim.index).toBe(sujud)
+      const move = h.actions.find((x) => x.a.type === 'goTo' && (x.a as { index: number }).index === sujud)!
+      expect(move.t - start).toBeLessThanOrEqual(1)
+    } else {
+      const move = h.actions.find((x) => x.a.type === 'goTo' && (x.a as { index: number }).index === sujud)!
+      expect(move.a.reason).toBe('timer')
+    }
+  })
+
+  it('the sujud tasbih straight after tahmid (no takbir heard): moves on its first words', () => {
+    const h = harness('fajr', 'tahmid')
+    h.say('tahmid')
+    h.silence(0.4)
+    const sujud = h.sim.index + 1
+    const start = h.now()
+    h.say('sujud', 0.35)
+    expect(h.sim.index).toBe(sujud)
+    const move = h.actions.find((x) => x.a.type === 'goTo' && (x.a as { index: number }).index === sujud)!
+    expect(move.t - start).toBeLessThanOrEqual(1)
+  })
+
+  const ruku = (h: ReturnType<typeof harness>) => h.seq.findIndex((s) => s.recitationId === 'ruku')
+
+  it('ruku x3 with 1 to 2 s between repetitions: counts 3, never advances early', () => {
+    const h = harness('fajr', 'ruku')
+    const i = ruku(h)
+    for (const gap of [1.2, 1.8, 0]) {
+      h.say('ruku')
+      h.silence(gap)
+      h.endpoint()
+    }
+    expect(h.core().follower.repsOf(i)).toBe(3)
+    expect(h.actions.filter((x) => x.t <= h.now())).toEqual([])
+    expect(h.sim.index).toBe(i)
+  })
+
+  it('ruku x3 joined with no gaps: counts 3', () => {
+    const h = harness('fajr', 'ruku')
+    for (let r = 0; r < 3; r++) h.say('ruku')
+    expect(h.core().follower.repsOf(ruku(h))).toBe(3)
+    expect(h.sim.index).toBe(ruku(h))
+  })
+
+  it('ruku x2 then a pause: does not advance until a long silence', () => {
+    const h = harness('fajr', 'ruku')
+    const i = ruku(h)
+    h.say('ruku')
+    h.silence(1)
+    h.say('ruku')
+    h.silence(5)
+    expect(h.core().follower.repsOf(i)).toBe(2)
+    expect(h.sim.index).toBe(i)
+    h.silence(4)
+    expect(h.sim.index).toBe(i + 1)
+    expect(h.actions.at(-1)!.a.reason).toBe('timer')
+  })
+})
+
 describe('VoiceCore: listening started late', () => {
   for (const missed of [3, 8, 14]) {
     it(`misses the first ${missed} utterances, catches up and completes`, () => {

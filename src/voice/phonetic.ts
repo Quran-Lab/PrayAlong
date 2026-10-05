@@ -104,6 +104,23 @@ export function lineSkeleton(words: readonly string[]): LineSkeleton {
   return { symbols, words: spans }
 }
 
+/** Latin letters for the phonetic script, for logs a non-Arabic reader can follow. */
+const LATIN: Record<string, string> = {
+  'ء': "'", 'ا': 'aa', 'ب': 'b', 'ت': 't', 'ث': 'th', 'ج': 'j', 'ح': 'H', 'خ': 'kh',
+  'د': 'd', 'ذ': 'dh', 'ر': 'r', 'ز': 'z', 'س': 's', 'ش': 'sh', 'ص': 'S', 'ض': 'D',
+  'ط': 'T', 'ظ': 'Z', 'ع': '`', 'غ': 'gh', 'ف': 'f', 'ق': 'q', 'ك': 'k', 'ل': 'l',
+  'م': 'm', 'ن': 'n', 'ه': 'h', 'و': 'w', 'ي': 'y', 'َ': 'a', 'ُ': 'u', 'ِ': 'i',
+  'ۥ': 'uu', 'ۦ': 'ii', 'ـ': 'aa', '۪': 'e', 'ں': 'N', '۾': 'M', 'ٲ': "'", 'ؙ': 'u',
+  'ڇ': '^', 'ۜ': '|',
+}
+
+/** Phonetic script (tokens or targets) as Latin, e.g. "subHaana". Repeats stay visible. */
+export function latin(text: string): string {
+  let out = ''
+  for (const ch of text) out += LATIN[ch] ?? (ch === ' ' ? ' ' : ch)
+  return out.replace(/aaaa+/g, 'aa').replace(/(uu){2,}/g, 'uu').replace(/(ii){2,}/g, 'ii')
+}
+
 /**
  * Streams decoder tokens into skeleton symbols, collapsing repeats across
  * token boundaries (a geminate is often split over two tokens).

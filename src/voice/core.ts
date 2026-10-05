@@ -61,7 +61,7 @@ export class VoiceCore {
   /** ~10 Hz from the worker: speech activity at audio time `at`. */
   level(speech: boolean, at: number, now: number) {
     this.driver.onLevel(speech, now)
-    this.handle(this.follower.idle(at, speech), now)
+    this.handle(this.follower.level(at, speech), now)
   }
 
   /** The companion started or stopped reciting (holds the line timers). */
@@ -74,6 +74,9 @@ export class VoiceCore {
   }
 
   private handle(events: FollowerEvent[], now: number) {
+    // Repetition counts first, so the driver judges events with them.
+    const v = this.hooks.view()
+    this.driver.setReps(v.index, this.follower.repsOf(v.index))
     for (const e of events) {
       this.hooks.onEvent?.(e, now)
       this.act(this.driver.onEvent(e, this.hooks.view(), now), now)

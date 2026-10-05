@@ -53,6 +53,12 @@ export interface DriverConfig {
   wordHoldMs: number
   /** Timer multiplier while the voice is being followed but the line is not done. */
   trackingSlack: number
+  /** A word of the next line heard at least this well moves there. */
+  nextWordConfidence: number
+  /** After the last line before a movement is done and no phrase was heard, move after this long. */
+  postureAfterDoneMs: number
+  /** A repeated line short of its count is only timed out after this much silence. */
+  repeatSilenceMs: number
 }
 
 export const DEFAULT_DRIVER: Omit<DriverConfig, 'stepMs'> = {
@@ -63,6 +69,9 @@ export const DEFAULT_DRIVER: Omit<DriverConfig, 'stepMs'> = {
   speechHoldMs: 700,
   wordHoldMs: 1500,
   trackingSlack: 1.8,
+  nextWordConfidence: 0.5,
+  postureAfterDoneMs: 3000,
+  repeatSilenceMs: 6000,
 }
 
 /** The phrase a worshipper says while moving INTO step `t` (null: none). */
@@ -86,6 +95,7 @@ export class VoiceDriver {
   private lastWordAt = -Infinity
   private wordsOnStep = 0
   private lineDone = false
+  private lineDoneAt = 0
 
   constructor(cfg: Partial<DriverConfig> & Pick<DriverConfig, 'stepMs'>) {
     this.cfg = { ...DEFAULT_DRIVER, ...cfg }
@@ -148,6 +158,7 @@ export class VoiceDriver {
         // past this step's posture change too.
         if (e.step > i && (mode === 'full' || after.pose === here.pose)) return this.move(i + 1, 'catchUp')
         this.lineDone = true
+        this.lineDoneAt = now
         const samePose = after.pose === here.pose
         if (samePose && (mode === 'full' || after.posture === here.posture)) return this.move(i + 1, 'lineDone')
         if (mode === 'full' && announcedBy(steps, i + 1) === null) return this.move(i + 1, 'lineDone')
@@ -157,6 +168,16 @@ export class VoiceDriver {
         if (e.step !== i + 1 || !after) return null
         if (mode === 'lines' && after.pose !== here.pose) return null
         return this.move(i + 1, 'lineStart')
+      }
+      case 'word': {
+        // A word of the NEXT line heard clearly is evidence the person has
+        // moved on (e.g. "subhana" of the sujud tasbih after i'tidal with no
+        // takbir heard): one step, now.
+        if (e.step !== i + 1 || !after || e.confidence < this.cfg.nextWordConfidence) return null
+        if (mode === 'lines' && after.pose !== here.pose) return null
+        // Within a repeated line, never cut it short on a stray match.
+        if (here.repeat > 1 && !this.lineDone && (this.repsDone.get(i) ?? 0) < here.repeat) return null
+        return this.move(i + 1, 'nextWords')
       }
       case 'takbir':
       case 'tasmi':
@@ -222,15 +243,30 @@ export class VoiceDriver {
     const talking = now - this.lastSpeechAt < this.cfg.speechHoldMs
     const reading = now - this.lastWordAt < this.cfg.wordHoldMs
     if (talking || reading) return null
+    // A repeated line (tasbih x3) is never timed out before its count is
+    // reached, unless the person has been silent for a long while.
+    const quietFor = now - Math.max(this.lastSpeechAt, this.lastWordAt, this.arrivedAt)
+    const reps = this.repsDone.get(i) ?? 0
+    if (here.repeat > 1 && !this.lineDone && reps < here.repeat && (reps > 0 || this.wordsOnStep > 0)) {
+      return quietFor >= this.cfg.repeatSilenceMs ? (after ? this.move(i + 1, 'timer') : { type: 'finish', reason: 'timer' }) : null
+    }
     const expected = this.cfg.stepMs(here) * (this.wordsOnStep > 0 && !this.lineDone ? this.cfg.trackingSlack : 1)
-    if (!after) return elapsed >= expected ? { type: 'finish', reason: 'timer' } : null
+    if (!after) return elapsed >= expected || (this.lineDone && now - this.lineDoneAt >= this.cfg.postureAfterDoneMs) ? { type: 'finish', reason: 'timer' } : null
     const samePosture = after.pose === here.pose && after.posture === here.posture
     if (samePosture || (mode === 'full' && after.pose === here.pose)) {
       return elapsed >= expected ? this.move(i + 1, 'timer') : null
     }
     if (mode !== 'full') return null
-    const grace = this.lineDone ? this.cfg.postureGraceMs / 2 : this.cfg.postureGraceMs
-    return elapsed >= expected + grace ? this.move(i + 1, 'timer') : null
+    // The line is done and the movement phrase was not heard: a short wait,
+    // not the whole step timer, so a missed takbir never keeps anyone waiting.
+    if (this.lineDone) return now - this.lineDoneAt >= this.cfg.postureAfterDoneMs ? this.move(i + 1, 'timer') : null
+    return elapsed >= expected + this.cfg.postureGraceMs ? this.move(i + 1, 'timer') : null
+  }
+
+  private repsDone = new Map<number, number>()
+  /** Repetitions of `step` said so far (from the follower). */
+  setReps(step: number, n: number) {
+    this.repsDone.set(step, Math.max(this.repsDone.get(step) ?? 0, n))
   }
 
   private move(index: number, reason: string): DriverAction | null {

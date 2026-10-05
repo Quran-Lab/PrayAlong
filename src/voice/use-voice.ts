@@ -3,6 +3,8 @@ import { PACE_FACTOR, useSession } from '@/state/session'
 import { VoiceCore } from './core'
 import type { DriverAction, DriverMode, SessionView } from './driver'
 import { VoiceEngine, type VoiceEngineOptions } from './engine'
+import { targetWord } from './follower'
+import { latin } from './phonetic'
 import type { Evidence, FollowerEvent, VoiceError, VoiceStatus } from './types'
 
 export interface UseVoiceOptions {
@@ -36,7 +38,7 @@ export interface VoiceState {
    * through it (fill 0..1, by phonemes). The last word of a line reaches fill
    * 1 before the line completes.
    */
-  cursor: { step: number; wordIndex: number; rep: number; fill: number } | null
+  cursor: { step: number; wordIndex: number; rep: number; fill: number; repsDone: number } | null
   /**
    * The timer fallback for the current step (ms), for the visible progress
    * slider while voice leads; null when the step has no timer.
@@ -112,6 +114,13 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
           optsRef.current.onEvidence?.(toEvidence(e, now))
           optsRef.current.onEvent?.(e)
         },
+        onAction: (a) => {
+          // Every session move, and why: timer moves are the ones to question.
+          if (!voiceDebug()) return
+          const s = useSession.getState()
+          if (a.type === 'goTo' && a.reason === 'timer') console.log('%c[voice] timer advance', 'color:#e0a050', `step ${s.index} ${s.sequence.steps[s.index]?.recitationId} -> ${a.index}`)
+          else console.log('[voice] move', JSON.stringify(a), `from step ${s.index}`)
+        },
       },
     )
     coreRef.current = core
@@ -125,9 +134,9 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
     const cursor = () => {
       const snap = core.follower.snapshot()
       setState((st) =>
-        st.cursor?.step === snap.step && st.cursor.wordIndex === snap.wordIndex && st.cursor.rep === snap.rep && st.cursor.fill === snap.fill
+        st.cursor?.step === snap.step && st.cursor.wordIndex === snap.wordIndex && st.cursor.rep === snap.rep && st.cursor.fill === snap.fill && st.cursor.repsDone === snap.repsDone
           ? st
-          : { ...st, cursor: { step: snap.step, wordIndex: snap.wordIndex, rep: snap.rep, fill: snap.fill } },
+          : { ...st, cursor: { step: snap.step, wordIndex: snap.wordIndex, rep: snap.rep, fill: snap.fill, repsDone: snap.repsDone } },
       )
     }
 
@@ -144,7 +153,17 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
           if (voiceDebug() && e.tokens.length) {
             const s = useSession.getState()
             const step = s.sequence.steps[s.index]
-            console.log('[voice] heard', e.tokens.join(' '), '| expected', step?.recitationId, `x${step?.repeat}`, '| cursor', JSON.stringify(core.follower.snapshot()))
+            const snap = core.follower.snapshot()
+            const cursorLine = s.sequence.steps[snap.step]?.recitationId ?? ''
+            console.log(
+              '[voice] heard',
+              latin(e.tokens.join(' ')),
+              '| expected',
+              step?.recitationId,
+              `x${step?.repeat}`,
+              '| cursor',
+              `${cursorLine}#${snap.wordIndex} "${latin(targetWord(cursorLine, snap.wordIndex))}" rep ${snap.rep} done ${snap.repsDone} fill ${snap.fill} cost ${snap.cost}`,
+            )
           }
           optsRef.current.onTokens?.(e.tokens, e.at)
           core.tokens(e.tokens, e.at, performance.now())
@@ -157,6 +176,7 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
         case 'level':
           core.level(e.speech, e.at, performance.now())
           setState((st) => (st.speaking === e.speech ? st : { ...st, speaking: e.speech }))
+          cursor()
           break
       }
     })
