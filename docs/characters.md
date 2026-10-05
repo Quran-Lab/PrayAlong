@@ -11,6 +11,15 @@ applied to whichever character is loaded:
   on one spot, as a real worshipper's do.
 - **Sujud**: the torso pitches until the character's own forehead rests on
   the mat, whatever its proportions.
+- **Folded legs**: auto-rigs often put the knee joint in front of the hip.
+  When the knees fold, the performer first straightens that rest slant, so
+  the knees land on the mat and the shins fold under the thighs instead of
+  over them. Straight standing legs stay as modelled.
+- **Robe drapes**: optional morph targets `drape_sit`, `drape_kneel` and
+  `drape_sujud` fade in with those postures; `*_tuck` targets press hidden
+  parts (folded shins and feet) under the rug and stop grounding on them.
+- **Sleeve cuffs**: the cuff of a sleeve counts with the palm when the hands
+  rest on the rug, so a wide cuff never sinks through it.
 
 Tested on three unrelated third-party rigs (a Mixamo mannequin, a Ready
 Player Me avatar and a stylised cartoon character) with no per-character
@@ -49,18 +58,45 @@ point in tashahhud.
 5. `meshy_rig.py`: Meshy auto-rig (body, spine, head, legs, toes).
 6. `swap_hands.py`: Meshy fingers are fused, so the hands are replaced by the
    CC0 Quaternius Universal Base Characters hands (3 joints per finger),
-   scaled and aligned at the wrist, coloured with the character's skin. Also
-   renames the spine to Mixamo names, smooths the skirt weights so long
-   robes drape when kneeling, and recomputes normals.
-7. Compress: `npx @gltf-transform/cli optimize in.glb public/avatars/x.glb
-   --compress meshopt --texture-compress webp --simplify false`.
-8. `validate_glb.py` on the uncompressed file; `render_turn.py` for turntables.
+   scaled and aligned at the wrist. Also renames the spine to Mixamo names,
+   smooths the skirt weights so long robes drape when kneeling, and
+   recomputes normals. Under long sleeves Meshy shows only part of the hand,
+   so the hand is never sized below 0.78 of the forearm (`HAND_MIN_RATIO`;
+   Maryam's came out at 0.61 and looked swallowed by her cuffs).
+7. `cuff.py`: cleans the sleeve ends left by the hand swap: drops leftover
+   bits of the old hands and loose shards, fills notches and pinholes, snaps
+   the edge to one round hem and adds a short inturned hem ring that shades
+   like the sleeve. Also colours the hands with the face and feet skin as
+   the app renders it (the texel is sRGB; the material factor is linear).
+8. `reweight.py`: rebuilds the upper-body skin weights straight in the GLB
+   (vertex order kept). Meshy weights the collar to the head and the chest
+   to the upper arms, which shreds the sleeves in takbir and lifts a hump
+   behind the neck in ruku. Sleeves are found by flood fill from the cuff
+   and weighted along the arm with a wide, soft blend across the elbow
+   (`ELB`, 8.5 cm each side); the cuff follows the forearm only, so it never
+   opens. Torso, neck and head follow a vertical profile on the spine chain
+   (rigid head from the chin); the skirt keeps its leg weights; seams are
+   relaxed with a Laplace solve.
+9. `strip_attrs.py` drops Meshy's unused colour and second UV layers;
+   `clean_robe_tex.py` (Maryam, Aisha) paints out dark marks Meshy left on
+   the robe texture where its own hands touched the cloth (they read as
+   slits), filling from the surrounding cloth only.
+10. Compress: `npx @gltf-transform/cli optimize in.glb public/avatars/x.glb
+   --compress meshopt --texture-compress webp --texture-size 2048
+   --simplify false --join false --instance false --palette false`.
+11. `validate_glb.py` on the uncompressed file; `render_turn.py` for turntables.
+
+`glbio.py` is the small GLB reader and writer these scripts share. Robe
+drapes for the floor postures (morph targets `drape_sit`, `drape_kneel`,
+`drape_sujud`, faded in by the performer, which also grounds on them) are
+in progress; the rig already supports them.
 
 Credits: hands from Quaternius Universal Base Characters (CC0). Bodies
 generated with Meshy from PrayAlong's own concept art.
 
-Known rough edges: the robe reads as a smooth block on the lap when sitting;
-the hands are a touch lighter than the face texture.
+Known rough edges: on the floor the long robes still fold as skinned
+cloth (the drapes above will replace that). The heads are large by design (soft chibi
+proportions), so the cap dominates the view from above in sujud.
 
 Portraits for the picker (`public/avatars/<id>.webp`) are cropped from
 turntable renders.
