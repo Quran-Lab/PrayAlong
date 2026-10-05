@@ -29,9 +29,17 @@ export const en = {
   'hint.ruku': 'Bow with a straight back, hands on your knees',
   'hint.itidal': 'Stand back up straight',
   'hint.sujud': 'Forehead, nose, palms, knees and toes on the ground',
-  'hint.jalsah': 'Sit up calmly between the two prostrations',
-  'hint.tashahhud': 'Sit and raise your right index finger',
+  'hint.jalsah': 'Sit on your left foot, right foot upright, between the two prostrations',
+  'hint.tashahhud': 'Sit on your left foot and raise your right index finger',
   'hint.salam': 'Turn your face to the right, then to the left',
+  'voice.takbir': 'Raise your hands to your ears.',
+  'voice.qiyam': 'Stand still, right hand over left.',
+  'voice.ruku': 'Bow, with your back straight and your hands on your knees.',
+  'voice.itidal': 'Rise up and stand straight.',
+  'voice.sujud': 'Go down into prostration: forehead, nose, palms, knees and toes on the ground.',
+  'voice.jalsah': 'Sit up on your left foot, with your right foot upright and its toes towards the qibla.',
+  'voice.tashahhud': 'Sit on your left foot, and raise your right index finger.',
+  'voice.salam': 'Turn your face to the right, then to the left.',
 
   // Groups of lines
   'group.openingTakbir': 'Opening takbir',
@@ -141,6 +149,9 @@ export const en = {
 
   // Settings
   'settings.title': 'Settings',
+  'settings.practice': 'Practice',
+  'settings.raiseHands': 'Raise hands for ruku and rising',
+  'settings.raiseHandsNote': 'Done in the Shafi‘i and Hanbali schools; not in the Hanafi and most Maliki practice. Follow what you were taught.',
   'settings.sound': 'Sound',
   'settings.voice': 'Recite with the companion’s voice',
   'settings.guide': 'Explain each movement aloud',

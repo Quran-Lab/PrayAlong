@@ -9,7 +9,7 @@ it.skipIf(!process.env.CONTENT_OUT)('dump content', () => {
   const lines = LINE_IDS.map((id) => ({ id, arabic: getLine(id).arabic, transliteration: getLine(id).transliteration, quran: isQuran(id) }))
   const guide: Record<string, Record<string, string>> = {}
   for (const [locale, msgs] of Object.entries(MESSAGES)) {
-    guide[locale] = Object.fromEntries(Object.entries(msgs as Record<string, string>).filter(([k]) => k.startsWith('hint.') || k.startsWith('cue.')))
+    guide[locale] = Object.fromEntries(Object.entries(msgs as Record<string, string>).filter(([k]) => k.startsWith('voice.') || k.startsWith('hint.')))
   }
   writeFileSync(process.env.CONTENT_OUT!, JSON.stringify({ lines, guide }, null, 1))
 })

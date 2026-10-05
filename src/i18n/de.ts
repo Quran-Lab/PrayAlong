@@ -26,9 +26,17 @@ export const de: Messages = {
   'hint.ruku': 'Verbeuge dich mit geradem Rücken, die Hände auf den Knien',
   'hint.itidal': 'Richte dich wieder gerade auf',
   'hint.sujud': 'Stirn, Nase, Handflächen, Knie und Zehen auf dem Boden',
-  'hint.jalsah': 'Setz dich zwischen den beiden Niederwerfungen ruhig auf',
-  'hint.tashahhud': 'Bleib sitzen und hebe den rechten Zeigefinger',
+  'hint.jalsah': 'Sitz zwischen den Niederwerfungen auf dem linken Fuß, der rechte bleibt aufgestellt',
+  'hint.tashahhud': 'Sitz auf dem linken Fuß und hebe den rechten Zeigefinger',
   'hint.salam': 'Wende dein Gesicht nach rechts, dann nach links',
+  'voice.takbir': 'Hebe die Hände bis zu den Ohren.',
+  'voice.qiyam': 'Steh ruhig, die rechte Hand über der linken.',
+  'voice.ruku': 'Verbeuge dich mit geradem Rücken, die Hände auf den Knien.',
+  'voice.itidal': 'Richte dich auf und steh gerade.',
+  'voice.sujud': 'Wirf dich nieder: Stirn, Nase, Handflächen, Knie und Zehen auf den Boden.',
+  'voice.jalsah': 'Setz dich auf den linken Fuß, der rechte Fuß bleibt aufgestellt, die Zehen zur Qibla.',
+  'voice.tashahhud': 'Sitz auf dem linken Fuß und hebe den rechten Zeigefinger.',
+  'voice.salam': 'Wende das Gesicht nach rechts, dann nach links.',
 
   // Groups of lines
   'group.openingTakbir': 'Eröffnungs-Takbir',
@@ -138,6 +146,9 @@ export const de: Messages = {
 
   // Settings
   'settings.title': 'Einstellungen',
+  'settings.practice': 'Praxis',
+  'settings.raiseHands': 'Hände heben beim Ruku und Aufrichten',
+  'settings.raiseHandsNote': 'So in der schafiitischen und hanbalitischen Schule; nicht in der hanafitischen und meist nicht in der malikitischen. Folge dem, was du gelernt hast.',
   'settings.sound': 'Ton',
   'settings.voice': 'Mit der Stimme des Begleiters rezitieren',
   'settings.guide': 'Jede Bewegung laut erklären',

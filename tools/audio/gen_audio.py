@@ -92,12 +92,14 @@ def main():
             continue
         vid = save_voice(companion, spec)
         print(companion, 'voice', vid, flush=True)
-        manifest['voices'][companion] = {'lines': {}, 'guide': {}}
-        for line in content['lines']:
+        guide_only = '--guide-only' in sys.argv
+        old = manifest['voices'].get(companion, {'lines': {}, 'guide': {}})
+        manifest['voices'][companion] = {'lines': old['lines'] if guide_only else {}, 'guide': {}}
+        for line in ([] if guide_only else content['lines']):
             jobs.append((companion, vid, 'line', line['id'], line['arabic'], 'ar'))
         for locale, msgs in content['guide'].items():
             for key, text in msgs.items():
-                if key.startswith('hint.'):
+                if key.startswith('voice.'):
                     jobs.append((companion, vid, 'guide', key, text, LANG[locale], locale))
     with cf.ThreadPoolExecutor(2) as ex:
         futs = [ex.submit(job, *j) for j in jobs]

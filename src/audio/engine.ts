@@ -81,6 +81,11 @@ class Engine {
     return this.ctx?.currentTime ?? 0
   }
 
+  /** Seconds between scheduling a sound and hearing it (Bluetooth can add a lot). */
+  get latency() {
+    return (this.ctx?.outputLatency ?? 0) + (this.ctx?.baseLatency ?? 0)
+  }
+
   setVolume(v: number) {
     if (this.ctx) this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05)
   }

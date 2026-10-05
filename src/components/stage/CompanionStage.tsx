@@ -18,6 +18,8 @@ interface StageProps {
   ambient: string
   /** Sets the window's sky and the light in the room. */
   prayer?: PrayerId
+  /** Raise the hands going into ruku and rising from it. */
+  raiseHands?: boolean
   /** Draw the room behind the companion (off when the page draws it). */
   scenery?: boolean
   reducedMotion?: boolean
@@ -62,7 +64,7 @@ export function CompanionStage(props: StageProps) {
 
 // ————————————————————————————————————————————————————————— character
 
-function Companion({ posture, character, reducedMotion, onLoaded, onError }: StageProps) {
+function Companion({ posture, character, reducedMotion, raiseHands, onLoaded, onError }: StageProps) {
   const [performer, setPerformer] = useState<Performer | null>(null)
   const fade = useRef(0)
 
@@ -90,9 +92,10 @@ function Companion({ posture, character, reducedMotion, onLoaded, onError }: Sta
 
   useEffect(() => {
     if (!performer) return
+    performer.raiseHands = Boolean(raiseHands)
     if (reducedMotion) performer.jumpTo(posture)
     else performer.setPosture(posture)
-  }, [performer, posture, reducedMotion])
+  }, [performer, posture, reducedMotion, raiseHands])
 
   useFrame((_, dt) => {
     if (!performer) return

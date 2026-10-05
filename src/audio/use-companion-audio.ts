@@ -27,7 +27,7 @@ function plan(step: Step, voice: string, locale: Locale, settings: Settings) {
   const clips: { clip: Clip; gain: number; isLine: boolean }[] = []
   if (step.cue && TAKBIR_CUES.has(step.cue) && m.lines['takbir']) clips.push({ clip: m.lines['takbir'], gain: 1, isLine: false })
   if (settings.guide && step.cue && step.groupIndex === 0) {
-    const g = m.guide[locale]?.[`hint.${postureKey(step.posture)}`]
+    const g = m.guide[locale]?.[`voice.${postureKey(step.posture)}`]
     if (g) clips.push({ clip: g, gain: 1, isLine: false })
   }
   const gain = step.voice === 'quiet' ? QUIET_GAIN : 1
@@ -115,9 +115,9 @@ export function useSpokenWord(speaking: Speaking | null) {
     let raf = 0
     const words = speaking.clip.words
     const tick = () => {
-      const t = audio.now - speaking.startAt
+      const t = audio.now - audio.latency - speaking.startAt
       let i = -1
-      for (let k = 0; k < words.length; k++) if (t >= words[k]![0] - 0.04) i = k
+      for (let k = 0; k < words.length; k++) if (t >= words[k]![0]) i = k
       if (t > speaking.clip.dur + 0.2) i = -1
       setWord(i)
       raf = requestAnimationFrame(tick)

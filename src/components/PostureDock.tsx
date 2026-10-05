@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
 import { motion } from 'motion/react'
-import { Fragment, useEffect, useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { postureKey } from '@/content/postures'
 import { useT } from '@/i18n'
 import { cn } from '@/lib/cn'
@@ -10,8 +10,9 @@ import { PostureIcon } from './PostureIcon'
 import { Tooltip } from './ui/primitives'
 
 /**
- * The bottom dock: which rak'ah you're in, the movements of that rak'ah, and
- * quiet manual controls. Mirrors the mockup on laptops; condenses on phones.
+ * The bottom of the screen is the prayer's map: which rak'ah you are in, the
+ * movements of this rak'ah as a track that fills as you go (each movement as
+ * long as its recitation), and one clear control to lead or pause.
  */
 export function PostureDock({ following }: { following: boolean }) {
   const t = useT()
@@ -21,110 +22,120 @@ export function PostureDock({ following }: { following: boolean }) {
   const step = sequence.steps[index]!
   const rakah = phase === 'ready' ? 1 : phase === 'complete' ? sequence.rakahs : step.rakah
   const inRakah = segments.filter((s) => s.rakah === rakah)
-  const activeRef = useRef<HTMLButtonElement>(null)
-  const listRef = useRef<HTMLOListElement>(null)
-
-  // Keep the current movement in view on narrow screens. (Scroll only the
-  // list — scrollIntoView would also nudge the page.)
-  useEffect(() => {
-    const list = listRef.current
-    const item = activeRef.current
-    if (!list || !item) return
-    const left = item.offsetLeft - list.clientWidth / 2 + item.clientWidth / 2
-    list.scrollTo({ left: getComputedStyle(list).direction === 'rtl' ? left - list.scrollWidth + list.clientWidth : left, behavior: 'smooth' })
-  }, [index])
+  // Long recitations get a little more room, but every movement stays visible.
+  const weight = (s: { start: number; end: number }) => Math.sqrt(Math.max(1, s.end - s.start))
+  const total = inRakah.reduce((n, s) => n + weight(s), 0)
+  const overall = phase === 'complete' ? 1 : praying ? index / sequence.steps.length : 0
+  const leading = handsFree && following
 
   return (
-    <div className="glass mx-auto flex w-full max-w-[52rem] items-stretch gap-1 rounded-[1.35rem] p-1.5 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)] sm:gap-2 sm:p-2">
-      {/* Rak'ah */}
-      <div className="flex shrink-0 flex-col justify-center gap-1.5 py-1 pr-2 pl-2.5 sm:pr-4 sm:pl-3.5">
-        <div className="text-sm leading-none font-semibold text-ink">{t('dock.rakah')}</div>
-        <div className="tabular text-sm leading-none text-ink-muted">{t('dock.rakahOf', { r: rakah, n: sequence.rakahs })}</div>
-        <div className="flex gap-1" aria-hidden>
-          {Array.from({ length: sequence.rakahs }, (_, i) => (
-            <span key={i} className={cn('h-1 w-3 rounded-full transition-colors duration-500', i + 1 < rakah || phase === 'complete' ? 'bg-mint/70' : i + 1 === rakah && praying ? 'bg-mint' : 'bg-white/10')} />
-          ))}
+    <nav aria-label={t('dock.rakah')} className="mx-auto flex w-full max-w-[60rem] items-center gap-2.5 rounded-[1.75rem] border border-line bg-[color-mix(in_oklab,var(--room-2)_88%,transparent)] px-2.5 py-2.5 shadow-[0_24px_70px_-24px_rgba(0,0,0,0.75)] backdrop-blur-md sm:gap-5 sm:px-5 sm:py-3">
+      {/* Rak'ah: a ring that fills over the whole prayer, the number inside. */}
+      <div className="flex shrink-0 items-center gap-3">
+        <div className="relative grid size-12 place-items-center sm:size-14">
+          <svg viewBox="0 0 48 48" className="absolute inset-0 -rotate-90" aria-hidden>
+            <circle cx="24" cy="24" r="21" fill="none" stroke="rgb(255 255 255 / 0.08)" strokeWidth="3.5" />
+            <motion.circle
+              cx="24"
+              cy="24"
+              r="21"
+              fill="none"
+              stroke="var(--accent)"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              pathLength={1}
+              strokeDasharray="1"
+              animate={{ strokeDashoffset: 1 - overall }}
+              initial={false}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            />
+          </svg>
+          <span className="tabular text-lg leading-none font-semibold text-ink">
+            {rakah}
+            <span className="text-sm font-medium text-ink-muted">/{sequence.rakahs}</span>
+          </span>
         </div>
+        <span className="text-sm leading-tight font-medium text-ink-soft max-md:hidden">{t('dock.rakah')}</span>
       </div>
-      <div className="my-2 w-px shrink-0 bg-line" />
 
-      {/* Movements of this rak'ah */}
-      <ol ref={listRef} className="relative flex min-w-0 flex-1 items-center overflow-x-auto [mask-image:linear-gradient(to_right,transparent,black_14px,black_calc(100%-14px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {inRakah.map((seg, i) => {
+      {/* This rak'ah's movements. */}
+      <ol className="flex min-w-0 flex-1 items-end gap-1 sm:gap-1.5">
+        {inRakah.map((seg) => {
           const active = praying && index >= seg.start && index < seg.end
           const done = phase === 'complete' || (praying && index >= seg.end)
+          const fill = done ? 1 : active ? (index - seg.start + 1) / (seg.end - seg.start) : 0
           const key = postureKey(seg.posture)
           const label = t(`posture.${key}`)
           return (
-            <Fragment key={`${seg.rakah}-${seg.start}`}>
-              {i > 0 && <li aria-hidden className={cn('h-px w-2 shrink-0 transition-colors sm:w-3', done || active ? 'bg-mint/40' : 'bg-white/10')} />}
-              <li className="shrink-0">
-                <Tooltip content={<span><span className="text-ink">{label}</span> · {t(`hint.${key}`)}</span>} side="top">
-                  <button
-                    ref={active ? activeRef : undefined}
-                    onClick={() => goTo(seg.start)}
-                    aria-current={active ? 'step' : undefined}
-                    className={cn(
-                      'relative flex h-[3.6rem] cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl px-2.5 transition-colors duration-300 sm:h-16 sm:min-w-[4.5rem] sm:px-3',
-                      active ? 'text-mint' : done ? 'text-ink-soft hover:text-ink' : 'text-ink-muted/80 hover:text-ink-soft',
-                    )}
-                  >
+            <li key={`${seg.rakah}-${seg.start}`} className="min-w-0" style={{ flex: `${weight(seg) / total} 1 0%` }}>
+              <Tooltip content={<span><span className="text-ink">{label}</span>: {t(`hint.${key}`)}</span>} side="top">
+                <button
+                  onClick={() => goTo(seg.start)}
+                  aria-current={active ? 'step' : undefined}
+                  aria-label={label}
+                  className="group flex w-full cursor-pointer flex-col items-center gap-1.5 rounded-xl px-0.5 pt-1 focus-visible:outline-offset-4"
+                >
+                  <span className={cn('flex items-center gap-1.5 transition-colors duration-300', active ? 'text-mint' : done ? 'text-ink-soft' : 'text-ink-muted group-hover:text-ink-soft')}>
+                    <PostureIcon posture={seg.posture} className={cn('shrink-0 transition-transform duration-300', active ? 'size-7 sm:size-8' : 'size-5 sm:size-6')} />
                     {active && (
-                      <motion.span
-                        layoutId="dock-active"
-                        className="absolute inset-0 rounded-2xl border border-mint/25 bg-mint/[0.09] shadow-[inset_0_1px_0_rgb(255_255_255/0.06),0_0_28px_-10px_color-mix(in_oklab,var(--accent)_80%,transparent)]"
-                        transition={{ type: 'spring', bounce: 0.15, duration: 0.55 }}
-                      />
+                      <motion.span initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} className="truncate text-base font-semibold whitespace-nowrap max-sm:hidden">
+                        {label}
+                      </motion.span>
                     )}
-                    <PostureIcon posture={seg.posture} className="relative size-6 sm:size-7" />
-                    <span className={cn('relative text-sm leading-none font-medium whitespace-nowrap sm:text-xs', !active && 'max-sm:sr-only')}>{label}</span>
-                  </button>
-                </Tooltip>
-              </li>
-            </Fragment>
+                  </span>
+                  <span className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
+                    <motion.span
+                      className="absolute inset-y-0 start-0 rounded-full bg-mint"
+                      initial={false}
+                      animate={{ width: `${fill * 100}%`, opacity: active ? 1 : 0.55 }}
+                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                    />
+                  </span>
+                </button>
+              </Tooltip>
+            </li>
           )
         })}
       </ol>
 
-      <div className="my-2 w-px shrink-0 bg-line" />
-      {/* Controls */}
-      <div className="flex shrink-0 items-center gap-0.5 pr-0.5 sm:gap-1 sm:pr-1">
+      {/* Controls: back, lead/pause (or "following you"), forward. */}
+      <div className="flex shrink-0 items-center gap-1.5">
         <IconButton label={t('dock.previous')} onClick={prev} disabled={phase === 'ready' || (praying && index === 0)} className="max-sm:hidden">
-          <ChevronLeft className="size-5 rtl:rotate-180" />
+          <ChevronLeft className="size-6 rtl:rotate-180" />
         </IconButton>
-        {handsFree && following ? (
-          <div className="flex h-10 items-center gap-1.5 px-1.5 text-sm text-ink-muted max-sm:hidden">
-            <span className="size-1.5 animate-breathe rounded-full bg-mint" />
+        {leading ? (
+          <div className="flex h-12 items-center gap-2 rounded-full bg-mint/[0.1] px-4 text-sm font-medium text-mint max-sm:hidden">
+            <span className="size-2 animate-breathe rounded-full bg-mint" />
             {t('dock.following')}
           </div>
         ) : (
-          <IconButton label={autoplay ? t('dock.pause') : t('dock.guide')} onClick={() => setAutoplay(!autoplay)} active={autoplay} disabled={phase === 'complete'}>
-            {autoplay ? <Pause className="size-[18px] fill-current" /> : <Play className="size-[18px] fill-current" />}
-          </IconButton>
+          <Tooltip content={autoplay ? t('dock.pause') : t('dock.guide')} side="top">
+            <button
+              onClick={() => setAutoplay(!autoplay)}
+              disabled={phase === 'complete'}
+              aria-label={autoplay ? t('dock.pause') : t('dock.guide')}
+              className="grid size-12 cursor-pointer place-items-center rounded-full bg-mint sm:size-14 text-canvas shadow-[0_10px_30px_-10px_color-mix(in_oklab,var(--accent)_70%,transparent)] transition-transform duration-200 hover:brightness-110 active:scale-95 disabled:opacity-30"
+            >
+              {autoplay ? <Pause className="size-6 fill-current" /> : <Play className="ms-0.5 size-6 fill-current" />}
+            </button>
+          </Tooltip>
         )}
-        <IconButton label={t('dock.next')} onClick={next} disabled={phase === 'complete'}>
-          <ChevronRight className="size-5 rtl:rotate-180" />
+        <IconButton label={t('dock.next')} onClick={next} disabled={phase === 'complete'} className="max-sm:hidden">
+          <ChevronRight className="size-6 rtl:rotate-180" />
         </IconButton>
       </div>
-    </div>
+    </nav>
   )
 }
 
-function IconButton({
-  label,
-  children,
-  active,
-  className,
-  ...props
-}: React.ComponentProps<'button'> & { label: string; active?: boolean }) {
+function IconButton({ label, children, className, ...props }: React.ComponentProps<'button'> & { label: string }) {
   return (
     <Tooltip content={label} side="top">
       <button
         {...props}
         aria-label={label}
         className={cn(
-          'flex size-10 cursor-pointer items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-white/[0.07] hover:text-ink disabled:pointer-events-none disabled:opacity-30',
-          active && 'bg-mint/[0.12] text-mint',
+          'flex size-12 cursor-pointer items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-white/[0.08] hover:text-ink focus:outline-none focus-visible:outline-2 disabled:pointer-events-none disabled:opacity-30',
           className,
         )}
       >

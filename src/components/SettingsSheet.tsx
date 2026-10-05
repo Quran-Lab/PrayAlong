@@ -80,6 +80,11 @@ export function SettingsSheet({ open, onOpenChange, clock }: { open: boolean; on
           </label>
         </Section>
 
+        <Section title={t('settings.practice')}>
+          <Switch label={t('settings.raiseHands')} checked={settings.raiseHands} onCheckedChange={(v) => update({ raiseHands: v })} />
+          <p className="text-sm leading-relaxed text-ink-faint">{t('settings.raiseHandsNote')}</p>
+        </Section>
+
         <Section title={t('settings.show')}>
           <Switch label={t('settings.transliteration')} checked={show.transliteration} onCheckedChange={(v) => update({ transliteration: v })} />
           <Switch label={t('settings.translation')} checked={show.translation} onCheckedChange={(v) => update({ translation: v })} />

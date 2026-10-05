@@ -214,7 +214,9 @@ const KNEELING = new Set<PoseName>(['sujud', 'jalsah', 'tashahhud', 'salam-right
 const STANDING = new Set<PoseName>(['rest', 'takbir', 'qiyam', 'ruku', 'itidal'])
 
 /** Intermediate poses so the body goes down knees-first and rises naturally. */
-export function waypoints(from: PoseName, to: PoseName): PoseName[] {
+export function waypoints(from: PoseName, to: PoseName, raiseHands = false): PoseName[] {
+  // Raising the hands (raf' al-yadayn) going into ruku and rising from it.
+  if (raiseHands && ((from === 'qiyam' && to === 'ruku') || (from === 'ruku' && to === 'itidal'))) return ['takbir', to]
   if ((STANDING.has(from) && KNEELING.has(to)) || (KNEELING.has(from) && STANDING.has(to))) return ['kneel', to]
   return [to]
 }

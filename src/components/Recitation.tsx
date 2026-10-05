@@ -6,21 +6,37 @@ import { cn } from '@/lib/cn'
 import type { Step } from '@/sequence/types'
 import { display, useSession, type TextSize } from '@/state/session'
 import { useSpokenWord, type Speaking } from '@/audio/use-companion-audio'
+import align from '@/content/align.json'
 
-/** Words of a line, with the one being spoken lit (whole words keep Arabic letters joined). */
-function Words({ text, lit, total }: { text: string; lit: number; total?: number }) {
-  const words = text.split(/(\s+)/)
-  const real = words.filter((w) => w.trim()).length
-  // Map the Arabic word index onto this text's words (transliteration splits differently).
-  const at = lit < 0 ? -1 : total && total !== real ? Math.min(real - 1, Math.floor(((lit + 0.5) * real) / total)) : lit
+type Span = [number, number] | null
+const ALIGN = align as unknown as Record<string, Record<string, { t: Span[]; m: Span[] }>>
+
+/** Which words of this text go with the Arabic word being spoken: [first, last]. */
+function litRange(lit: number, spans: Span[] | undefined, count: number, arabicCount: number): [number, number] | null {
+  if (lit < 0) return null
+  if (spans?.length) {
+    // Words with no counterpart keep the last lit range.
+    for (let i = Math.min(lit, spans.length - 1); i >= 0; i--) if (spans[i]) return spans[i]!
+    return null
+  }
+  const at = Math.min(count - 1, Math.floor(((lit + 0.5) * count) / Math.max(1, arabicCount)))
+  return [at, at]
+}
+
+/** Words of a line, with the ones being spoken lit (whole words keep Arabic letters joined). */
+function Words({ text, range }: { text: string; range: [number, number] | null }) {
+  const parts = text.split(/(\s+)/)
   let k = -1
   return (
     <>
-      {words.map((w, i) => {
+      {parts.map((w, i) => {
         if (!w.trim()) return w
         k++
         return (
-          <span key={i} className={cn('transition-colors duration-200', at >= 0 && (k === at ? 'text-mint' : k < at ? 'text-ink' : 'text-ink-muted'))}>
+          <span
+            key={i}
+            className={cn('transition-colors duration-200', range && (k >= range[0] && k <= range[1] ? 'text-mint' : k < range[0] ? 'text-ink' : 'text-ink-muted'))}
+          >
             {w}
           </span>
         )
@@ -71,7 +87,9 @@ export function Recitation({
   const upcoming = next && next.recitationId !== step.recitationId ? resolveLine(next.recitationId, locale) : null
   const live = speaking?.stepId === step.id ? speaking : null
   const word = useSpokenWord(live)
-  const arabicWords = line.arabic.split(/\s+/).filter(Boolean).length
+  const count = (x: string) => x.split(/\s+/).filter(Boolean).length
+  const arabicWords = count(line.arabic)
+  const al = ALIGN[locale]?.[step.recitationId]
 
   return (
     <div className="relative mx-auto grid w-full max-w-[46rem] px-5 text-center" aria-live="polite">
@@ -115,7 +133,7 @@ export function Recitation({
               className={cn('text-balance text-ink', quran ? 'quran' : 'arabic')}
               style={{ fontSize: `calc(${arabicHero ? 'var(--text-arabic)' : 'var(--text-arabic-sub)'} * ${k * (long && arabicHero ? 0.82 : 1)})` }}
             >
-              <Words text={line.arabic} lit={word} />
+              <Words text={line.arabic} range={word < 0 ? null : [word, word]} />
             </p>
           )}
           {show.transliteration && (
@@ -124,12 +142,12 @@ export function Recitation({
               className={cn('leading-[1.12] font-semibold tracking-[-0.018em] text-balance text-ink', show.arabic && 'mt-2 text-ink-soft')}
               style={{ fontSize: `calc(${long ? 'var(--text-hero-long)' : 'var(--text-hero)'} * ${k * (show.arabic ? 0.72 : 1)})` }}
             >
-              <Words text={line.transliteration} lit={word} total={arabicWords} />
+              <Words text={line.transliteration} range={litRange(word, al?.t, count(line.transliteration), arabicWords)} />
             </p>
           )}
           {show.translation && line.meaning && (
             <p className="mt-4 max-w-[38ch] font-serif leading-[1.45] text-balance text-ink-soft" style={{ fontSize: `calc(var(--text-meaning) * ${k})` }}>
-              {line.meaning}
+              <Words text={line.meaning} range={al?.m?.length ? litRange(word, al.m, count(line.meaning), arabicWords) : null} />
               {line.credit && <span className="ms-2 font-sans text-[length:var(--text-meta)] whitespace-nowrap text-ink-faint">({line.credit})</span>}
             </p>
           )}

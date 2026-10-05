@@ -165,6 +165,8 @@ export class Performer {
   private hands = { left: new SampleSet([]), right: new SampleSet([]) }
   private face = new SampleSet([])
 
+  /** Raise the hands going into ruku and rising from it (raf' al-yadayn). */
+  raiseHands = false
   private pose: PoseName = 'rest'
   private from: PoseName = 'rest'
   private queue: PoseName[] = []
@@ -407,7 +409,7 @@ export class Performer {
   setPosture(name: PoseName) {
     const last = this.queue.at(-1) ?? this.pose
     if (name === last) return
-    this.queue = waypoints(last, name)
+    this.queue = waypoints(last, name, this.raiseHands)
     this.startNext()
   }
 

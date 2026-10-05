@@ -28,6 +28,8 @@ export interface Settings {
   ambience: boolean
   /** 0..1 */
   volume: number
+  /** Raise the hands going into ruku and rising from it (raf' al-yadayn). */
+  raiseHands: boolean
 }
 
 /** What to show, after applying per-language defaults. */
@@ -96,6 +98,7 @@ export const useSession = create<SessionState>()(
         // Off until we ship real field recordings (generated ambience was not good enough).
         ambience: false,
         volume: 0.9,
+        raiseHands: true,
       },
 
       autoSelectPrayer: (id) => {

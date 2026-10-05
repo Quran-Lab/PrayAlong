@@ -141,7 +141,7 @@ export function App() {
             {/* Stage */}
             <main className="relative flex min-h-0 flex-1 flex-col short:flex-row wide:flex-row">
               {/* The room spans the page; on wide screens its window sits behind the companion. */}
-              {(wideLayout || short) && <Scenery prayer={prayer} windowX={wideLayout ? 26.5 : 24} />}
+              {(wideLayout || short) && <Scenery prayer={prayer} windowX={dir === 'rtl' ? 100 - (wideLayout ? 26.5 : 24) : wideLayout ? 26.5 : 24} />}
               <div className="relative min-h-0 min-w-0 flex-1 wide:flex-[1.12]">
                 <Suspense>
                   <CompanionStage
@@ -150,6 +150,7 @@ export function App() {
                     ambient={ambient}
                     prayer={prayer}
                     scenery={!(wideLayout || short)}
+                    raiseHands={settings.raiseHands}
                     reducedMotion={reducedMotion}
                     onLoaded={() => setStageReady(true)}
                   />

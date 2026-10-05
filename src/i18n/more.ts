@@ -27,9 +27,17 @@ export const fr: Messages = {
   'hint.ruku': 'Inclinez-vous, le dos droit, les mains sur les genoux',
   'hint.itidal': 'Redressez-vous bien droit',
   'hint.sujud': 'Front, nez, paumes, genoux et orteils au sol',
-  'hint.jalsah': 'Asseyez-vous calmement entre les deux prosternations',
-  'hint.tashahhud': 'Restez assis et levez l’index droit',
+  'hint.jalsah': 'Asseyez-vous sur le pied gauche, le droit dressé, entre les deux prosternations',
+  'hint.tashahhud': 'Asseyez-vous sur le pied gauche et levez l’index droit',
   'hint.salam': 'Tournez le visage vers la droite, puis vers la gauche',
+  'voice.takbir': 'Levez les mains jusqu’aux oreilles.',
+  'voice.qiyam': 'Tenez-vous immobile, la main droite sur la gauche.',
+  'voice.ruku': 'Inclinez-vous, le dos droit, les mains sur les genoux.',
+  'voice.itidal': 'Redressez-vous et tenez-vous droit.',
+  'voice.sujud': 'Prosternez-vous : front, nez, paumes, genoux et orteils au sol.',
+  'voice.jalsah': 'Asseyez-vous sur le pied gauche, le pied droit dressé, les orteils vers la qibla.',
+  'voice.tashahhud': 'Asseyez-vous sur le pied gauche et levez l’index droit.',
+  'voice.salam': 'Tournez le visage à droite, puis à gauche.',
 
   // Groups of lines
   'group.openingTakbir': 'Takbir d’ouverture',
@@ -139,6 +147,9 @@ export const fr: Messages = {
 
   // Settings
   'settings.title': 'Réglages',
+  'settings.practice': 'Pratique',
+  'settings.raiseHands': 'Lever les mains au rukū‘ et en se relevant',
+  'settings.raiseHandsNote': 'Pratiqué chez les chaféites et hanbalites ; pas chez les hanafites ni chez la plupart des malikites. Suivez ce qu’on vous a enseigné.',
   'settings.sound': 'Son',
   'settings.voice': 'Réciter avec la voix du compagnon',
   'settings.guide': 'Expliquer chaque mouvement à voix haute',
@@ -205,9 +216,17 @@ export const es: Messages = {
   'hint.ruku': 'Inclínate con la espalda recta y las manos en las rodillas',
   'hint.itidal': 'Vuelve a ponerte erguido',
   'hint.sujud': 'Frente, nariz, palmas, rodillas y dedos de los pies en el suelo',
-  'hint.jalsah': 'Siéntate con calma entre las dos postraciones',
-  'hint.tashahhud': 'Siéntate y levanta el índice derecho',
+  'hint.jalsah': 'Siéntate sobre el pie izquierdo, el derecho levantado, entre las dos postraciones',
+  'hint.tashahhud': 'Siéntate sobre el pie izquierdo y levanta el índice derecho',
   'hint.salam': 'Gira la cara a la derecha y luego a la izquierda',
+  'voice.takbir': 'Levanta las manos hasta las orejas.',
+  'voice.qiyam': 'Quédate de pie, la mano derecha sobre la izquierda.',
+  'voice.ruku': 'Inclínate con la espalda recta y las manos en las rodillas.',
+  'voice.itidal': 'Incorpórate y quédate erguido.',
+  'voice.sujud': 'Póstrate: frente, nariz, palmas, rodillas y dedos de los pies en el suelo.',
+  'voice.jalsah': 'Siéntate sobre el pie izquierdo, con el pie derecho levantado y los dedos hacia la qibla.',
+  'voice.tashahhud': 'Siéntate sobre el pie izquierdo y levanta el índice derecho.',
+  'voice.salam': 'Gira la cara a la derecha y luego a la izquierda.',
 
   // Groups of lines
   'group.openingTakbir': 'Takbir inicial',
@@ -317,6 +336,9 @@ export const es: Messages = {
 
   // Settings
   'settings.title': 'Ajustes',
+  'settings.practice': 'Práctica',
+  'settings.raiseHands': 'Levantar las manos en el ruku y al incorporarse',
+  'settings.raiseHandsNote': 'Se hace en las escuelas shafi‘í y hanbalí; no en la hanafí ni en la mayoría de los malikíes. Sigue lo que te enseñaron.',
   'settings.sound': 'Sonido',
   'settings.voice': 'Recitar con la voz del compañero',
   'settings.guide': 'Explicar cada movimiento en voz alta',
@@ -383,9 +405,17 @@ export const tr: Messages = {
   'hint.ruku': 'Sırtınız düz, elleriniz dizlerinizde olacak şekilde eğilin',
   'hint.itidal': 'Yeniden dimdik doğrulun',
   'hint.sujud': 'Alın, burun, avuçlar, dizler ve ayak parmakları yerde',
-  'hint.jalsah': 'İki secde arasında sakince oturun',
-  'hint.tashahhud': 'Oturun ve sağ işaret parmağınızı kaldırın',
+  'hint.jalsah': 'İki secde arasında sol ayağının üstüne otur, sağ ayağın dik',
+  'hint.tashahhud': 'Sol ayağının üstüne otur ve sağ işaret parmağını kaldır',
   'hint.salam': 'Başınızı önce sağa, sonra sola çevirin',
+  'voice.takbir': 'Ellerini kulaklarına kadar kaldır.',
+  'voice.qiyam': 'Sağ elin sol elinin üstünde, sakin dur.',
+  'voice.ruku': 'Sırtın düz, ellerin dizlerinde, rükûya eğil.',
+  'voice.itidal': 'Doğrul ve dik dur.',
+  'voice.sujud': 'Secdeye in: alın, burun, avuçlar, dizler ve ayak parmakları yerde.',
+  'voice.jalsah': 'Sol ayağının üstüne otur, sağ ayağını dik tut, parmakları kıbleye dönük.',
+  'voice.tashahhud': 'Sol ayağının üstüne otur ve sağ işaret parmağını kaldır.',
+  'voice.salam': 'Yüzünü önce sağa, sonra sola çevir.',
 
   // Groups of lines
   'group.openingTakbir': 'İftitah tekbiri',
@@ -495,6 +525,9 @@ export const tr: Messages = {
 
   // Settings
   'settings.title': 'Ayarlar',
+  'settings.practice': 'Uygulama',
+  'settings.raiseHands': 'Rükûya giderken ve doğrulurken elleri kaldır',
+  'settings.raiseHandsNote': 'Şâfiî ve Hanbelî mezheplerinde yapılır; Hanefî ve çoğu Mâlikî uygulamasında yapılmaz. Öğrendiğine göre seç.',
   'settings.sound': 'Ses',
   'settings.voice': 'Arkadaşın sesiyle oku',
   'settings.guide': 'Her hareketi sesli açıkla',
@@ -561,9 +594,17 @@ export const id: Messages = {
   'hint.ruku': 'Membungkuk dengan punggung lurus, tangan di lutut',
   'hint.itidal': 'Berdiri tegak kembali',
   'hint.sujud': 'Dahi, hidung, telapak tangan, lutut, dan ujung kaki menyentuh lantai',
-  'hint.jalsah': 'Duduk dengan tenang di antara dua sujud',
-  'hint.tashahhud': 'Duduk dan angkat jari telunjuk kanan',
+  'hint.jalsah': 'Duduk di atas kaki kiri, kaki kanan tegak, di antara dua sujud',
+  'hint.tashahhud': 'Duduk di atas kaki kiri dan angkat jari telunjuk kanan',
   'hint.salam': 'Palingkan wajah ke kanan, lalu ke kiri',
+  'voice.takbir': 'Angkat kedua tangan sampai telinga.',
+  'voice.qiyam': 'Berdiri tenang, tangan kanan di atas tangan kiri.',
+  'voice.ruku': 'Rukuk dengan punggung lurus dan tangan di lutut.',
+  'voice.itidal': 'Bangkit dan berdiri tegak.',
+  'voice.sujud': 'Turun bersujud: dahi, hidung, telapak tangan, lutut, dan jari kaki di lantai.',
+  'voice.jalsah': 'Duduk di atas kaki kiri, kaki kanan ditegakkan dengan jari menghadap kiblat.',
+  'voice.tashahhud': 'Duduk di atas kaki kiri dan angkat jari telunjuk kanan.',
+  'voice.salam': 'Tolehkan wajah ke kanan, lalu ke kiri.',
 
   // Groups of lines
   'group.openingTakbir': 'Takbiratul ihram',
@@ -673,6 +714,9 @@ export const id: Messages = {
 
   // Settings
   'settings.title': 'Pengaturan',
+  'settings.practice': 'Praktik',
+  'settings.raiseHands': 'Angkat tangan saat rukuk dan bangkit',
+  'settings.raiseHandsNote': 'Dilakukan dalam mazhab Syafi‘i dan Hanbali; tidak dalam mazhab Hanafi dan kebanyakan Maliki. Ikuti yang diajarkan kepadamu.',
   'settings.sound': 'Suara',
   'settings.voice': 'Bacakan dengan suara pendamping',
   'settings.guide': 'Jelaskan setiap gerakan dengan suara',
@@ -739,9 +783,17 @@ export const nl: Messages = {
   'hint.ruku': 'Buig met een rechte rug, je handen op je knieën',
   'hint.itidal': 'Kom weer recht overeind',
   'hint.sujud': 'Voorhoofd, neus, handpalmen, knieën en tenen op de grond',
-  'hint.jalsah': 'Ga rustig rechtop zitten tussen de twee keren neerwerpen',
-  'hint.tashahhud': 'Blijf zitten en steek je rechterwijsvinger op',
+  'hint.jalsah': 'Zit op je linkervoet, rechtervoet rechtop, tussen de twee keren neerwerpen',
+  'hint.tashahhud': 'Zit op je linkervoet en steek je rechterwijsvinger op',
   'hint.salam': 'Draai je gezicht naar rechts, daarna naar links',
+  'voice.takbir': 'Breng je handen omhoog tot je oren.',
+  'voice.qiyam': 'Sta stil, de rechterhand over de linker.',
+  'voice.ruku': 'Buig met een rechte rug, je handen op je knieën.',
+  'voice.itidal': 'Kom omhoog en sta rechtop.',
+  'voice.sujud': 'Werp je neer: voorhoofd, neus, handpalmen, knieën en tenen op de grond.',
+  'voice.jalsah': 'Ga zitten op je linkervoet, je rechtervoet rechtop met de tenen naar de qibla.',
+  'voice.tashahhud': 'Zit op je linkervoet en steek je rechterwijsvinger op.',
+  'voice.salam': 'Draai je gezicht naar rechts, en dan naar links.',
 
   // Groups of lines
   'group.openingTakbir': 'Openingstakbier',
@@ -851,6 +903,9 @@ export const nl: Messages = {
 
   // Settings
   'settings.title': 'Instellingen',
+  'settings.practice': 'Praktijk',
+  'settings.raiseHands': 'Handen heffen bij de ruku‘ en het opkomen',
+  'settings.raiseHandsNote': 'Zo in de sjafi‘itische en hanbalitische school; niet in de hanafitische en meestal niet in de malikitische. Volg wat je geleerd hebt.',
   'settings.sound': 'Geluid',
   'settings.voice': 'Reciteren met de stem van de metgezel',
   'settings.guide': 'Elke beweging hardop uitleggen',
@@ -917,9 +972,17 @@ export const ur: Messages = {
   'hint.ruku': 'کمر سیدھی رکھ کر جھکیں، ہاتھ گھٹنوں پر',
   'hint.itidal': 'دوبارہ سیدھے کھڑے ہو جائیں',
   'hint.sujud': 'پیشانی، ناک، ہتھیلیاں، گھٹنے اور پاؤں کی انگلیاں زمین پر',
-  'hint.jalsah': 'دونوں سجدوں کے درمیان سکون سے بیٹھیں',
-  'hint.tashahhud': 'بیٹھ کر دائیں ہاتھ کی شہادت کی انگلی اٹھائیں',
+  'hint.jalsah': 'دونوں سجدوں کے درمیان بائیں پاؤں پر بیٹھیں، دایاں پاؤں کھڑا رکھیں',
+  'hint.tashahhud': 'بائیں پاؤں پر بیٹھیں اور دائیں شہادت کی انگلی اٹھائیں',
   'hint.salam': 'پہلے دائیں طرف، پھر بائیں طرف چہرہ پھیریں',
+  'voice.takbir': 'دونوں ہاتھ کانوں تک اٹھائیں۔',
+  'voice.qiyam': 'سکون سے کھڑے رہیں، دایاں ہاتھ بائیں ہاتھ کے اوپر۔',
+  'voice.ruku': 'پیٹھ سیدھی رکھ کر، ہاتھ گھٹنوں پر رکھ کر رکوع کریں۔',
+  'voice.itidal': 'اٹھیں اور سیدھے کھڑے ہو جائیں۔',
+  'voice.sujud': 'سجدے میں جائیں: پیشانی، ناک، ہتھیلیاں، گھٹنے اور انگلیاں زمین پر۔',
+  'voice.jalsah': 'بائیں پاؤں پر بیٹھیں، دایاں پاؤں کھڑا رکھیں اور انگلیاں قبلہ کی طرف۔',
+  'voice.tashahhud': 'بائیں پاؤں پر بیٹھیں اور دائیں ہاتھ کی شہادت کی انگلی اٹھائیں۔',
+  'voice.salam': 'چہرہ پہلے دائیں طرف، پھر بائیں طرف پھیریں۔',
 
   // Groups of lines
   'group.openingTakbir': 'تکبیرِ تحریمہ',
@@ -1029,6 +1092,9 @@ export const ur: Messages = {
 
   // Settings
   'settings.title': 'ترتیبات',
+  'settings.practice': 'طریقہ',
+  'settings.raiseHands': 'رکوع میں جاتے اور اٹھتے وقت ہاتھ اٹھائیں',
+  'settings.raiseHandsNote': 'شافعی اور حنبلی مسلک میں ایسا کیا جاتا ہے؛ حنفی اور اکثر مالکی طریقے میں نہیں۔ جو آپ نے سیکھا ہے اسی پر عمل کریں۔',
   'settings.sound': 'آواز',
   'settings.voice': 'ساتھی کی آواز میں تلاوت',
   'settings.guide': 'ہر حرکت کو بول کر سمجھائیں',
@@ -1095,9 +1161,17 @@ export const ar: Messages = {
   'hint.ruku': 'اركع بظهر مستوٍ، ويداك على ركبتيك',
   'hint.itidal': 'ارفع حتى تعتدل قائمًا',
   'hint.sujud': 'الجبهة والأنف والكفان والركبتان وأطراف القدمين على الأرض',
-  'hint.jalsah': 'اجلس مطمئنًا بين السجدتين',
-  'hint.tashahhud': 'اجلس وارفع سبابتك اليمنى',
+  'hint.jalsah': 'اجلس بين السجدتين على قدمك اليسرى وانصب اليمنى',
+  'hint.tashahhud': 'اجلس على قدمك اليسرى وارفع سبابتك اليمنى',
   'hint.salam': 'التفت بوجهك إلى اليمين ثم إلى اليسار',
+  'voice.takbir': 'ارفع يديك إلى أذنيك.',
+  'voice.qiyam': 'قف مطمئنًا، اليد اليمنى على اليسرى.',
+  'voice.ruku': 'اركع وظهرك مستوٍ ويداك على ركبتيك.',
+  'voice.itidal': 'ارفع من الركوع وقف معتدلًا.',
+  'voice.sujud': 'اسجد على جبهتك وأنفك وكفيك وركبتيك وأطراف قدميك.',
+  'voice.jalsah': 'اجلس على قدمك اليسرى، وانصب اليمنى وأصابعها نحو القبلة.',
+  'voice.tashahhud': 'اجلس على قدمك اليسرى، وارفع سبابتك اليمنى.',
+  'voice.salam': 'التفت بوجهك إلى اليمين ثم إلى اليسار.',
 
   // Groups of lines
   'group.openingTakbir': 'تكبيرة الإحرام',
@@ -1207,6 +1281,9 @@ export const ar: Messages = {
 
   // Settings
   'settings.title': 'الإعدادات',
+  'settings.practice': 'الصفة',
+  'settings.raiseHands': 'رفع اليدين عند الركوع والرفع منه',
+  'settings.raiseHandsNote': 'يفعله الشافعية والحنابلة، ولا يفعله الحنفية وأكثر المالكية. اتبع ما تعلّمته.',
   'settings.sound': 'الصوت',
   'settings.voice': 'التلاوة بصوت الرفيق',
   'settings.guide': 'شرح كل حركة بصوت مسموع',
