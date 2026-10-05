@@ -376,6 +376,13 @@ export class Follower {
     this.buildWindow()
   }
 
+  /** Listening began late: look well ahead from the start (as when lost). */
+  searchAhead() {
+    if (this.lost) return
+    this.lost = true
+    this.buildWindow()
+  }
+
   /**
    * Lost: the person has said a good deal that none of the window's lines
    * explain (listening started late, or the session fell behind). Look

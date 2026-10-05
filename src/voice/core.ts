@@ -3,6 +3,9 @@ import { switchSurah } from '@/sequence/build'
 import type { PrayerId, Step } from '@/sequence/types'
 import { announcedBy, VoiceDriver, type DriverAction, type DriverConfig, type SessionView } from './driver'
 import { Follower, type FollowerOptions } from './follower'
+import phonemeTable from '@/content/phonemes.json'
+
+const PHONEMES = (phonemeTable as { lines: Record<string, { words: string[]; optional?: number }> }).lines
 import type { FollowerEvent, FollowStep } from './types'
 
 export const followSteps = (steps: readonly Step[]): FollowStep[] =>
@@ -36,6 +39,10 @@ export class VoiceCore {
     this.steps = steps
     this.follower = new Follower(followSteps(steps), follower)
     this.driver = new VoiceDriver(driver)
+    this.driver.lineChars = (id) => {
+      const l = PHONEMES[id]
+      return l ? l.words.slice(l.optional ?? 0).join('').length : 0
+    }
   }
 
   /** The session changed (any source): re-anchor the follower, reset timers. */
@@ -66,6 +73,16 @@ export class VoiceCore {
   level(speech: boolean, at: number, now: number) {
     this.driver.onLevel(speech, now)
     this.handle(this.follower.level(at, speech), now)
+  }
+
+  /**
+   * Listening has just begun (the model may have become ready after the
+   * prayer started): the follower looks well ahead and the driver may jump
+   * once to the first line heard clearly.
+   */
+  armResync(now: number) {
+    this.follower.searchAhead()
+    this.driver.armResync(now)
   }
 
   /** The companion started or stopped reciting (holds the line timers). */

@@ -501,3 +501,57 @@ describe('VoiceCore: listening started late', () => {
     expect(sim.index).toBeGreaterThan(20)
   }, 30_000) // a full prayer through the real follower: slow on a busy machine
 })
+
+describe('resync after a late start (model ready after the prayer began)', () => {
+  const clear = (step: number, why: 'quiet' | 'next' | 'moved-on' = 'quiet', confidence = 0.95): FollowerEvent => ({ kind: 'lineDone', step, lineId: steps[step]!.recitationId, confidence, reps: 1, at: 0, why })
+
+  it('jumps once, several steps ahead, on the first line heard clearly', () => {
+    const d = driver()
+    d.armResync(0)
+    const f4 = idx('fatiha-4')
+    expect(at(d, 1, clear(f4))).toEqual({ type: 'goTo', index: f4 + 1, reason: 'resync' })
+    // Only once: the next clear line far ahead is the ordinary one-step catch-up.
+    const k1 = idx('kawthar-1')
+    expect(at(d, f4 + 1, clear(k1))).toEqual({ type: 'goTo', index: f4 + 2, reason: 'catchUp' })
+  })
+
+  it('never jumps on a weak or inferred line, and never backwards', () => {
+    const d = driver()
+    d.armResync(0)
+    const f4 = idx('fatiha-4')
+    expect(at(d, 1, clear(f4, 'moved-on', 0.6))?.reason).not.toBe('resync')
+    expect(at(d, 1, clear(f4, 'quiet', 0.7))?.reason).not.toBe('resync')
+    expect(at(d, 6, clear(idx('fatiha-2')))).toBeNull()
+  })
+
+  it('a clear line in step disarms it', () => {
+    const d = driver()
+    d.armResync(0)
+    const f2 = idx('fatiha-2')
+    expect(at(d, f2, clear(f2))).toEqual({ type: 'goTo', index: f2 + 1, reason: 'lineDone' })
+    expect(at(d, f2 + 1, clear(f2 + 4))?.reason).toBe('catchUp')
+  })
+
+  it('does not jump on a line said earlier on the way (the same tasbih in every sujud)', () => {
+    const d = driver()
+    d.armResync(0)
+    const s1 = idx('sujud')
+    const s2 = idx('sujud', s1 + 1)
+    expect(at(d, s1 - 2, clear(s2))?.reason).not.toBe('resync')
+  })
+
+  it('from the ready screen: begins, then jumps on the next tick', () => {
+    const d = driver()
+    d.armResync(0)
+    const f4 = idx('fatiha-4')
+    expect(at(d, 0, clear(f4), 5000, 'ready')).toEqual({ type: 'begin', reason: 'resync' })
+    d.sync(view(0), 5001)
+    expect(d.tick(view(0), 5100)).toEqual({ type: 'goTo', index: f4 + 1, reason: 'resync' })
+  })
+
+  it('expires after a while', () => {
+    const d = driver()
+    d.armResync(0)
+    expect(at(d, 1, clear(idx('fatiha-4')), 120_000)?.reason).not.toBe('resync')
+  })
+})

@@ -41,7 +41,7 @@ const AUDIO = findAudio()
 
 // Matrix: each speaker on a jahri prayer, clean / noisy / quiet / both.
 const single = opt('prayer', null) || opt('speaker', null) || opt('snr', null) || opt('gain', null) || opt('quiet', null) || flag('perturb') || opt('companion', null) || opt('aug', null)
-const C = (prayer, speaker, extra = {}) => ({ prayer, speaker, snr: null, gain: '1', quiet: '1', seed: '1', perturb: false, companion: null, gate: false, aug: null, tight: false, joined: false, amin: null, ...extra })
+const C = (prayer, speaker, extra = {}) => ({ prayer, speaker, snr: null, gain: '1', quiet: '1', seed: '1', perturb: false, companion: null, gate: false, aug: null, tight: false, joined: false, amin: null, late: null, ...extra })
 const configs = single
   ? [
       C(opt('prayer', 'fajr'), opt('speaker', 'aisha'), {
@@ -56,6 +56,7 @@ const configs = single
         tight: flag('tight'),
         joined: flag('joined'),
         amin: opt('amin', null),
+        late: opt('late', null),
       }),
     ]
   : flag('real')
@@ -68,6 +69,11 @@ const configs = single
       C('fajr', 'ahmad', { aug: 'room', seed: '23', tight: true }),
       C('fajr', 'maryam', { aug: 'quiet', seed: '24', snr: '15' }),
       C('dhuhr', 'yusuf', { aug: 'real', seed: '25', quiet: '0.3', tight: true }),
+    ]
+  : flag('lateset')
+  ? [
+      // The model becomes ready 10-40 s into the prayer (resync).
+      ...[10, 25, 40].flatMap((late, k) => [C('fajr', 'aisha', { late: String(late), seed: String(41 + k) }), C('maghrib', 'yusuf', { late: String(late), seed: String(44 + k) })]),
     ]
   : flag('amin')
   ? [
@@ -134,11 +140,11 @@ async function serveAudio(page, c) {
 const MODEL = opt('model', null)
 const query = (c, extra = '') =>
   `?lab&voice&replay&run&prayer=${c.prayer}&speaker=${c.speaker}&seed=${c.seed}&gain=${c.gain}&quietGain=${c.quiet}` +
-  `${c.snr ? `&snr=${c.snr}` : ''}${c.perturb ? '&perturb' : ''}${c.companion ? `&companion=${c.companion}` : ''}${c.gate ? '&gate' : ''}${c.tight ? '&tight' : ''}${c.joined ? '&joined' : ''}${c.amin ? `&amin=${c.amin}` : ''}` +
+  `${c.snr ? `&snr=${c.snr}` : ''}${c.perturb ? '&perturb' : ''}${c.companion ? `&companion=${c.companion}` : ''}${c.gate ? '&gate' : ''}${c.tight ? '&tight' : ''}${c.joined ? '&joined' : ''}${c.amin ? `&amin=${c.amin}` : ''}${c.late ? `&late=${c.late}` : ''}${flag('noresync') ? '&noresync' : ''}` +
   `${MODEL ? `&model=${encodeURIComponent(MODEL)}` : ''}${extra}`
 const name = (c) =>
   `${c.prayer}-${c.speaker}-${c.snr ? `snr${c.snr}` : 'clean'}-g${c.gain}${c.quiet !== '1' ? `-q${c.quiet}` : ''}` +
-  `${c.perturb ? `-perturb${c.seed}` : ''}${c.companion ? `-companion-${c.gate ? 'gated' : 'open'}` : ''}${c.aug ? `-${c.aug}${c.seed}` : ''}${c.tight ? '-tight' : ''}${c.joined ? '-joined' : ''}${c.amin ? `-amin-${c.amin}` : ''}${mic ? '-mic' : ''}`
+  `${c.perturb ? `-perturb${c.seed}` : ''}${c.companion ? `-companion-${c.gate ? 'gated' : 'open'}` : ''}${c.aug ? `-${c.aug}${c.seed}` : ''}${c.tight ? '-tight' : ''}${c.joined ? '-joined' : ''}${c.amin ? `-amin-${c.amin}` : ''}${c.late ? `-late${c.late}` : ''}${mic ? '-mic' : ''}`
 
 async function waitResult(page, label) {
   const t0 = Date.now()

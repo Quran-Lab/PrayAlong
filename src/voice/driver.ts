@@ -22,6 +22,11 @@ import type { FollowerEvent, KeywordKind } from './types'
 
 /** Listen mode: the least time an aloud line nobody has started waits before the timer moves on. */
 const UNSTARTED_MS = 8000
+/** Listening began late: how long the one resync stays available, and what it needs. */
+const RESYNC_WINDOW_MS = 90_000
+const RESYNC_MIN_CONFIDENCE = 0.85
+/** Lines shorter than this (phonetic characters) are too generic to jump on. */
+const RESYNC_MIN_CHARS = 18
 
 export type DriverMode =
   /** Microphone only: voice leads lines and postures. */
@@ -110,6 +115,42 @@ export class VoiceDriver {
     this.cfg = { ...DEFAULT_DRIVER, ...cfg }
   }
 
+  /** One resync (listening began after the prayer may have started): see resyncTarget(). */
+  private resync = { armed: false, until: 0, target: -1 }
+  /** Optional: phonetic length of a line, to refuse resyncs on short generic lines. */
+  lineChars: (lineId: string) => number = () => Infinity
+
+  /**
+   * Listening has just begun and the person may already be some way into the
+   * prayer. Allow ONE jump forward, several steps if need be, on the first
+   * line heard clearly and in full; anything else keeps the one-step rules.
+   */
+  armResync(now: number) {
+    this.resync = { armed: true, until: now + RESYNC_WINDOW_MS, target: -1 }
+  }
+
+  /**
+   * Where a clearly heard finished line puts the session, or -1. Disarms on
+   * the first clear line: either it is ahead (the jump) or in step (no jump
+   * needed any more).
+   */
+  private resyncTarget(e: FollowerEvent, s: SessionView, now: number): number {
+    if (!this.resync.armed || this.cfg.mode !== 'full') return -1
+    if (now > this.resync.until) {
+      this.resync.armed = false
+      return -1
+    }
+    if (e.kind !== 'lineDone' || e.confidence < RESYNC_MIN_CONFIDENCE || (e.why !== undefined && e.why !== 'quiet' && e.why !== 'next')) return -1
+    const line = s.steps[e.step]
+    if (!line || this.lineChars(line.recitationId) < RESYNC_MIN_CHARS) return -1
+    const from = s.phase === 'praying' ? s.index : 0
+    // The same line earlier on the way (a tasbih said in every sujud): ambiguous.
+    for (let k = from; k < e.step; k++) if (s.steps[k]!.recitationId === line.recitationId) return -1
+    this.resync.armed = false
+    const target = e.step + 1
+    return target > from + 1 && target < s.steps.length ? target : -1
+  }
+
   /** Call whenever the session changes (from any source). */
   sync(s: SessionView, now: number) {
     if (s.index !== this.index || s.phase !== this.phase) {
@@ -157,6 +198,16 @@ export class VoiceDriver {
       }
     }
     if (mode === 'evidence' || s.phase === 'complete') return null
+
+    const jump = this.resyncTarget(e, s, now)
+    if (jump >= 0) {
+      if (s.phase === 'ready') {
+        // Begin now; the jump follows on the next tick.
+        this.resync.target = jump
+        return { type: 'begin', reason: 'resync' }
+      }
+      return this.move(jump, 'resync')
+    }
 
     if (s.phase === 'ready') {
       // Any finished line means the prayer has started (listening may have
@@ -267,6 +318,11 @@ export class VoiceDriver {
     this.sync(s, now)
     const { mode } = this.cfg
     if (mode === 'evidence' || s.phase !== 'praying') return null
+    if (this.resync.target >= 0) {
+      const t = this.resync.target
+      this.resync.target = -1
+      if (t > s.index) return this.move(t, 'resync')
+    }
     if (this.companionOn) {
       this.arrivedAt = now
       return null

@@ -169,6 +169,9 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState & VoiceControl
       core.driver.cfg.mode = optsRef.current.mode
       switch (e.type) {
         case 'status':
+          // Listening starts now; the person may already be some way into the
+          // prayer (the model became ready late): one resync is allowed.
+          if (e.status === 'listening') core.armResync(performance.now())
           if (e.status === 'listening' && optsRef.current.record) {
             recRef.current = new SessionRecorder(useSession.getState().prayer)
             engine.setRecording(true)

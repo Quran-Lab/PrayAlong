@@ -39,6 +39,14 @@ export interface ReplayParams {
   model: string | null
   /** Amin after al-Fatiha: normal, skip, pause or joined. */
   amin: 'normal' | 'skip' | 'pause' | 'joined'
+  /**
+   * The model becomes ready this many seconds into the prayer: the person
+   * pressed Begin at the start, nothing before this is heard, then listening
+   * starts (with its one resync).
+   */
+  late: number
+  /** Compare: start listening late without the resync. */
+  noResync: boolean
 }
 
 export const DEFAULT_REPLAY: ReplayParams = {
@@ -56,6 +64,8 @@ export const DEFAULT_REPLAY: ReplayParams = {
   gate: false,
   model: null,
   amin: 'normal',
+  late: 0,
+  noResync: false,
 }
 
 export function replayParams(q: URLSearchParams): ReplayParams {
@@ -75,6 +85,8 @@ export function replayParams(q: URLSearchParams): ReplayParams {
     gate: q.has('gate'),
     model: q.get('model'),
     amin: (['skip', 'pause', 'joined'] as const).find((a) => q.get('amin') === a) ?? 'normal',
+    late: num('late', 0),
+    noResync: q.has('noresync'),
   }
 }
 
@@ -335,11 +347,24 @@ export async function runReplay(p: ReplayParams, onProgress?: (audioSec: number,
       onAction: (a, now) => log.actions.push({ a, t: now / 1000 }),
     },
   )
+  // A late start: the person pressed Begin and is praying; the model is not ready yet.
+  if (p.late > 0) {
+    sim.phase = 'praying'
+    sim.index = 0
+  }
   core.sync(0)
   const engine = new VoiceEngine()
   let lastAt = 0
+  let armed = false
   const pendingCompanion: { at: number; on: boolean }[] = []
   engine.on((e) => {
+    if (p.late > 0 && 'at' in e) {
+      if (e.at < p.late) return
+      if (!armed) {
+        armed = true
+        if (!p.noResync) core.armResync(e.at * 1000)
+      }
+    }
     if (e.type === 'tokens') {
       log.decodeMs.push(e.decodeMs)
       log.tokens!.push({ tokens: e.tokens, at: e.at + e.decodeMs / 1000, segment: e.segment })
@@ -374,7 +399,9 @@ export async function runReplay(p: ReplayParams, onProgress?: (audioSec: number,
       }
       const gate = p.gate && speaking
       if (gate !== gated) engine.setGate((gated = gate))
-      inflight.push(engine.feed(pcm.slice(off, off + chunk), SR))
+      // Before the model is ready nothing is decoded (silence keeps the clock).
+      const samples = off < p.late * SR ? new Float32Array(Math.min(chunk, pcm.length - off)) : pcm.slice(off, off + chunk)
+      inflight.push(engine.feed(samples, SR))
       if (inflight.length >= 16) await inflight.shift()
     }
     await Promise.all(inflight)
