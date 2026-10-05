@@ -362,7 +362,7 @@ export async function runReplay(p: ReplayParams, onProgress?: (audioSec: number,
       if (e.at < p.late) return
       if (!armed) {
         armed = true
-        if (!p.noResync) core.armResync(e.at * 1000)
+        if (!p.noResync) core.armResync(e.at * 1000, e.at)
       }
     }
     if (e.type === 'tokens') {

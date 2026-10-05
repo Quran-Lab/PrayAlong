@@ -104,6 +104,8 @@ export interface FollowerOptions {
   lostSymbols: number
   lostWindowSteps: number
   lostSkipCost: number
+  /** Skipping a line while searching ahead after a late start. */
+  aheadSkipCost: number
   /** Cost of leaving out an optional prefix (the basmala before a surah). */
   optionalSkipCost: number
   /** Cost of one more repetition than a repeated line asks for. */
@@ -134,6 +136,7 @@ export const DEFAULT_FOLLOWER: FollowerOptions = {
   lostSymbols: 35,
   lostWindowSteps: 12,
   lostSkipCost: 2,
+  aheadSkipCost: 1,
 }
 
 interface Unit {
@@ -363,7 +366,7 @@ export class Follower {
     this.anchor = Math.max(0, index)
     this.lastDone = keep ? Math.max(this.lastDone, this.anchor - 1) : this.anchor - 1
     // Still catching up (the voice is well past the new anchor): stay wide.
-    if (!keep || this.lastSnapshot.step < this.anchor + 2) this.lost = false
+    if ((!keep || this.lastSnapshot.step < this.anchor + 2) && !((this.heard.at(-1)?.at ?? -Infinity) < this.aheadUntil)) this.lost = false
     this.pending = false
     this.fullFor = -1
     if (!keep) {
@@ -376,8 +379,15 @@ export class Follower {
     this.buildWindow()
   }
 
-  /** Listening began late: look well ahead from the start (as when lost). */
-  searchAhead() {
+  /** Audio time until which the window stays wide (listening began late). */
+  private aheadUntil = -Infinity
+
+  /**
+   * Listening began late: look well ahead (as when lost) for the next
+   * `seconds` of audio, across re-anchors (a timer move must not narrow it).
+   */
+  searchAhead(at: number, seconds = 60) {
+    this.aheadUntil = at + seconds
     if (this.lost) return
     this.lost = true
     this.buildWindow()
@@ -645,7 +655,10 @@ export class Follower {
         }
       }
       // A takbir node is optional (often whispered or unheard); lines cost more.
-      const cost = u.kind === 'takbir' ? this.opts.takbirSkipCost : u.rep > 0 ? repSkipCost : this.lost ? this.opts.lostSkipCost : skipCost
+      // Searching ahead after a late start: the person may be many lines on, so
+      // skipping a line costs less still (a whole line said must outweigh it).
+      const ahead = (this.heard.at(-1)?.at ?? -Infinity) < this.aheadUntil
+      const cost = u.kind === 'takbir' ? this.opts.takbirSkipCost : u.rep > 0 ? repSkipCost : this.lost ? (ahead ? this.opts.aheadSkipCost : this.opts.lostSkipCost) : skipCost
       const v = D[base + u.start]! + cost
       if (v < D[base + u.end]!) {
         D[base + u.end] = v

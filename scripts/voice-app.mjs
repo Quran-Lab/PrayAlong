@@ -168,6 +168,15 @@ async function runOne(c) {
   const result = { label, config: c, timeline, moves, logs, micT0, lead: LEAD, readyAt }
   // The model must be ready before the prayer audio starts, or the run measures the load, not the App.
   result.readyLate = readyAt === undefined || audioT(result, readyAt) > timeline.clips[0].start - 0.5
+  // How far the decoder runs behind the microphone (CPU starved: the run measures the machine, not the App).
+  const behind = logs
+    .map((l) => {
+      const m = /"at":([0-9.]+)/.exec(l.msg)
+      return m && /\] event /.test(l.msg) ? audioT(result, l.t) - Number(m[1]) : null
+    })
+    .filter((x) => x !== null)
+    .sort((a, b) => a - b)
+  result.decoderBehind = behind.length ? { p50: +behind[Math.floor(behind.length / 2)].toFixed(2), p95: +behind[Math.floor(behind.length * 0.95)].toFixed(2) } : null
   result.score = score(result)
   await writeFile(join(OUT, `${label}.json`), JSON.stringify(result, null, 1))
   return result
@@ -256,6 +265,7 @@ await Promise.all(
         const r = await runOne(c)
         results.push(r)
         const s = r.score
+        if (r.decoderBehind) console.log(`  ${r.label}: decoder behind the microphone p50 ${r.decoderBehind.p50} s p95 ${r.decoderBehind.p95} s (includes the worker clock offset)`)
         if (r.readyLate) console.log(`  ${r.label}: model ready only at ${r.readyAt === undefined ? 'never' : audioT(r, r.readyAt).toFixed(1)} s of prayer audio (raise --lead)`)
         console.log(`done ${r.label}: early ${s.early} ${JSON.stringify(s.earlyWhy)} late ${s.late} skipped ${s.skipped} back ${s.back} | reps ok ${s.reps.ok}/${s.reps.steps} early ${s.reps.early} late ${s.reps.late} | lag p50 ${s.lagP50} p95 ${s.lagP95} | complete ${s.completed}`)
       } catch (e) {

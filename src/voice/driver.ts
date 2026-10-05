@@ -117,7 +117,11 @@ export class VoiceDriver {
 
   /** One resync (listening began after the prayer may have started): see resyncTarget(). */
   private resync = { armed: false, until: 0, target: -1 }
-  /** Optional: phonetic length of a line, to refuse resyncs on short generic lines. */
+  /**
+   * Optional: phonetic length of a line, to refuse resyncs on short generic
+   * lines. 0 for a line that is also said inside others (the basmala of
+   * al-Fatiha 1 opens every later surah).
+   */
   lineChars: (lineId: string) => number = () => Infinity
 
   /**
@@ -127,6 +131,8 @@ export class VoiceDriver {
    */
   armResync(now: number) {
     this.resync = { armed: true, until: now + RESYNC_WINDOW_MS, target: -1 }
+    // Timers count from when listening started, not from when the step was reached.
+    this.arrivedAt = now
   }
 
   /**

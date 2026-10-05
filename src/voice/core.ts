@@ -41,7 +41,11 @@ export class VoiceCore {
     this.driver = new VoiceDriver(driver)
     this.driver.lineChars = (id) => {
       const l = PHONEMES[id]
-      return l ? l.words.slice(l.optional ?? 0).join('').length : 0
+      if (!l) return 0
+      const own = l.words.slice(l.optional ?? 0).join(' ')
+      // Also the optional opening of another line (al-Fatiha 1 = the basmala before a surah).
+      const inside = Object.entries(PHONEMES).some(([k, o]) => k !== id && (o.optional ?? 0) > 0 && o.words.slice(0, o.optional).join(' ') === own)
+      return inside ? 0 : own.replace(/ /g, '').length
     }
   }
 
@@ -80,8 +84,8 @@ export class VoiceCore {
    * prayer started): the follower looks well ahead and the driver may jump
    * once to the first line heard clearly.
    */
-  armResync(now: number) {
-    this.follower.searchAhead()
+  armResync(now: number, at = 0) {
+    this.follower.searchAhead(at)
     this.driver.armResync(now)
   }
 
