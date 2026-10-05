@@ -34,6 +34,8 @@ const CompanionStage = lazy(() => import('@/components/stage/CompanionStage').th
 
 /** How long hands-free waits for a movement it cannot see before moving on anyway. */
 const BODY_GRACE_MS = 6000
+/** Listen mode: after the line before a movement is done, how long to wait for its takbir. */
+const MOVE_GRACE_MS = 3000
 
 const stepMs = (step: Step, pace: keyof typeof PACE_FACTOR) => Math.max(step.timing.minMs, step.timing.expectedMs * PACE_FACTOR[pace])
 
@@ -85,8 +87,35 @@ export function App() {
     })
   }, [])
   const companionSpeaking = useCompanionSpeaking()
-  const voice = useVoiceFollow({ enabled: voiceOn, mode: following ? 'lines' : 'full', ignoreCompanion: true, companionSpeaking })
+  // The step whose line was last heard finished (for the short wait before a movement).
+  const [doneStep, setDoneStep] = useState(-1)
+  const voice = useVoiceFollow({
+    enabled: voiceOn,
+    mode: following ? 'lines' : 'full',
+    ignoreCompanion: true,
+    companionSpeaking,
+    onEvent: (e) => {
+      if (e.kind === 'lineDone') setDoneStep(e.step)
+    },
+  })
   const voiceDriving = voiceOn && voice.status === 'listening'
+  // Listen mode: the line before a movement is finished but "Allāhu Akbar" (or the tasmi') was
+  // not heard: move on after a short pause rather than making anyone wait.
+  useEffect(() => {
+    if (!voiceDriving || phase !== 'praying' || doneStep !== index) return
+    const s = useSession.getState()
+    const step = s.sequence.steps[index]
+    const after = s.sequence.steps[index + 1]
+    if (!step || !after || after.posture === step.posture) return
+    const at = index
+    const id = setTimeout(() => {
+      if (useSession.getState().index === at) {
+        if (localStorage.getItem('prayalong:voiceDebug') !== '0') console.log('[voice] movement fallback advance after line done', at)
+        useSession.getState().next()
+      }
+    }, MOVE_GRACE_MS)
+    return () => clearTimeout(id)
+  }, [voiceDriving, phase, doneStep, index])
   // Every prayer starts in Listen mode, with or without the camera (the click or key that begins it lets the mic start).
   const prevPhase = useRef(phase)
   useEffect(() => {
