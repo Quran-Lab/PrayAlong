@@ -32,6 +32,11 @@ interface StageProps {
   azimuth?: number
   onLoaded?: () => void
   onError?: (error: Error) => void
+  /**
+   * [voice] Draw at low power: about 20 frames a second, no shadows, DPR 1.
+   * Set while the speech decoder is falling behind the microphone (CPU starved).
+   */
+  lowPower?: boolean
 }
 
 export function CompanionStage(props: StageProps) {
@@ -46,13 +51,15 @@ export function CompanionStage(props: StageProps) {
     <div className="absolute inset-0">
       {props.scenery !== false && <Scenery prayer={prayer} windowX={localAnchor} />}
     <Canvas
-      shadows
-      dpr={quality === 'high' ? [1, 2] : [1, 1.5]}
+      shadows={!props.lowPower}
+      frameloop={props.lowPower ? 'demand' : 'always'}
+      dpr={props.lowPower ? 1 : quality === 'high' ? [1, 2] : [1, 1.5]}
       gl={{ antialias: true, alpha: true, toneMapping: THREE.NeutralToneMapping, powerPreference: 'high-performance' }}
       camera={{ fov: 24, near: 0.1, far: 60, position: [1.6, 1.3, 5] }}
       aria-hidden
     >
       <PerformanceMonitor onDecline={() => setQuality('low')} />
+      {props.lowPower && <FrameCap fps={20} />}
       <CameraRig posture={props.posture} reducedMotion={props.reducedMotion} azimuth={props.azimuth} />
       {props.onAnchor && <Anchor onAnchor={props.onAnchor} />}
       {props.scenery !== false && <Anchor inCanvas onAnchor={setLocalAnchor} />}
@@ -65,10 +72,20 @@ export function CompanionStage(props: StageProps) {
       </Environment>
       <PrayerRug />
       <Companion {...props} />
-      <ContactShadows position={[0, RUG.top + 0.001, RUG.center]} scale={[RUG.width + 0.4, RUG.length + 0.4]} blur={2.4} far={1.4} opacity={0.55} resolution={512} color="#0b3328" />
+      {!props.lowPower && <ContactShadows position={[0, RUG.top + 0.001, RUG.center]} scale={[RUG.width + 0.4, RUG.length + 0.4]} blur={2.4} far={1.4} opacity={0.55} resolution={512} color="#0b3328" />}
     </Canvas>
     </div>
   )
+}
+
+/** With frameloop 'demand': draw a frame `fps` times a second (animation keeps going, slower). */
+function FrameCap({ fps }: { fps: number }) {
+  const invalidate = useThree((s) => s.invalidate)
+  useEffect(() => {
+    const id = window.setInterval(() => invalidate(), 1000 / fps)
+    return () => window.clearInterval(id)
+  }, [fps, invalidate])
+  return null
 }
 
 // ————————————————————————————————————————————————————————— character

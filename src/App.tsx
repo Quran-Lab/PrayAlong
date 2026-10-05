@@ -312,6 +312,7 @@ export function App() {
                     onAnchor={wideLayout || short ? setAnchorX : undefined}
                     raiseHands={settings.raiseHands}
                     reducedMotion={reducedMotion}
+                    lowPower={voiceDriving && voice.decoderBehind} // [voice] the decoder is falling behind: draw less
                     onLoaded={() => setStageReady(true)}
                   />
                 </Suspense>

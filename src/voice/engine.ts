@@ -15,7 +15,8 @@ export type EngineEvent =
   | { type: 'progress'; loaded: number; total: number }
   | { type: 'tokens'; tokens: string[]; at: number; segment: number; decodeMs: number }
   | { type: 'endpoint'; at: number; segment: number }
-  | { type: 'level'; rms: number; speech: boolean; at: number }
+  /** `lag`: seconds the decoder runs behind the microphone (0 when keeping up; see VoiceEngine.lagSec). */
+  | { type: 'level'; rms: number; speech: boolean; at: number; lag: number }
 
 export interface VoiceEngineOptions {
   /** Where the model manifest and parts live. Default: same origin, voice/model/. */
@@ -137,6 +138,9 @@ export class VoiceEngine {
   /** Total decoding time and audio decoded so far (real-time factor = decodeMs / 1000 / audioSec), from the last finish(). */
   decodeStats = { decodeMs: 0, audioSec: 0 }
   private micOpenedAt = 0
+  /** Seconds the decoder runs behind the microphone (a starved CPU: the 3D stage, a weak laptop). */
+  lagSec = 0
+  private lagBase = Infinity
   private worker: Worker | null = null
   private ctx: AudioContext | null = null
   private media: MediaStream | null = null
@@ -168,6 +172,8 @@ export class VoiceEngine {
     const mic = opts.mic ?? true
     if (!voiceSupported() && mic) return this.setStatus('error', 'unsupported')
     this.setStatus('loading')
+    this.lagBase = Infinity
+    this.lagSec = 0
     // Created inside the user's click so it is allowed to start.
     if (mic) this.ctx = new AudioContext({ latencyHint: 'interactive' })
     // The permission prompt goes up while the model downloads, unless asked not to.
@@ -214,9 +220,15 @@ export class VoiceEngine {
           case 'endpoint':
             this.emit({ type: 'endpoint', at: m.at, segment: m.segment })
             break
-          case 'level':
-            this.emit({ type: 'level', rms: m.rms, speech: m.speech, at: m.at })
+          case 'level': {
+            // Wall clock minus the worker's audio clock, against its best value
+            // so far: how far decoding has fallen behind the microphone.
+            const d = performance.now() / 1000 - m.at
+            this.lagBase = Math.min(this.lagBase, d)
+            this.lagSec = d - this.lagBase
+            this.emit({ type: 'level', rms: m.rms, speech: m.speech, at: m.at, lag: this.lagSec })
             break
+          }
           case 'recording':
             this.recordings.get(m.id)?.({ pcm: m.pcm, sampleRate: m.sampleRate, startAt: m.startAt })
             this.recordings.delete(m.id)

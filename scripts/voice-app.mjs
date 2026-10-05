@@ -22,7 +22,7 @@ const args = process.argv.slice(2)
 const flag = (k) => args.includes(`--${k}`)
 const opt = (k, d) => (args.includes(`--${k}`) ? args[args.indexOf(`--${k}`) + 1] : d)
 const OUT = join(ROOT, 'test-results/voice', opt('out', `app-${opt('set', 'std')}`))
-const parallel = Number(opt('parallel', '3'))
+const parallel = Number(opt('parallel', '1'))
 /** Silence before the prayer: the model loads meanwhile (audio before it is ready is dropped). */
 const LEAD = Number(opt('lead', '15'))
 
@@ -172,11 +172,14 @@ async function runOne(c) {
   const behind = logs
     .map((l) => {
       const m = /"at":([0-9.]+)/.exec(l.msg)
-      return m && /\] event /.test(l.msg) ? audioT(result, l.t) - Number(m[1]) : null
+      return m && /\] event /.test(l.msg) ? (l.t - result.micT0) / 1000 - Number(m[1]) : null
     })
     .filter((x) => x !== null)
-    .sort((a, b) => a - b)
-  result.decoderBehind = behind.length ? { p50: +behind[Math.floor(behind.length / 2)].toFixed(2), p95: +behind[Math.floor(behind.length * 0.95)].toFixed(2) } : null
+  // Relative to the best value (the clocks' fixed offset): seconds behind.
+  const base = Math.min(...behind)
+  const rel = behind.map((x) => x - base).sort((a, b) => a - b)
+  result.decoderBehind = rel.length ? { p50: +rel[Math.floor(rel.length / 2)].toFixed(2), p95: +rel[Math.floor(rel.length * 0.95)].toFixed(2), max: +rel.at(-1).toFixed(2) } : null
+  result.lowPowerLogs = logs.filter((l) => l.msg.includes('decoder lag')).map((l) => `${audioT(result, l.t).toFixed(1)} ${l.msg}`)
   result.score = score(result)
   await writeFile(join(OUT, `${label}.json`), JSON.stringify(result, null, 1))
   return result
@@ -265,7 +268,7 @@ await Promise.all(
         const r = await runOne(c)
         results.push(r)
         const s = r.score
-        if (r.decoderBehind) console.log(`  ${r.label}: decoder behind the microphone p50 ${r.decoderBehind.p50} s p95 ${r.decoderBehind.p95} s (includes the worker clock offset)`)
+        if (r.decoderBehind) console.log(`  ${r.label}: decoder behind the microphone p50 ${r.decoderBehind.p50} s p95 ${r.decoderBehind.p95} s max ${r.decoderBehind.max} s; low-power switches ${r.lowPowerLogs.length}`)
         if (r.readyLate) console.log(`  ${r.label}: model ready only at ${r.readyAt === undefined ? 'never' : audioT(r, r.readyAt).toFixed(1)} s of prayer audio (raise --lead)`)
         console.log(`done ${r.label}: early ${s.early} ${JSON.stringify(s.earlyWhy)} late ${s.late} skipped ${s.skipped} back ${s.back} | reps ok ${s.reps.ok}/${s.reps.steps} early ${s.reps.early} late ${s.reps.late} | lag p50 ${s.lagP50} p95 ${s.lagP95} | complete ${s.completed}`)
       } catch (e) {

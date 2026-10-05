@@ -57,9 +57,17 @@ export interface VoiceState {
    * slider while voice leads; null when the step has no timer.
    */
   timerMs: number | null
+  /**
+   * The decoder has fallen behind the microphone (more than LAG_ON_SEC, until
+   * it is back under LAG_OFF_SEC): the CPU is starved, so the app should draw
+   * less (the 3D stage at a low frame rate, no shadows).
+   */
+  decoderBehind: boolean
 }
 
 const COMPANION_TAIL_MS = 350
+const LAG_ON_SEC = 1.5
+const LAG_OFF_SEC = 0.5
 
 const view = (): SessionView => {
   const s = useSession.getState()
@@ -106,7 +114,8 @@ function voiceDebug() {
 }
 
 export function useVoiceFollow(opts: UseVoiceOptions): VoiceState & VoiceControls {
-  const [state, setState] = useState<VoiceState>({ status: 'idle', progress: 0, speaking: false, cursor: null, timerMs: null })
+  const behindRef = useRef(false)
+  const [state, setState] = useState<VoiceState>({ status: 'idle', progress: 0, speaking: false, cursor: null, timerMs: null, decoderBehind: false })
   const engineRef = useRef<VoiceEngine | null>(null)
   const coreRef = useRef<VoiceCore | null>(null)
   const recRef = useRef<SessionRecorder | null>(null)
@@ -208,12 +217,18 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState & VoiceControl
           core.endpoint(e.at, performance.now())
           cursor()
           break
-        case 'level':
+        case 'level': {
           rec()?.level(e.speech, e.rms, e.at)
           core.level(e.speech, e.at, performance.now())
-          setState((st) => (st.speaking === e.speech ? st : { ...st, speaking: e.speech }))
+          const behind = behindRef.current ? e.lag > LAG_OFF_SEC : e.lag > LAG_ON_SEC
+          if (behind !== behindRef.current) {
+            behindRef.current = behind
+            if (voiceDebug()) console.log(`%c[voice] decoder lag ${e.lag.toFixed(2)} s: ${behind ? 'drawing the stage at low power' : 'recovered, full drawing again'}`, 'color:#e0a050')
+          }
+          setState((st) => (st.speaking === e.speech && st.decoderBehind === behind ? st : { ...st, speaking: e.speech, decoderBehind: behind }))
           cursor()
           break
+        }
       }
     })
     void engine.start(optsRef.current.engine)
@@ -230,7 +245,8 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState & VoiceControl
       engineRef.current = null
       coreRef.current = null
       recRef.current = null
-      setState({ status: 'idle', progress: 0, speaking: false, cursor: null, timerMs: null })
+      behindRef.current = false
+      setState({ status: 'idle', progress: 0, speaking: false, cursor: null, timerMs: null, decoderBehind: false })
     }
   }, [opts.enabled])
 
