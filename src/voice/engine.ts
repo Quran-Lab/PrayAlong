@@ -35,9 +35,10 @@ export interface VoiceEngineOptions {
 
 const asset = (path: string) => new URL(path, document.baseURI).href
 
-// [voice] Model: the 320 ms streaming chunk (v31-slim-int8-preopt-c16-1, sha256 bd24ac1e...).
-// 480 ms (shipped until now) is voice/model/; 160 ms is voice/model/c8-1/. See docs/voice.md.
-export const DEFAULT_MODEL_BASE: string = import.meta.env.VITE_VOICE_MODEL_URL || 'voice/model/c16-1/'
+// [voice] Model: the 160 ms streaming chunk (v31-slim-int8-preopt-c8-1, sha256 e3007fcd...).
+// Same line accuracy as 320 ms (voice/model/c16-1/) and the lowest lag. 480 ms is voice/model/.
+// See docs/voice.md.
+export const DEFAULT_MODEL_BASE: string = import.meta.env.VITE_VOICE_MODEL_URL || 'voice/model/c8-1/'
 
 export function voiceSupported(): boolean {
   return (
