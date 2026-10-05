@@ -97,33 +97,57 @@ def main() -> None:
 
     tb = TextBank.load("tanzil")
 
+    # A standalone pause mark (e.g. the jim in 110:3) is a "word" on screen but
+    # not a sound: it gets an empty phoneme string so word indices still line up.
+    def is_mark(token: str) -> bool:
+        return all(0x06D6 <= ord(c) <= 0x06ED for c in token)
+
     def words_of(text: str, ref=None) -> list[str]:
         (seg,) = phonemize(text, edition="tanzil", ref=ref).segments
         n_words = len(text.split())
         groups: list[list] = [[] for _ in range(n_words)]
         for p in seg.phones:
             groups[p.word_index].append(p)
-        return [expand(g, ghunna_repeat=2, ikhfa_repeat=2) if g else "" for g in groups]
+        tokens = text.split()
+        return [expand(g, ghunna_repeat=2, ikhfa_repeat=2) if g else "" for g, t in zip(groups, tokens) if not is_mark(t)]
 
     lines: dict[str, dict] = {}
     for line_id, arabic, ref in parse_recitations():
-        shown = len(arabic.split())
+        display = arabic.split()
+        shown = len(display)
+        optional = 0
         if ref:
             s, a = map(int, ref.split(":"))
             words = []
-            if line_id in BASMALA_PREFIXED:
+            # Verse 1 of every surah but al-Fatiha is shown with the basmala;
+            # people may or may not say it, so it is an optional prefix.
+            if a == 1 and s != 1:
                 words += words_of(tb.ayah(AyahRef(1, 1)), AyahRef(1, 1))
-            words += words_of(tb.ayah(AyahRef(s, a)), AyahRef(s, a))
+                optional = len(words)
+            verse = words_of(tb.ayah(AyahRef(s, a)), AyahRef(s, a))
             source = f"quran {ref}"
+            shown_verse = len([t for t in display if not is_mark(t)]) - len(words)
+            if len(verse) != shown_verse:
+                # Uthmani and the displayed simple spelling split words
+                # differently (e.g. ya-ayyuha in 109:1): phonemize the
+                # displayed words themselves, as for the adhkar.
+                tail = [t for t in display if not is_mark(t)][len(words):]
+                verse = words_of(to_uthmani_min(" ".join(tail)))
+                source = f"quran {ref}*"
+            words += verse
         else:
             words = words_of(to_uthmani_min(arabic))
             source = "adhkar"
+        # Put the empty "words" back where the display has pause marks.
+        for k, tok in enumerate(display):
+            if is_mark(tok):
+                words.insert(k, "")
         if len(words) != shown:
             raise SystemExit(f"{line_id}: {len(words)} phoneme words for {shown} displayed words")
-        if any(not w for w in words):
+        if any(not w for w, tok in zip(words, display) if not is_mark(tok)):
             raise SystemExit(f"{line_id}: a word produced no phonemes: {words}")
-        lines[line_id] = {"words": words}
-        print(f"{line_id:12} {source:12} {' | '.join(words)}")
+        lines[line_id] = {"words": words, **({"optional": optional} if optional else {})}
+        print(f"{line_id:12} {source:12} {'(basmala optional) ' if optional else ''}{' | '.join(words)}")
 
     payload = {
         "version": 1,

@@ -29,6 +29,7 @@ export type Voice = 'aloud' | 'quiet'
 /** Runs of lines, labelled in the UI via the `group.*` messages. */
 export type GroupId =
   | 'openingTakbir' | 'opening' | 'fatiha' | 'amin' | 'kawthar' | 'ikhlas'
+  | 'asr' | 'kafirun' | 'nasr' | 'masad' | 'falaq' | 'nas'
   | 'ruku' | 'itidal' | 'sujud' | 'jalsah' | 'tashahhud' | 'salawat' | 'salam'
 
 /** Movement instructions, shown via the `cue.*` messages. */
