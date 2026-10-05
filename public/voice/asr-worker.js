@@ -1,3 +1,13 @@
+// The wasm runtime writes informational lines (e.g. "Creating a resampler")
+// to stderr, which browsers show as errors. Downgrade those to debug.
+{
+  const err = console.error.bind(console)
+  console.error = (...args) => {
+    const text = args.map(String).join(' ')
+    if (/Creating a resampler|in_sample_rate|output_sample_rate/.test(text)) return console.debug('[voice runtime]', text)
+    err(...args)
+  }
+}
 /*
  * PrayAlong voice: on-device Quran ASR worker (classic worker).
  *

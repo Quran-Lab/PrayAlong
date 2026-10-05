@@ -69,6 +69,19 @@ export function toEvidence(e: FollowerEvent, now: number): Evidence {
  * Listens while `enabled`, follows the prayer in the session store and
  * (depending on `mode`) moves it. Lazy: nothing is downloaded until enabled.
  */
+/**
+ * Debug log in the browser console: what the recognizer heard (phonemes),
+ * what line it expected and where the follower is. On while Listen mode is
+ * in beta; turn off with localStorage.setItem('prayalong:voiceDebug', '0').
+ */
+function voiceDebug() {
+  try {
+    return localStorage.getItem('prayalong:voiceDebug') !== '0'
+  } catch {
+    return true
+  }
+}
+
 export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
   const [state, setState] = useState<VoiceState>({ status: 'idle', progress: 0, speaking: false, cursor: null, timerMs: null })
   const engineRef = useRef<VoiceEngine | null>(null)
@@ -90,6 +103,7 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
         view,
         apply: applyAction,
         onEvent: (e, now) => {
+          if (voiceDebug()) console.log('%c[voice] event', 'color:#7fd18b', e.kind, JSON.stringify(e), 'snapshot', JSON.stringify(core.follower.snapshot()))
           optsRef.current.onEvidence?.(toEvidence(e, now))
           optsRef.current.onEvent?.(e)
         },
@@ -120,6 +134,11 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
           setState((st) => ({ ...st, progress: e.total ? e.loaded / e.total : 0 }))
           break
         case 'tokens':
+          if (voiceDebug() && e.tokens.length) {
+            const s = useSession.getState()
+            const step = s.sequence.steps[s.index]
+            console.log('[voice] heard', e.tokens.join(' '), '| expected', step?.recitationId, `x${step?.repeat}`, '| cursor', JSON.stringify(core.follower.snapshot()))
+          }
           optsRef.current.onTokens?.(e.tokens, e.at)
           core.tokens(e.tokens, e.at, performance.now())
           cursor()
