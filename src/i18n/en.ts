@@ -40,6 +40,8 @@ export const en = {
   'voice.jalsah': 'Sit up on your left foot, with your right foot upright and its toes towards the qibla.',
   'voice.tashahhud': 'Sit on your left foot, and raise your right index finger.',
   'voice.salam': 'Turn your face to the right, then to the left.',
+  'voice.salamRight': 'Turn your face to the right.',
+  'voice.salamLeft': 'Now turn your face to the left.',
 
   // Groups of lines
   'group.openingTakbir': 'Opening takbir',
@@ -154,6 +156,10 @@ export const en = {
   'listen.loading': 'Getting ready {p}%',
   'listen.failed': 'Mic unavailable',
   'listen.hint': 'Follow my recitation by microphone, no camera needed',
+  'listen.denied': 'Allow the microphone',
+  'listen.missing': 'No microphone found',
+  'listen.model': 'Voice model did not load, tap to retry',
+  'listen.unsupported': 'Not supported in this browser',
   'nav.home': 'Back to start',
   'ambience.mute': 'Mute the room sounds',
   'ambience.unmute': 'Play the room sounds',

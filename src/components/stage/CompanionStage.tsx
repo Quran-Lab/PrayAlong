@@ -20,6 +20,8 @@ interface StageProps {
   prayer?: PrayerId
   /** Raise the hands going into ruku and rising from it. */
   raiseHands?: boolean
+  /** Where the companion stands on the page (percent of the window width), so the page's window can sit behind it. */
+  onAnchor?: (xPercent: number) => void
   /** Draw the room behind the companion (off when the page draws it). */
   scenery?: boolean
   reducedMotion?: boolean
@@ -47,6 +49,7 @@ export function CompanionStage(props: StageProps) {
     >
       <PerformanceMonitor onDecline={() => setQuality('low')} />
       <CameraRig posture={props.posture} reducedMotion={props.reducedMotion} azimuth={props.azimuth} />
+      {props.onAnchor && <Anchor onAnchor={props.onAnchor} />}
 
       <StageLights ambient={ambient} prayer={prayer} />
       <Environment resolution={128} frames={1}>
@@ -134,6 +137,23 @@ function applyClay(scene: THREE.Object3D) {
 }
 
 // ————————————————————————————————————————————————————————— set dressing
+
+/** Reports where the companion's chest lands on the page, horizontally. */
+function Anchor({ onAnchor }: { onAnchor: (xPercent: number) => void }) {
+  const { camera, gl } = useThree()
+  const last = useRef(-1)
+  const p = useMemo(() => new THREE.Vector3(), [])
+  useFrame(() => {
+    p.set(0, 0.95, 0.2).project(camera)
+    const r = gl.domElement.getBoundingClientRect()
+    const x = ((r.left + ((p.x + 1) / 2) * r.width) / window.innerWidth) * 100
+    if (Math.abs(x - last.current) > 0.25) {
+      last.current = x
+      onAnchor(x)
+    }
+  })
+  return null
+}
 
 /** The light of each prayer's hour: sky fill, a sun or moon key, and the window behind. */
 const LIGHT: Record<PrayerId, { sky: string; ground: string; hemi: number; key: string; keyI: number; keyPos: [number, number, number]; back: string; backI: number; fill: string; fillI: number }> = {

@@ -1,7 +1,7 @@
 import { Mic, MicOff } from 'lucide-react'
 import { useT } from '@/i18n'
 import { cn } from '@/lib/cn'
-import type { VoiceStatus } from '@/voice/types'
+import type { VoiceError, VoiceStatus } from '@/voice/types'
 import { Tooltip } from './ui/primitives'
 
 /**
@@ -9,11 +9,19 @@ import { Tooltip } from './ui/primitives'
  * camera. While the model downloads (first time only) the button shows
  * progress; if listening fails, the prayer carries on by time.
  */
-export function ListenButton({ on, status, progress, onToggle, compact }: { on: boolean; status: VoiceStatus; progress: number; onToggle: () => void; compact?: boolean }) {
+const ERROR_KEY: Record<VoiceError, 'listen.denied' | 'listen.missing' | 'listen.model' | 'listen.unsupported' | 'listen.failed'> = {
+  'mic-denied': 'listen.denied',
+  'mic-missing': 'listen.missing',
+  'model-unreachable': 'listen.model',
+  'engine-failed': 'listen.model',
+  unsupported: 'listen.unsupported',
+}
+
+export function ListenButton({ on, status, error, progress, onToggle, compact }: { on: boolean; status: VoiceStatus; error?: VoiceError; progress: number; onToggle: () => void; compact?: boolean }) {
   const t = useT()
   const loading = on && status === 'loading'
   const failed = on && status === 'error'
-  const label = !on ? t('listen.off') : loading ? t('listen.loading', { p: Math.round(progress * 100) }) : failed ? t('listen.failed') : t('listen.on')
+  const label = !on ? t('listen.off') : loading ? t('listen.loading', { p: Math.round(progress * 100) }) : failed ? t(error ? ERROR_KEY[error] : 'listen.failed') : t('listen.on')
   return (
     <Tooltip content={t('listen.hint')} side="bottom">
       <button

@@ -92,9 +92,9 @@ def main():
             continue
         vid = save_voice(companion, spec)
         print(companion, 'voice', vid, flush=True)
-        guide_only = '--guide-only' in sys.argv
+        guide_only = '--guide-only' in sys.argv or '--add-guide' in sys.argv
         old = manifest['voices'].get(companion, {'lines': {}, 'guide': {}})
-        manifest['voices'][companion] = {'lines': old['lines'] if guide_only else {}, 'guide': {}}
+        manifest['voices'][companion] = {'lines': old['lines'] if guide_only else {}, 'guide': old['guide'] if '--add-guide' in sys.argv else {}}
         for line in ([] if guide_only else content['lines']):
             jobs.append((companion, vid, 'line', line['id'], line['arabic'], 'ar'))
         for locale, msgs in content['guide'].items():

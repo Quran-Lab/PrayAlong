@@ -38,6 +38,8 @@ export const fr: Messages = {
   'voice.jalsah': 'Asseyez-vous sur le pied gauche, le pied droit dressé, les orteils vers la qibla.',
   'voice.tashahhud': 'Asseyez-vous sur le pied gauche et levez l’index droit.',
   'voice.salam': 'Tournez le visage à droite, puis à gauche.',
+  'voice.salamRight': 'Tournez le visage à droite.',
+  'voice.salamLeft': 'Maintenant, tournez le visage à gauche.',
 
   // Groups of lines
   'group.openingTakbir': 'Takbir d’ouverture',
@@ -152,6 +154,10 @@ export const fr: Messages = {
   'listen.loading': 'Préparation {p} %',
   'listen.failed': 'Micro indisponible',
   'listen.hint': 'Suivre ma récitation au micro, sans caméra',
+  'listen.denied': 'Autorisez le micro',
+  'listen.missing': 'Aucun micro trouvé',
+  'listen.model': 'Modèle vocal non chargé, touchez pour réessayer',
+  'listen.unsupported': 'Non pris en charge par ce navigateur',
   'nav.home': 'Retour au début',
   'ambience.mute': 'Couper les sons de la pièce',
   'ambience.unmute': 'Activer les sons de la pièce',
@@ -235,6 +241,8 @@ export const es: Messages = {
   'voice.jalsah': 'Siéntate sobre el pie izquierdo, con el pie derecho levantado y los dedos hacia la qibla.',
   'voice.tashahhud': 'Siéntate sobre el pie izquierdo y levanta el índice derecho.',
   'voice.salam': 'Gira la cara a la derecha y luego a la izquierda.',
+  'voice.salamRight': 'Gira la cara a la derecha.',
+  'voice.salamLeft': 'Ahora gira la cara a la izquierda.',
 
   // Groups of lines
   'group.openingTakbir': 'Takbir inicial',
@@ -349,6 +357,10 @@ export const es: Messages = {
   'listen.loading': 'Preparando {p} %',
   'listen.failed': 'Micrófono no disponible',
   'listen.hint': 'Seguir mi recitación por micrófono, sin cámara',
+  'listen.denied': 'Permite el micrófono',
+  'listen.missing': 'No se encontró micrófono',
+  'listen.model': 'El modelo de voz no cargó, toca para reintentar',
+  'listen.unsupported': 'No compatible con este navegador',
   'nav.home': 'Volver al inicio',
   'ambience.mute': 'Silenciar los sonidos del ambiente',
   'ambience.unmute': 'Activar los sonidos del ambiente',
@@ -432,6 +444,8 @@ export const tr: Messages = {
   'voice.jalsah': 'Sol ayağının üstüne otur, sağ ayağını dik tut, parmakları kıbleye dönük.',
   'voice.tashahhud': 'Sol ayağının üstüne otur ve sağ işaret parmağını kaldır.',
   'voice.salam': 'Yüzünü önce sağa, sonra sola çevir.',
+  'voice.salamRight': 'Yüzünü sağa çevir.',
+  'voice.salamLeft': 'Şimdi yüzünü sola çevir.',
 
   // Groups of lines
   'group.openingTakbir': 'İftitah tekbiri',
@@ -546,6 +560,10 @@ export const tr: Messages = {
   'listen.loading': 'Hazırlanıyor %{p}',
   'listen.failed': 'Mikrofon kullanılamıyor',
   'listen.hint': 'Okuyuşumu mikrofonla takip et, kamera gerekmez',
+  'listen.denied': 'Mikrofona izin ver',
+  'listen.missing': 'Mikrofon bulunamadı',
+  'listen.model': 'Ses modeli yüklenemedi, tekrar dene',
+  'listen.unsupported': 'Bu tarayıcıda desteklenmiyor',
   'nav.home': 'Başa dön',
   'ambience.mute': 'Ortam seslerini kapat',
   'ambience.unmute': 'Ortam seslerini aç',
@@ -629,6 +647,8 @@ export const id: Messages = {
   'voice.jalsah': 'Duduk di atas kaki kiri, kaki kanan ditegakkan dengan jari menghadap kiblat.',
   'voice.tashahhud': 'Duduk di atas kaki kiri dan angkat jari telunjuk kanan.',
   'voice.salam': 'Tolehkan wajah ke kanan, lalu ke kiri.',
+  'voice.salamRight': 'Tolehkan wajah ke kanan.',
+  'voice.salamLeft': 'Sekarang tolehkan wajah ke kiri.',
 
   // Groups of lines
   'group.openingTakbir': 'Takbiratul ihram',
@@ -743,6 +763,10 @@ export const id: Messages = {
   'listen.loading': 'Menyiapkan {p}%',
   'listen.failed': 'Mikrofon tidak tersedia',
   'listen.hint': 'Ikuti bacaan saya lewat mikrofon, tanpa kamera',
+  'listen.denied': 'Izinkan mikrofon',
+  'listen.missing': 'Mikrofon tidak ditemukan',
+  'listen.model': 'Model suara gagal dimuat, ketuk untuk coba lagi',
+  'listen.unsupported': 'Tidak didukung di browser ini',
   'nav.home': 'Kembali ke awal',
   'ambience.mute': 'Matikan suara suasana',
   'ambience.unmute': 'Nyalakan suara suasana',
@@ -826,6 +850,8 @@ export const nl: Messages = {
   'voice.jalsah': 'Ga zitten op je linkervoet, je rechtervoet rechtop met de tenen naar de qibla.',
   'voice.tashahhud': 'Zit op je linkervoet en steek je rechterwijsvinger op.',
   'voice.salam': 'Draai je gezicht naar rechts, en dan naar links.',
+  'voice.salamRight': 'Draai je gezicht naar rechts.',
+  'voice.salamLeft': 'Draai je gezicht nu naar links.',
 
   // Groups of lines
   'group.openingTakbir': 'Openingstakbier',
@@ -940,6 +966,10 @@ export const nl: Messages = {
   'listen.loading': 'Voorbereiden {p}%',
   'listen.failed': 'Microfoon niet beschikbaar',
   'listen.hint': 'Volg mijn recitatie via de microfoon, zonder camera',
+  'listen.denied': 'Sta de microfoon toe',
+  'listen.missing': 'Geen microfoon gevonden',
+  'listen.model': 'Spraakmodel niet geladen, tik om opnieuw te proberen',
+  'listen.unsupported': 'Niet ondersteund in deze browser',
   'nav.home': 'Terug naar het begin',
   'ambience.mute': 'Omgevingsgeluid dempen',
   'ambience.unmute': 'Omgevingsgeluid afspelen',
@@ -1023,6 +1053,8 @@ export const ur: Messages = {
   'voice.jalsah': 'بائیں پاؤں پر بیٹھیں، دایاں پاؤں کھڑا رکھیں اور انگلیاں قبلہ کی طرف۔',
   'voice.tashahhud': 'بائیں پاؤں پر بیٹھیں اور دائیں ہاتھ کی شہادت کی انگلی اٹھائیں۔',
   'voice.salam': 'چہرہ پہلے دائیں طرف، پھر بائیں طرف پھیریں۔',
+  'voice.salamRight': 'چہرہ دائیں طرف پھیریں۔',
+  'voice.salamLeft': 'اب چہرہ بائیں طرف پھیریں۔',
 
   // Groups of lines
   'group.openingTakbir': 'تکبیرِ تحریمہ',
@@ -1137,6 +1169,10 @@ export const ur: Messages = {
   'listen.loading': 'تیاری {p}%',
   'listen.failed': 'مائیک دستیاب نہیں',
   'listen.hint': 'مائیک سے میری تلاوت کے ساتھ چلیں، کیمرے کی ضرورت نہیں',
+  'listen.denied': 'مائیک کی اجازت دیں',
+  'listen.missing': 'کوئی مائیک نہیں ملا',
+  'listen.model': 'آواز کا ماڈل لوڈ نہیں ہوا، دوبارہ کوشش کریں',
+  'listen.unsupported': 'اس براؤزر میں دستیاب نہیں',
   'nav.home': 'شروع پر واپس',
   'ambience.mute': 'ماحول کی آواز بند کریں',
   'ambience.unmute': 'ماحول کی آواز چلائیں',
@@ -1220,6 +1256,8 @@ export const ar: Messages = {
   'voice.jalsah': 'اجلس على قدمك اليسرى، وانصب اليمنى وأصابعها نحو القبلة.',
   'voice.tashahhud': 'اجلس على قدمك اليسرى، وارفع سبابتك اليمنى.',
   'voice.salam': 'التفت بوجهك إلى اليمين ثم إلى اليسار.',
+  'voice.salamRight': 'التفت بوجهك إلى اليمين.',
+  'voice.salamLeft': 'والآن التفت إلى اليسار.',
 
   // Groups of lines
   'group.openingTakbir': 'تكبيرة الإحرام',
@@ -1334,6 +1372,10 @@ export const ar: Messages = {
   'listen.loading': 'جارٍ التجهيز {p}٪',
   'listen.failed': 'الميكروفون غير متاح',
   'listen.hint': 'تتبّع تلاوتي عبر الميكروفون دون كاميرا',
+  'listen.denied': 'اسمح باستخدام الميكروفون',
+  'listen.missing': 'لم يُعثر على ميكروفون',
+  'listen.model': 'تعذّر تحميل نموذج الصوت، اضغط لإعادة المحاولة',
+  'listen.unsupported': 'غير مدعوم في هذا المتصفح',
   'nav.home': 'العودة إلى البداية',
   'ambience.mute': 'كتم أصوات المكان',
   'ambience.unmute': 'تشغيل أصوات المكان',

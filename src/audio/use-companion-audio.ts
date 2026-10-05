@@ -27,7 +27,9 @@ function plan(step: Step, voice: string, locale: Locale, settings: Settings) {
   const clips: { clip: Clip; gain: number; isLine: boolean }[] = []
   if (step.cue && TAKBIR_CUES.has(step.cue) && m.lines['takbir']) clips.push({ clip: m.lines['takbir'], gain: 1, isLine: false })
   if (settings.guide && step.cue && step.groupIndex === 0) {
-    const g = m.guide[locale]?.[`voice.${postureKey(step.posture)}`]
+    // One instruction per movement; each salam gets its own side.
+    const key = step.posture === 'salam-right' ? 'salamRight' : step.posture === 'salam-left' ? 'salamLeft' : postureKey(step.posture)
+    const g = m.guide[locale]?.[`voice.${key}`]
     if (g) clips.push({ clip: g, gain: 1, isLine: false })
   }
   const gain = step.voice === 'quiet' ? QUIET_GAIN : 1

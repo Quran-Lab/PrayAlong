@@ -37,6 +37,8 @@ export const de: Messages = {
   'voice.jalsah': 'Setz dich auf den linken Fuß, der rechte Fuß bleibt aufgestellt, die Zehen zur Qibla.',
   'voice.tashahhud': 'Sitz auf dem linken Fuß und hebe den rechten Zeigefinger.',
   'voice.salam': 'Wende das Gesicht nach rechts, dann nach links.',
+  'voice.salamRight': 'Wende das Gesicht nach rechts.',
+  'voice.salamLeft': 'Jetzt wende das Gesicht nach links.',
 
   // Groups of lines
   'group.openingTakbir': 'Eröffnungs-Takbir',
@@ -151,6 +153,10 @@ export const de: Messages = {
   'listen.loading': 'Wird vorbereitet {p}%',
   'listen.failed': 'Mikrofon nicht verfügbar',
   'listen.hint': 'Meiner Rezitation über das Mikrofon folgen, ohne Kamera',
+  'listen.denied': 'Mikrofon erlauben',
+  'listen.missing': 'Kein Mikrofon gefunden',
+  'listen.model': 'Sprachmodell nicht geladen, tippen zum Wiederholen',
+  'listen.unsupported': 'In diesem Browser nicht unterstützt',
   'nav.home': 'Zurück zum Anfang',
   'ambience.mute': 'Raumklang stummschalten',
   'ambience.unmute': 'Raumklang abspielen',

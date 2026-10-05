@@ -61,6 +61,8 @@ export function App() {
   const reducedMotion = useReducedMotion()
   const character = CHARACTERS.find((c) => c.id === settings.characterId) ?? DEFAULT_CHARACTER
   const [stageReady, setStageReady] = useState(false)
+  // The page's window follows where the companion is drawn (any language direction).
+  const [anchorX, setAnchorX] = useState<number | null>(null)
   const [pendingSwitch, setPendingSwitch] = useState<PrayerId | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [setupOpen, setSetupOpen] = useState(false)
@@ -173,7 +175,7 @@ export function App() {
                 <Button variant="quiet" size="icon" aria-label={t('settings.title')} onClick={() => setSettingsOpen(true)}>
                   <Settings2 className="size-[18px]" />
                 </Button>
-                <ListenButton on={voiceOn} status={voice.status} progress={voice.progress} onToggle={() => setVoiceOn((v) => !v)} compact={!wide} />
+                <ListenButton on={voiceOn} status={voice.status} error={voice.error} progress={voice.progress} onToggle={() => setVoiceOn((v) => !v)} compact={!wide} />
                 <HandsFreeButton on={handsFree} status={hands.status} onToggle={toggleHandsFree} compact={!wide} />
               </div>
             </header>
@@ -181,7 +183,7 @@ export function App() {
             {/* Stage */}
             <main className="relative flex min-h-0 flex-1 flex-col short:flex-row wide:flex-row">
               {/* The room spans the page; on wide screens its window sits behind the companion. */}
-              {(wideLayout || short) && <Scenery prayer={prayer} windowX={dir === 'rtl' ? 100 - (wideLayout ? 26.5 : 24) : wideLayout ? 26.5 : 24} />}
+              {(wideLayout || short) && <Scenery prayer={prayer} windowX={anchorX ?? (dir === 'rtl' ? 100 - (wideLayout ? 26.5 : 24) : wideLayout ? 26.5 : 24)} />}
               <div className="relative min-h-0 min-w-0 flex-1 wide:flex-[1.12]">
                 <Suspense>
                   <CompanionStage
@@ -190,6 +192,7 @@ export function App() {
                     ambient={ambient}
                     prayer={prayer}
                     scenery={!(wideLayout || short)}
+                    onAnchor={wideLayout || short ? setAnchorX : undefined}
                     raiseHands={settings.raiseHands}
                     reducedMotion={reducedMotion}
                     onLoaded={() => setStageReady(true)}
