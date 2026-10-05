@@ -11,16 +11,16 @@ import '@fontsource/noto-nastaliq-urdu/400.css'
 import './index.css'
 import { App } from './App'
 
-// Dev-only pose tuning tool: /?lab&pose=sujud
+// Dev-only tools: /?lab&pose=sujud (pose tuning), /?lab&voice (microphone engine)
 const PoseLab = lazy(() => import('./lab/PoseLab').then((m) => ({ default: m.PoseLab })))
-const lab = import.meta.env.DEV && new URLSearchParams(location.search).has('lab')
+const VoiceLab = lazy(() => import('./lab/VoiceLab').then((m) => ({ default: m.VoiceLab })))
+const query = new URLSearchParams(location.search)
+const lab = import.meta.env.DEV && query.has('lab')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {lab ? (
-      <Suspense>
-        <PoseLab />
-      </Suspense>
+      <Suspense>{query.has('voice') ? <VoiceLab /> : <PoseLab />}</Suspense>
     ) : (
       <App />
     )}

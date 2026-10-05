@@ -24,6 +24,7 @@ import { usePrayerClock } from '@/lib/use-prayer-clock'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import type { PrayerId, Step } from '@/sequence/types'
 import { PACE_FACTOR, currentStep, useSession } from '@/state/session'
+import { useVoiceFollow } from '@/voice/use-voice' // [voice]
 
 // The 3D stack is the heaviest part of the app; let the UI paint first.
 const CompanionStage = lazy(() => import('@/components/stage/CompanionStage').then((m) => ({ default: m.CompanionStage })))
@@ -53,6 +54,14 @@ export function App() {
   const hands = useHandsFree({ enabled: handsFree, demo, facingMode, onPose: session.onPose })
   const following = handsFree && isFollowing(hands.status)
 
+  // [voice] begin: microphone engine (src/voice, docs/voice.md). Mic only: the
+  // voice leads lines and postures; with the camera following: lines only.
+  // Off unless the URL has ?voice, until the toggle UI lands.
+  const [voiceOn] = useState(() => new URLSearchParams(location.search).has('voice'))
+  const voice = useVoiceFollow({ enabled: voiceOn, mode: following ? 'lines' : 'full' })
+  const voiceDriving = voiceOn && voice.status === 'listening'
+  // [voice] end
+
   const toggleHandsFree = useCallback(() => {
     const s = useSession.getState()
     if (s.handsFree) return s.setHandsFree(false)
@@ -79,7 +88,7 @@ export function App() {
   }, [prayer])
 
   useWakeLock(phase === 'praying')
-  const timedMs = useStepTimer(following)
+  const timedMs = useStepTimer(following, voiceDriving)
   useKeyboard(toggleHandsFree)
 
   // A soft chime when PrayAlong follows a movement, so nobody has to look up.
@@ -219,11 +228,12 @@ export function App() {
  * Hands-free without a working camera falls back to timed guidance.
  * Returns the current line's duration so the UI can show a gentle timer.
  */
-function useStepTimer(following: boolean): number | null {
+function useStepTimer(following: boolean, voiceDriving = false): number | null {
   const { phase, index, sequence, autoplay, handsFree, settings, next } = useSession()
   const step = sequence.steps[index]!
   const after = sequence.steps[index + 1]
-  const timed = phase === 'praying' && (autoplay || handsFree)
+  // [voice] the voice driver keeps its own (speech-aware) timers.
+  const timed = phase === 'praying' && (autoplay || handsFree) && !voiceDriving
   const waitForBody = following && after !== undefined && after.pose !== step.pose
   const ms = stepMs(step, settings.pace)
 

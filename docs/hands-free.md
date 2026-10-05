@@ -84,3 +84,11 @@ and front views: a head-on bow by torso foreshortening against a quiet
 standing calibration, head-on kneeling by ankles tucked level with the
 knees. `classify.test.ts` has stick-figure fixtures; add real recorded
 keypoints there as you collect them (copy `window.__handsFree.keypoints`).
+
+## Voice
+
+The microphone can lead the prayer on its own (camera off) or move lines
+while the camera leads postures. See [voice.md](voice.md): on-device Quran
+ASR, a follower constrained to the current and next few lines, movement
+phrases (takbir, tasmi, salam) as posture evidence, and a shared `Evidence`
+shape for fusing both senses.
