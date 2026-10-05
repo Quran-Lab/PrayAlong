@@ -115,7 +115,8 @@ async function serveAudio(page, c) {
   const dir = c?.aug
     ? await augment({ audioDir: AUDIO, outDir: join(ROOT, 'test-results/aug'), preset: c.aug, voices: [c.speaker, ...(c.companion ? [c.companion] : [])], seed: Number(c.seed) })
     : AUDIO
-  await page.route('**/audio/**', async (route) => {
+  // Only the site's /audio/ folder (not modules like /src/audio/engine.ts).
+  await page.route((u) => u.pathname.startsWith('/audio/'), async (route) => {
     const rel = decodeURIComponent(new URL(route.request().url()).pathname.replace(/^.*?\/audio\//, ''))
     const file = join(dir, rel)
     if (!existsSync(file)) return route.fulfill({ status: 404 })
@@ -169,6 +170,7 @@ async function runOne(c) {
   const context = await browser.newContext({ permissions: mic ? ['microphone'] : [] })
   const page = await context.newPage()
   page.on('pageerror', (e) => console.log(`  ${label} pageerror`, e.message))
+  page.on('console', (m) => m.type() === 'error' && console.log(`  ${label} console`, m.text().slice(0, 300)))
   await serveAudio(page, c)
   await page.goto(base + query(c, mic ? '&source=mic' : ''))
   const isolated = await page.evaluate(() => self.crossOriginIsolated)
