@@ -20,7 +20,8 @@ them), shins, seat and heels, hanging down to a rug level set by the knees.
 
 Cloth is then relaxed on the envelope and kept above the rug. ':tuck' adds a
 '<morph>_tuck' target that presses spare cloth and the bare shins and feet
-under the rug; ':hem' does the same for spare cloth only (the feet stay).
+under the rug. ':hem' (kneel, sujud) keeps the robe on the shins down to
+the ankles and only folds a hem longer than the legs onto the ankle row.
 Tucked vertices do not hold the body up (performer.ts). Everything is
 stored in rest space as S^-1 (target - skinned), with normal deltas.
 """
@@ -50,6 +51,7 @@ ri, ci = np.divmod(idx, NC)
 bp = prims[pidx[[m for m in pidx if m not in ('skirt', 'hands')][0]]]
 BP = g.read(bp['attributes']['POSITION']).astype(np.float64)
 knee_rest = min(head['LeftLeg'][1], head['RightLeg'][1])
+ankle_rest = min(head['LeftFoot'][1], head['RightFoot'][1])
 
 def load_seq(prefix, pose):
     meta = json.load(open(f'{prefix}_{pose}.json'))
@@ -286,12 +288,11 @@ for job in jobs:
         after = np.arange(NR)[:, None] > (k0[None, :] + 1)
         hid = over | after | (onf & (((Xg - O)[..., 2] < 0) | hem_only))
         if hem_only:
-            # spare hem trailing behind the feet (long abayas) goes under the rug
-            fz = min(B[k][2] for k in ('leftToes', 'rightToes', 'leftFoot', 'rightFoot') if k in B)
-            fy = max(B[k][1] for k in ('leftFoot', 'rightFoot') if k in B)
-            hid |= (Xg[..., 2] < fz - 0.01) & (Xg[..., 1] < fy)
-            # the lower skirt (below the shins in the rest pose) near the rug
-            hid |= (gr[..., 1] < knee_rest - 0.05) & (Xg[..., 1] < fy + 0.02)
+            # Kneeling and in sujud the robe stays on the shins down to the
+            # ankles. Only a hem longer than the legs (Maryam's abaya reaches
+            # past her ankles) would trail behind the feet: those rows fold
+            # away onto the last row that covers the ankle.
+            hid = np.broadcast_to((gr[..., 1] < ankle_rest - 0.01)[:, :], hid.shape).copy()
         if os.environ.get('DBGVIEW'):
             from dumpview import render
             sp_tri = g.read(sp['indices']).reshape(-1, 3)
@@ -299,13 +300,15 @@ for job in jobs:
             colors = np.where(hv[sp_tri].any(1)[:, None], [[230, 60, 60]], [[200, 200, 220]])
             render(X, sp_tri, f'hid_{os.path.basename(seq)}_{pose}.png', views=((90, 0), (150, 10), (0, 70)), colors=colors)
             print('   floor', floor, 'fz', B.get('leftToes', [0,0,0])[2], 'O', np.round(O, 3))
-        Xt[hid, 1] = floor - 0.03
-        # hidden cloth gathers under the last visible row of its column, so
-        # no long sliver joins it to the visible cloth
+        if not hem_only:
+            Xt[hid, 1] = floor - 0.03
+        # hidden cloth gathers under (hem: onto) the last visible row of its
+        # column, so no long sliver joins it to the visible cloth
         for c in range(NC):
             vis = np.where(~hid[:, c])[0]
             last = Xg[vis.max(), c] if len(vis) else Xg[0, c]
             Xt[hid[:, c], c, 0] = last[0]; Xt[hid[:, c], c, 2] = last[2]
+            if hem_only: Xt[hid[:, c], c, 1] = last[1]
         st = to_rest(Xt[ri, ci], posed, S, R) - to_rest(X, posed, S, R)
         st[~hid[ri, ci]] = 0
         tt_ = {pidx['skirt']: (st, None)}
