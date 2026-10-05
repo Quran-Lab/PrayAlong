@@ -10,6 +10,10 @@ const DEG = Math.PI / 180
 /** Root-space heights: y = 0 is the sole, which the stage sinks 6 mm into the plush. */
 const PALM_SINK = 0.004
 const FOREHEAD_SINK = 0.005
+/** Toe tips rest on the plush top (root y = 0.006), 1 mm above it. */
+const TOE_SINK = 0.007
+/** How far a lowered shin (and the robe over it) may press into the plush. */
+const SHIN_SINK = 0.012
 /** Which corrective robe shape each floor posture uses. */
 const DRAPE: Partial<Record<PoseName, Drape>> = {
   kneel: 'kneel',
@@ -227,6 +231,7 @@ export class Performer {
   private body = new SampleSet([])
   private hands = { left: new SampleSet([]), right: new SampleSet([]) }
   private face = new SampleSet([])
+  private toes = { left: new SampleSet([]), right: new SampleSet([]) }
 
   /** Raise the hands going into ruku and rising from it (raf' al-yadayn). */
   raiseHands = false
@@ -431,6 +436,9 @@ export class Performer {
       h.raw[`${side}Hand`]?.traverse((o) => handBones[side].add(o))
       h.raw[`${side}UpperLeg`]?.traverse((o) => supportBones.add(o))
     }
+    const toeBones = { left: new Set<THREE.Object3D>(), right: new Set<THREE.Object3D>() }
+    for (const side of ['left', 'right'] as const) h.raw[`${side}Toes`]?.traverse((o) => toeBones[side].add(o))
+    const toes: Record<'left' | 'right', Sample[]> = { left: [], right: [] }
     const headBones = new Set<THREE.Object3D>()
     h.raw.head?.traverse((o) => headBones.add(o))
     const face: Sample[] = []
@@ -464,6 +472,8 @@ export class Performer {
         else if (sleeve && mesh.localToWorld(mesh.getVertexPosition(i, p)).distanceTo(sleeve.wrist) < sleeve.reach) hands[sleeve.side].push({ mesh, index: i })
         else if (bone && supportBones.has(bone)) body.push({ mesh, index: i })
         else if (bone && headBones.has(bone)) face.push({ mesh, index: i })
+        if (bone && toeBones.left.has(bone)) toes.left.push({ mesh, index: i })
+        else if (bone && toeBones.right.has(bone)) toes.right.push({ mesh, index: i })
       }
     }
     const thin = (list: Sample[], n: number) => {
@@ -473,6 +483,7 @@ export class Performer {
     this.body = new SampleSet(thin(body, Math.min(3000, total)))
     this.hands = { left: new SampleSet(thin(hands.left, 400)), right: new SampleSet(thin(hands.right, 400)) }
     this.face = new SampleSet(thin(face, 600))
+    this.toes = { left: new SampleSet(thin(toes.left, 300)), right: new SampleSet(thin(toes.right, 300)) }
   }
 
   /** Lowest point of a sample set, in the root's own space. */
@@ -597,6 +608,7 @@ export class Performer {
     this.ground(target)
     const forehead = this.pose === 'sujud' ? e : this.from === 'sujud' ? 1 - e : 0
     if (forehead > 0) this.lowerForehead(target, forehead)
+    this.plantToes(target, e)
 
     // 2b. Tuned sink into the rug (blends with the posture change).
     const sink = THREE.MathUtils.lerp(this.tune(this.from).sink, this.tune(this.pose).sink, e) * STAGE_HEIGHT
@@ -733,6 +745,73 @@ export class Performer {
     }
   }
 
+  /**
+   * Kneeling and in sujud the toes are bent on the rug (the seventh point of
+   * contact). Rig feet sit at their own angles, so authored ankle angles
+   * leave the toes hovering: pitch each foot until its toe pads touch.
+   */
+  private plantToes(target: PrayerPose, e: number): boolean {
+    const on = (pose: PrayerPose) => pose.contacts.includes('toes') && !pose.contacts.includes('feet')
+    const w = (on(target) ? e : 0) + (on(PRAYER_POSES[this.from]) ? 1 - e : 0)
+    if (w <= 0) return false
+    const h = this.humanoid
+    const axis = v().set(1, 0, 0).applyQuaternion(this.root.getWorldQuaternion(q()))
+    for (const side of ['left', 'right'] as const) {
+      const foot = h.raw[`${side}Foot`]
+      const samples = this.toes[side]
+      if (!foot || !samples.size) continue
+      const shin = h.raw[`${side}LowerLeg`]
+      // Lower the shin towards the rug (keeping the foot's own angle) until
+      // the toes can reach, then pitch the foot so the toe pads touch.
+      // The shin may come down only until it rests on the rug itself.
+      const shinOk = () => this.lowest(this.body) > -SHIN_SINK
+      const solve = (turn: (a: number) => void, limit: number, ok: () => boolean = () => true) => {
+        let total = 0
+        for (let i = 0; i < 5; i++) {
+          const g0 = this.lowest(samples) - TOE_SINK
+          if (!Number.isFinite(g0) || Math.abs(g0) < 0.0005) break
+          const eps = 0.02
+          turn(eps)
+          const g1 = this.lowest(samples) - TOE_SINK
+          turn(-eps)
+          const slope = (g1 - g0) / eps
+          if (Math.abs(slope) < 0.01) break
+          const step = THREE.MathUtils.clamp(-g0 / slope, -0.2, 0.2)
+          let next = THREE.MathUtils.clamp(total + step, -limit, limit)
+          turn(next - total)
+          for (let k = 0; k < 5 && !ok(); k++) {
+            const back = (next - total) / 2
+            turn(-back)
+            next -= back
+          }
+          if (!ok()) {
+            turn(total - next)
+            break
+          }
+          total = next
+        }
+        return total
+      }
+      const shinStart = shin?.quaternion.clone()
+      const footStart = foot.quaternion.clone()
+      const turnShin = (a: number) => {
+        if (!shin) return
+        rotateWorld(shin, q().setFromAxisAngle(axis, a))
+        rotateWorld(foot, q().setFromAxisAngle(axis, -a))
+      }
+      const turnFoot = (a: number) => rotateWorld(foot, q().setFromAxisAngle(axis, a))
+      const shinAngle = solve(turnShin, 0.45, shinOk)
+      const footAngle = solve(turnFoot, 0.9)
+      // Blend with the posture change.
+      if (shin && shinStart) shin.quaternion.copy(shinStart)
+      foot.quaternion.copy(footStart)
+      ;(shin ?? foot).updateMatrixWorld(true)
+      turnShin(shinAngle * Math.min(1, w))
+      turnFoot(footAngle * Math.min(1, w))
+    }
+    return true
+  }
+
   private anchorFor(side: 'left' | 'right', spec: HandSpec): ArmState {
     const h = this.humanoid
     const m = this.metrics
@@ -773,7 +852,7 @@ export class Performer {
         // Upright thighs (kneeling): rest the hands on their front instead.
         if (top.lengthSq() < 0.09) top.set(0, 0, 1)
         top.normalize()
-        target = hip.lerp(knee, 0.62).addScaledVector(top, 0.05 * H)
+        target = hip.lerp(knee, 0.62).addScaledVector(top, 0.042 * H)
         break
       }
       case 'ground': {

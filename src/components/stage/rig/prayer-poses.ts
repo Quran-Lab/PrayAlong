@@ -186,9 +186,10 @@ export const PRAYER_POSES: Record<PoseName, PrayerPose> = {
   },
   kneel: {
     fk: { hips: [12, 0, 0], spine: [4, 0, 0], neck: [8, 0, 0], head: [8, 0, 0], ...kneelingLegs(12, 12) },
-    // Passing through: hands come forward towards the mat with soft elbows.
-    left: { anchor: 'thighs', offset: [0.02, 0.07, 0.11], pole: [0.6, -0.2, -1], fingers: [0, -0.6, 1], palm: [0, -1, 0], grip: 'relaxed' },
-    right: { anchor: 'thighs', offset: [-0.02, 0.07, 0.11], pole: [-0.6, -0.2, -1], fingers: [0, -0.6, 1], palm: [0, -1, 0], grip: 'relaxed' },
+    // Passing through: the palms rest on the front of the upright thighs
+    // (held out in the air in front of the knees they looked like floating).
+    left: { anchor: 'thighs', offset: [0.008, 0.01, 0], pole: [0.5, -0.2, -1], fingers: [0, -1, 0.15], palm: [0, 0, -1], grip: 'relaxed' },
+    right: { anchor: 'thighs', offset: [-0.008, 0.01, 0], pole: [-0.5, -0.2, -1], fingers: [0, -1, 0.15], palm: [0, 0, -1], grip: 'relaxed' },
     eyesClosed: 1,
     contacts: ['knees', 'toes'],
   },

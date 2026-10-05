@@ -42,7 +42,14 @@ function lowestByPart(humanoid: Awaited<ReturnType<typeof parseHumanoid>>) {
     const m = o as THREE.SkinnedMesh
     if (!m.isSkinnedMesh) return
     const { skinIndex, skinWeight, position } = m.geometry.attributes
+    // Parts a "*_tuck" drape presses under the rug (folded shins, spare hem)
+    // are meant to be hidden there; they are not resting on it.
+    const tucks = Object.entries(m.morphTargetDictionary ?? {})
+      .filter(([n, idx]) => n.endsWith('_tuck') && (m.morphTargetInfluences?.[idx] ?? 0) > 0.5)
+      .map(([, idx]) => m.geometry.morphAttributes.position![idx]!)
+    const tucked = (i: number) => tucks.some((a) => Math.abs(a.getX(i)) + Math.abs(a.getY(i)) + Math.abs(a.getZ(i)) > 1e-6)
     for (let i = 0; i < position!.count; i++) {
+      if (tucked(i)) continue
       let b = 0
       for (let k = 1; k < 4; k++) if (skinWeight!.getComponent(i, k) > skinWeight!.getComponent(i, b)) b = k
       const key = part(m.skeleton.bones[skinIndex!.getComponent(i, b)]!)
@@ -113,7 +120,14 @@ describe('Performer', () => {
     const low = lowestByPart(humanoid)
     onRug(low.head, 'head')
     onRug(low.Hand, 'hands')
-    onRug(low.LowerLeg, 'knees')
+    // The knee touches through the robe, whose cloth there follows the thigh.
+    onRug(Math.min(low.LowerLeg ?? Infinity, low.UpperLeg ?? Infinity), 'knees')
+    // The seventh point of contact: toes bent on the rug, within 8 mm of its top.
+    // (Maryam's abaya covers her feet completely: she has no toe geometry.)
+    if (low.Toes !== undefined) {
+      expect(low.Toes, 'toes').toBeGreaterThan(RUG_TOP - 0.008)
+      expect(low.Toes, 'toes').toBeLessThan(RUG_TOP + 0.008)
+    }
   })
 
   it.each(CHARACTERS)('%s: nothing sinks through the rug in any posture', async (c) => {
