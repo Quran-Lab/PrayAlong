@@ -84,7 +84,7 @@ function Words({
               </span>
             )
           }
-          const p = Math.round(Math.max(0.06, pos - Math.floor(pos)) * 100)
+          const p = Math.round((pos - Math.floor(pos)) * 100)
           return (
             <span
               key={i}
@@ -164,7 +164,10 @@ export function Recitation({
   const live = speaking?.stepId === step.id ? speaking : null
   const spoken = useSpokenWord(live)
   // The companion's voice leads while it speaks; otherwise follow the user's own recitation.
-  const word = spoken >= 0 ? spoken : heardWord ?? -1
+  // A word in progress with nothing of it heard yet is not lit: the light starts with its first sound.
+  const started = heardFill === null || heardFill > 0.02
+  const word = spoken >= 0 ? spoken : heardWord === null ? -1 : started ? heardWord : heardWord - 1
+  const fillNow = started ? heardFill : null
   const you = spoken < 0 && heardWord !== null && heardWord >= 0
   // How many times a repeated line (tasbih ×3) has been said: from the companion
   // or from what was heard. It only ever goes up within a line.
@@ -235,7 +238,7 @@ export function Recitation({
               className={cn('text-balance text-ink', quran ? 'quran' : 'arabic')}
               style={{ fontSize: `calc(${arabicHero ? 'var(--text-arabic)' : 'var(--text-arabic-sub)'} * ${k * (long && arabicHero ? 0.82 : 1)})` }}
             >
-              <Words you={you} rtl fill={you ? heardFill : null} text={line.arabic} range={word < 0 ? null : [word, word]} />
+              <Words you={you} rtl fill={you ? fillNow : null} text={line.arabic} range={word < 0 ? null : [word, word]} />
             </p>
           )}
           {show.transliteration && (
@@ -244,7 +247,7 @@ export function Recitation({
               className={cn('leading-[1.12] font-semibold tracking-[-0.018em] text-balance text-ink', show.arabic && 'mt-2 text-ink-soft')}
               style={{ fontSize: `calc(${long ? 'var(--text-hero-long)' : 'var(--text-hero)'} * ${k * (show.arabic ? 0.72 : 1)})` }}
             >
-              <Words you={you} hyphens fill={you ? heardFill : null} text={line.transliteration} range={litRange(word, al?.t, countTokens(line.transliteration, true), arabicWords)} />
+              <Words you={you} hyphens fill={you ? fillNow : null} text={line.transliteration} range={litRange(word, al?.t, countTokens(line.transliteration, true), arabicWords)} />
             </p>
           )}
           {show.translation && line.meaning && (
