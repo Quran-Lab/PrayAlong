@@ -81,9 +81,9 @@ const MORPH_ALIASES: Record<Expression | `drape:${Drape}`, string[]> = {
   blink: ['eyeBlinkLeft', 'eyeBlinkRight', 'eyesClosed', 'EyesClosed', 'Blink', 'blink', 'Eye_Blink_L', 'Eye_Blink_R'],
   happy: ['mouthSmileLeft', 'mouthSmileRight', 'mouthSmile', 'Smile', 'smile'],
   relaxed: ['relaxed', 'Relaxed'],
-  'drape:sit': ['drape_sit'],
-  'drape:kneel': ['drape_kneel'],
-  'drape:sujud': ['drape_sujud'],
+  'drape:sit': ['drape_sit', 'drape_sit_tuck'],
+  'drape:kneel': ['drape_kneel', 'drape_kneel_tuck'],
+  'drape:sujud': ['drape_sujud', 'drape_sujud_tuck'],
 }
 
 export interface Humanoid {

@@ -105,7 +105,16 @@ interface Sample {
 class SampleSet {
   // `morph` holds each morph target's bind-space offsets for the samples, so
   // corrective cloth shapes (drapes) count when grounding the body.
-  private groups: { mesh: THREE.SkinnedMesh; pos: Float32Array; bone: Uint16Array; weight: Float32Array; morph: Float32Array[] }[] = []
+  // `tucked` marks samples that a "*_tuck" morph presses under the rug (folded
+  // shins and feet when sitting): hidden, so they must not hold the body up.
+  private groups: {
+    mesh: THREE.SkinnedMesh
+    pos: Float32Array
+    bone: Uint16Array
+    weight: Float32Array
+    morph: Float32Array[]
+    tucks: { index: number; mask: Uint8Array }[]
+  }[] = []
   private posed = new Float32Array(0)
   private row = new Float32Array(0)
   private m = new THREE.Matrix4()
@@ -141,7 +150,16 @@ class SampleSet {
         })
         return out
       })
-      this.groups.push({ mesh, pos, bone, weight, morph })
+      const tucks = Object.entries(mesh.morphTargetDictionary ?? {})
+        .filter(([name]) => name.endsWith('_tuck'))
+        .map(([, index]) => {
+          const delta = morph[index]!
+          const mask = new Uint8Array(list.length)
+          for (let n = 0; n < list.length; n++)
+            mask[n] = Math.abs(delta[n * 3]!) + Math.abs(delta[n * 3 + 1]!) + Math.abs(delta[n * 3 + 2]!) > 1e-6 ? 1 : 0
+          return { index, mask }
+        })
+      this.groups.push({ mesh, pos, bone, weight, morph, tucks })
     }
     this.size = samples.length
   }
@@ -149,7 +167,8 @@ class SampleSet {
   /** Lowest sample, as a height in `root`'s space. */
   lowest(root: THREE.Object3D) {
     let low = Infinity
-    for (const { mesh, pos: bindPos, bone, weight, morph } of this.groups) {
+    for (const { mesh, pos: bindPos, bone, weight, morph, tucks } of this.groups) {
+      const hidden = tucks.filter((t) => (mesh.morphTargetInfluences?.[t.index] ?? 0) > 0.5).map((t) => t.mask)
       let pos = bindPos
       const influences = mesh.morphTargetInfluences
       if (morph.length && influences?.some((w) => w > 1e-4)) {
@@ -175,6 +194,7 @@ class SampleSet {
       }
       const r = this.row
       for (let n = 0, count = pos.length / 3; n < count; n++) {
+        if (hidden.length && hidden.some((m) => m[n])) continue
         const x = pos[n * 3]!, y = pos[n * 3 + 1]!, z = pos[n * 3 + 2]!
         let h = 0
         for (let k = 0; k < 4; k++) {
@@ -734,7 +754,7 @@ export class Performer {
         break
       }
       case 'thighs': {
-        // On top of the thigh, behind the knee, so the fingers end at the kneecap.
+        // On top of the thigh, the palm just behind the kneecap.
         const hip = P(`${side}UpperLeg`)
         const knee = P(`${side}LowerLeg`)
         const along = knee.clone().sub(hip).normalize()
@@ -742,7 +762,7 @@ export class Performer {
         // Upright thighs (kneeling): rest the hands on their front instead.
         if (top.lengthSq() < 0.09) top.set(0, 0, 1)
         top.normalize()
-        target = hip.lerp(knee, 0.45).addScaledVector(top, 0.05 * H)
+        target = hip.lerp(knee, 0.62).addScaledVector(top, 0.05 * H)
         break
       }
       case 'ground': {
