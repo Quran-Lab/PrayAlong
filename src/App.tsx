@@ -233,7 +233,9 @@ export function App() {
                   {phase === 'ready' && <ReadyPanel key="ready" clock={clock} handsFree={handsFree} onHandsFree={toggleHandsFree} />}
                   {phase === 'praying' && (
                     <motion.div key="praying" className="w-full" exit={{ opacity: 0 }}>
-                      <Recitation step={step} next={sequence.steps[index + 1]} timedMs={timedMs} distance={following} speaking={speaking} />
+                      <Recitation step={step} next={sequence.steps[index + 1]} timedMs={timedMs} distance={following} speaking={speaking}
+                        heardWord={voiceDriving && voice.cursor?.step === index ? voice.cursor.wordIndex - 1 : null}
+                      />
                     </motion.div>
                   )}
                   {phase === 'complete' && <CompletePanel key="complete" clock={clock} />}

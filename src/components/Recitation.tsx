@@ -66,12 +66,15 @@ export function Recitation({
   timedMs,
   distance = false,
   speaking = null,
+  heardWord = null,
 }: {
   step: Step
   next?: Step
   timedMs: number | null
   distance?: boolean
   speaking?: Speaking | null
+  /** Listen mode: the last Arabic word the user was heard saying (-1 before the first). */
+  heardWord?: number | null
 }) {
   const t = useT()
   const locale = useLocale()
@@ -86,7 +89,9 @@ export function Recitation({
   const long = (arabicHero ? line.arabic : line.transliteration).length > 46
   const upcoming = next && next.recitationId !== step.recitationId ? resolveLine(next.recitationId, locale) : null
   const live = speaking?.stepId === step.id ? speaking : null
-  const word = useSpokenWord(live)
+  const spoken = useSpokenWord(live)
+  // The companion's voice leads while it speaks; otherwise follow the user's own recitation.
+  const word = spoken >= 0 ? spoken : heardWord ?? -1
   const count = (x: string) => x.split(/\s+/).filter(Boolean).length
   const arabicWords = count(line.arabic)
   const al = ALIGN[locale]?.[step.recitationId]
