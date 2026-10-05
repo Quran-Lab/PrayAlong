@@ -53,45 +53,37 @@ Runtime: the non-pthread SIMD build from quran-lab-app
 without cross-origin isolation; one ORT thread is what Quran Lab measured as
 best (same speed as 4, a third of the memory).
 
-Model: `v31-slim-int8-preopt-1` (67,972,550 bytes, sha256 `168a9430...`), the
-same graph contribute.quranlab.ai ships, plus `tokens.txt` (blank id 250).
+Model: the zipformer v3.1 int8 CTC phoneme model (`tokens.txt`, blank id
+250) in three streaming chunk sizes from the same export pipeline (the 480 ms
+rebuild matches the shipped file byte for byte):
 
-**The R2 route does not work today, so the default is same-origin.** Checked on
-2026-10-05:
+| folder | chunk | bytes | sha256 | PER pooled (512 clips) | WASM RTF, 4 E-cores |
+| --- | --- | --- | --- | --- | --- |
+| `voice/model/` | 480 ms | 67,972,550 | `168a9430...` | 5.35 | 0.131 |
+| `voice/model/c16-1/` | 320 ms | 67,584,798 | `bd24ac1e...` | 5.42 | 0.166 |
+| `voice/model/c8-1/` (default) | 160 ms | 67,193,407 | `e3007fcd...` | 5.68 | 0.225 |
 
-- `models.quranlab.ai` is NXDOMAIN at the authoritative Cloudflare nameservers
-  (`julissa.ns.cloudflare.com`); the R2 custom domain is gone.
-  `contribute.quranlab.ai` answers 503 "In maintenance".
-- Even with the domain back, the bucket's CORS allowlist
-  (`quran-lab-app/apps/quran-lab-landing/scripts/r2-cors.json`) only has
-  contribute.quranlab.ai and two localhost ports. Under PrayAlong's
-  `Cross-Origin-Embedder-Policy: credentialless`, a cross-origin `fetch()` is a
-  CORS request and needs `Access-Control-Allow-Origin`, so it would fail.
+Each folder holds four parts of at most 20 MiB plus `manifest.json`
+(`{revision, files:[{name, bytes, sha256, parts}]}`); the worker stitches
+and verifies them and keeps them in the Cache API. Production serves
+`/voice/model/*` from the private R2 bucket `prayalong-models` through the
+Worker (`worker/index.ts`): same origin, so no CORS under COEP. New variants
+go to a new versioned prefix (`npx wrangler r2 object put
+prayalong-models/voice/model/<rev>/<file> --file <f> --remote`); the live
+files are never overwritten. `node scripts/fetch-voice-model.mjs [--chunk 16|8]`
+stages the same layout under `public/voice/model/` for local runs.
 
-So `scripts/fetch-voice-model.mjs` stages the model as four parts of at most
-20 MiB (Workers static assets cap one file at 25 MiB) plus `manifest.json`
-under `public/voice/model/`; Vite copies them into `dist/`, and the worker
-stitches and verifies them. Sources, first that exists: `VOICE_MODEL_SRC` /
-`VOICE_TOKENS_SRC`, the quran-lab-app checkouts next to this repo, or
-`VOICE_MODEL_URL` (a base URL, fetched by Node, so no CORS involved).
+**Microphone audio is resampled to 16 kHz in the worker** (windowed sinc,
+7.5 kHz cut-off). Passing 48 kHz to the decoder and letting it resample
+doubled the phoneme error rate on isolated "Allahu akbar" clips (480 ms model
+4.6% at 16 kHz vs 8.5% fed 48 kHz; 160 ms 4.9% vs 9.4%; quiet takes 4.2% vs
+16.7%); with the worker's resampler 48 kHz input gives 4.9% on both. Replays
+that feed 16 kHz never saw this: `voice-real.mjs --rate 48000` exercises it.
 
-Production options (pick one; the client only needs `VITE_VOICE_MODEL_URL`):
-
-1. **Same origin, staged at build time** (default). Workers Builds clones git,
-   so it needs a source: set `VOICE_MODEL_URL` in the build environment to any
-   URL serving the two files (an R2 public bucket URL works; no CORS needed
-   server side) and run `node scripts/fetch-voice-model.mjs` before
-   `npm run build`. Adds 68 MB to the deploy.
-2. **Quran Lab's R2 bucket**: restore the `models.quranlab.ai` custom domain,
-   add `https://prayalong.me` and `https://www.prayalong.me` to
-   `r2-cors.json` (`wrangler r2 bucket cors set quran-lab-models`), then build
-   with `VITE_VOICE_MODEL_URL=https://models.quranlab.ai/asr/<rev>/`. The
-   bucket must also publish a `manifest.json` in this repo's format
-   (`{revision, files:[{name, bytes, sha256, parts}]}`); its own manifest has a
-   different schema.
-3. **A Worker route** with an R2 binding (`/voice/model/*` served from the
-   bucket): same origin, no CORS, no deploy size; needs a `main` script in
-   `wrangler.jsonc`.
+**Prefetch.** `prefetchVoiceModelWhenIdle()` (App, on idle after page open
+and again after listening stops) starts the worker and loads the model;
+`VoiceEngine.start()` takes over that worker, even mid-load. Skipped with
+Save-Data or under 2 GB of device memory.
 
 Without the model the engine reports `error / model-unreachable` and the app
 carries on with its normal timers.
@@ -170,7 +162,8 @@ visual hold; the follower does not delay the session for it).
 
 ## The driver (mic-only mode)
 
-Every move is forward and exactly one step.
+Every move is forward and exactly one step, with one exception (the resync
+after a late start, last bullet).
 
 - Ready: the opening takbir line begins the prayer.
 - A finished line moves to the next line of the same posture.
@@ -192,7 +185,17 @@ Every move is forward and exactly one step.
   a movement is done and no phrase is heard: 3 s. A repeated line short of its
   count never times out while repetitions are heard, except after 6 s of
   silence. Timers hold while the companion speaks. Decoder output counts as
-  speech even when the energy gate misses it.
+  speech even when the energy gate misses it, but never as a speech onset
+  (the last phonemes of al-Fatiha are decoded after the session reached amin).
+  An aloud line nobody has started waits at least 8 s.
+- Resync after a late start (`VoiceCore.armResync`, called when listening
+  starts): the follower looks 12 steps ahead for 60 s of audio, with cheap line
+  skips, and timers count from listening start. The driver may jump ONCE,
+  forward, several steps, on the first line heard clearly and in full
+  (lineDone confidence >= 0.85, ended by silence or the next line, at least 18
+  phonetic characters, not a line also said earlier on the way, never al-Fatiha
+  1, which is the basmala of every later surah). A clear line in step disarms
+  it; it expires after 90 s.
 
 ## Modes and the fusion API
 
@@ -300,7 +303,21 @@ node scripts/voice-replay.mjs --real       # real-like takes (below): tempo, pit
 node scripts/voice-replay.mjs --model voice/model-c8/   # another model folder (fetch-voice-model.mjs --chunk 8)
 python scripts/voice-real-set.py           # once: real recordings from local data (stay on this machine)
 node scripts/voice-real.mjs                # real voices: short surahs, adults and children, phone audio
+node scripts/voice-real.mjs --rate 48000   # same, fed at the microphone rate (the worker resamples)
+node scripts/voice-replay.mjs --amin       # amin left out, after a 4-6 s pause, joined to the last verse
+node scripts/voice-replay.mjs --lateset    # model ready 10/25/40 s into the prayer (resync); --noresync to compare
+node scripts/voice-app.mjs --set std|real|amin   # the real App, every layer, fake microphone, real time
 ```
+
+**Live-App replay** (`scripts/voice-app.mjs`): the App itself (`?voice`), with
+the phoneme follower, driver, speech-burst follow and the stuck and posture
+fallbacks, hears the rendered prayer through Chromium's fake microphone after
+15 s of silence (the model loads meanwhile). Every session move is scored
+against the timeline: early (more than 0.3 s before the person finished what
+comes before), late (more than 3 s after), skipped, and repeated lines left
+before their last repetition ended. Each run also reports when the model was
+ready and how far the decoder ran behind the microphone: run nothing else
+alongside it, or the decoder falls behind and the run measures the machine.
 
 **Real-like takes** (`scripts/voice-augment.mjs`, ffmpeg): several takes of
 every companion line per preset, one picked per occurrence: `fast` (tempo
