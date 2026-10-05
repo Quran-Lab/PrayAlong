@@ -108,9 +108,9 @@ export function App() {
 
   useWakeLock(phase === 'praying')
   const { speaking, audioMs } = useCompanionAudio({ phase, step, next: sequence.steps[index + 1], prayer, voice: character.id, locale, settings })
-  // [voice] while voice leads, the slider shows its timer fallback.
   const appTimedMs = useStepTimer(following, audioMs, voiceDriving)
-  const timedMs = voiceDriving ? voice.timerMs : appTimedMs
+  // In Listen mode you lead: no countdown on screen (the quiet timer fallback still runs underneath).
+  const timedMs = voiceDriving ? null : appTimedMs
 
   // Praying behind the companion: when it recites, it leads (pause any time).
   const leadOnBegin = useRef(phase)
