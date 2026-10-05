@@ -89,6 +89,7 @@ export const en = {
   'ready.body': 'Stand on your mat facing the qibla.',
   'ready.bodyHandsFree': 'Raise your hands for takbir and PrayAlong will follow you.',
   'ready.bodyManual': 'Turn on Hands-Free to pray without touching anything.',
+  'ready.bodyListen': 'PrayAlong listens and follows your recitation. No need to touch anything.',
   'ready.begin': 'Begin {prayer}',
   'ready.orPress': 'or press',
   'ready.qibla': 'Qibla {deg}° from north',
@@ -104,6 +105,7 @@ export const en = {
   'dock.guide': 'Guide me by time (P)',
   'dock.pause': 'Pause guidance (P)',
   'dock.following': 'Following you',
+  'dock.pauseListening': 'Listening to you. Tap to pause',
 
   // Hands-free
   'hf.button': 'Hands-Free',

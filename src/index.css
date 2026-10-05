@@ -140,6 +140,13 @@
   --spill: rgb(170 185 255 / 0.1);
   --stars: 1;
 }
+/* Your own recitation lights up in a colour of its own (the companion uses the accent). */
+:root {
+  --you: oklch(0.86 0.14 150);
+}
+:root[data-prayer="dhuhr"] {
+  --you: oklch(0.86 0.13 120);
+}
 :root {
   --ambient: var(--accent);
   transition: --room 1.2s;

@@ -1,5 +1,5 @@
 import { Coordinates, Qibla } from 'adhan'
-import { Navigation, Play, RotateCcw, Video } from 'lucide-react'
+import { Navigation, Play, RotateCcw } from 'lucide-react'
 import { motion } from 'motion/react'
 import { PRAYER_BY_ID } from '@/content/prayers'
 import { resolveLine } from '@/content/lines'
@@ -27,7 +27,7 @@ function QiblaChip({ clock }: { clock: PrayerClock }) {
   )
 }
 
-export function ReadyPanel({ clock, handsFree, onHandsFree }: { clock: PrayerClock; handsFree: boolean; onHandsFree: () => void }) {
+export function ReadyPanel({ clock, handsFree }: { clock: PrayerClock; handsFree: boolean; onHandsFree?: () => void }) {
   const t = useT()
   const { prayer, begin } = useSession()
   const info = PRAYER_BY_ID[prayer]
@@ -49,19 +49,13 @@ export function ReadyPanel({ clock, handsFree, onHandsFree }: { clock: PrayerClo
       </div>
       <h1 className="text-[length:var(--text-hero-long)] leading-tight font-semibold tracking-[-0.02em] text-ink">{t('ready.title')}</h1>
       <p className="mt-3 max-w-md font-serif text-[length:var(--text-body)] leading-relaxed text-balance text-ink-soft">
-        {t('ready.body')} {handsFree ? t('ready.bodyHandsFree') : t('ready.bodyManual')}
+        {t('ready.body')} {handsFree ? t('ready.bodyHandsFree') : t('ready.bodyListen')}
       </p>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
         <Button variant="primary" size="lg" onClick={begin}>
           <Play className="size-4 fill-current" />
           {t('ready.begin', { prayer: name })}
         </Button>
-        {!handsFree && (
-          <Button variant="ghost" size="lg" onClick={onHandsFree}>
-            <Video className="size-[18px] text-mint" />
-            {t('hf.button')}
-          </Button>
-        )}
       </div>
       <div className="mt-3.5 flex items-center gap-3">
         <QiblaChip clock={clock} />

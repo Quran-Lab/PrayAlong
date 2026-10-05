@@ -11,20 +11,35 @@ import align from '@/content/align.json'
 type Span = [number, number] | null
 const ALIGN = align as unknown as Record<string, Record<string, { t: Span[]; m: Span[] }>>
 
-/** Which words of this text go with the Arabic word being spoken: [first, last]. */
+/**
+ * Which words of this text are being said: [first, last]. Always moves left
+ * to right: the words linked to the Arabic word so far extend a reading
+ * front, and the lit range is what that front just covered. Translations
+ * that reorder words therefore never make the highlight jump backwards.
+ */
 function litRange(lit: number, spans: Span[] | undefined, count: number, arabicCount: number): [number, number] | null {
-  if (lit < 0) return null
-  if (spans?.length) {
-    // Words with no counterpart keep the last lit range.
-    for (let i = Math.min(lit, spans.length - 1); i >= 0; i--) if (spans[i]) return spans[i]!
-    return null
+  if (lit < 0 || count === 0) return null
+  const last = Math.max(1, arabicCount) - 1
+  // Proportional fallback when there is no alignment.
+  const ends = Array.from({ length: arabicCount }, (_, i) => {
+    const linked = spans?.[i]?.[1]
+    return linked ?? Math.floor(((i + 1) * count) / Math.max(1, arabicCount)) - 1
+  })
+  ends[last] = count - 1 // the last Arabic word finishes the line
+  let front = -1
+  let start = 0
+  for (let i = 0; i <= Math.min(lit, last); i++) {
+    const end = Math.max(front, Math.min(count - 1, ends[i]!))
+    if (end > front) {
+      start = front + 1
+      front = end
+    }
   }
-  const at = Math.min(count - 1, Math.floor(((lit + 0.5) * count) / Math.max(1, arabicCount)))
-  return [at, at]
+  return front < 0 ? null : [start, front]
 }
 
 /** Words of a line, with the ones being spoken lit (whole words keep Arabic letters joined). */
-function Words({ text, range }: { text: string; range: [number, number] | null }) {
+function Words({ text, range, you = false }: { text: string; range: [number, number] | null; /** The user's own recitation (a different colour from the companion's). */ you?: boolean }) {
   const parts = text.split(/(\s+)/)
   let k = -1
   return (
@@ -35,7 +50,7 @@ function Words({ text, range }: { text: string; range: [number, number] | null }
         return (
           <span
             key={i}
-            className={cn('transition-colors duration-200', range && (k >= range[0] && k <= range[1] ? 'text-mint' : k < range[0] ? 'text-ink' : 'text-ink-muted'))}
+            className={cn('transition-colors duration-200', range && (k >= range[0] && k <= range[1] ? (you ? 'text-[var(--you)]' : 'text-mint') : k < range[0] ? 'text-ink' : 'text-ink-muted'))}
           >
             {w}
           </span>
@@ -67,6 +82,7 @@ export function Recitation({
   distance = false,
   speaking = null,
   heardWord = null,
+  heardRep = null,
 }: {
   step: Step
   next?: Step
@@ -75,6 +91,8 @@ export function Recitation({
   speaking?: Speaking | null
   /** Listen mode: the last Arabic word the user was heard saying (-1 before the first). */
   heardWord?: number | null
+  /** Listen mode: which repetition the user is on (0-based). */
+  heardRep?: number | null
 }) {
   const t = useT()
   const locale = useLocale()
@@ -92,6 +110,9 @@ export function Recitation({
   const spoken = useSpokenWord(live)
   // The companion's voice leads while it speaks; otherwise follow the user's own recitation.
   const word = spoken >= 0 ? spoken : heardWord ?? -1
+  const you = spoken < 0 && (heardWord ?? -1) >= 0
+  // Which time through a repeated line (tasbih ×3): from the companion or from what was heard.
+  const repNow = live ? live.rep : (heardRep ?? 0)
   const count = (x: string) => x.split(/\s+/).filter(Boolean).length
   const arabicWords = count(line.arabic)
   const al = ALIGN[locale]?.[step.recitationId]
@@ -112,7 +133,19 @@ export function Recitation({
             <span className="font-medium text-ink-soft">{t(`group.${step.group}`)}</span>
             {step.groupSize > 1 && <span className="tabular">{t('line.of', { i: step.groupIndex + 1, n: step.groupSize })}</span>}
             {line.ref && <span className="tabular text-ink-faint">{t('line.quran', { ref: line.ref })}</span>}
-            {step.repeat > 1 && <span className="rounded-full bg-mint/[0.12] px-2.5 py-0.5 font-medium text-mint">{t('line.times', { n: step.repeat })}</span>}
+            {step.repeat > 1 && (
+              <span className="inline-flex items-center gap-2 rounded-full bg-mint/[0.12] px-3 py-1 font-medium text-mint" aria-label={t('line.times', { n: step.repeat })}>
+                <span className="tabular">{t('line.times', { n: step.repeat })}</span>
+                <span className="flex gap-1" aria-hidden>
+                  {Array.from({ length: step.repeat }, (_, i) => (
+                    <span
+                      key={i}
+                      className={cn('size-2 rounded-full transition-all duration-300', i < repNow ? 'bg-mint' : i === repNow ? 'scale-125 bg-mint' : 'bg-mint/25')}
+                    />
+                  ))}
+                </span>
+              </span>
+            )}
             <span className="inline-flex items-center gap-1 text-ink-faint">
               {step.voice === 'aloud' ? <Volume1 className="size-4" /> : <VolumeX className="size-4" />}
               {step.voice === 'aloud' ? t('line.aloud') : t('line.quietly')}
@@ -138,7 +171,7 @@ export function Recitation({
               className={cn('text-balance text-ink', quran ? 'quran' : 'arabic')}
               style={{ fontSize: `calc(${arabicHero ? 'var(--text-arabic)' : 'var(--text-arabic-sub)'} * ${k * (long && arabicHero ? 0.82 : 1)})` }}
             >
-              <Words text={line.arabic} range={word < 0 ? null : [word, word]} />
+              <Words you={you} text={line.arabic} range={word < 0 ? null : [word, word]} />
             </p>
           )}
           {show.transliteration && (
@@ -147,12 +180,12 @@ export function Recitation({
               className={cn('leading-[1.12] font-semibold tracking-[-0.018em] text-balance text-ink', show.arabic && 'mt-2 text-ink-soft')}
               style={{ fontSize: `calc(${long ? 'var(--text-hero-long)' : 'var(--text-hero)'} * ${k * (show.arabic ? 0.72 : 1)})` }}
             >
-              <Words text={line.transliteration} range={litRange(word, al?.t, count(line.transliteration), arabicWords)} />
+              <Words you={you} text={line.transliteration} range={litRange(word, al?.t, count(line.transliteration), arabicWords)} />
             </p>
           )}
           {show.translation && line.meaning && (
             <p className="mt-4 max-w-[38ch] font-serif leading-[1.45] text-balance text-ink-soft" style={{ fontSize: `calc(var(--text-meaning) * ${k})` }}>
-              <Words text={line.meaning} range={al?.m?.length ? litRange(word, al.m, count(line.meaning), arabicWords) : null} />
+              <Words you={you} text={line.meaning} range={litRange(word, al?.m, count(line.meaning), arabicWords)} />
             </p>
           )}
 

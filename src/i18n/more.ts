@@ -87,6 +87,7 @@ export const fr: Messages = {
   'ready.body': 'Placez-vous sur votre tapis, face à la qibla.',
   'ready.bodyHandsFree': 'Levez les mains pour le takbir et PrayAlong vous suivra.',
   'ready.bodyManual': 'Activez le mode Mains libres pour prier sans rien toucher.',
+  'ready.bodyListen': 'PrayAlong écoute et suit votre récitation. Inutile de toucher quoi que ce soit.',
   'ready.begin': 'Commencer {prayer}',
   'ready.orPress': 'ou appuyez sur',
   'ready.qibla': 'Qibla à {deg}° du nord',
@@ -102,6 +103,7 @@ export const fr: Messages = {
   'dock.guide': 'Guidage automatique (P)',
   'dock.pause': 'Mettre le guidage en pause (P)',
   'dock.following': 'Je vous suis',
+  'dock.pauseListening': 'À votre écoute. Touchez pour mettre en pause',
 
   // Hands-free
   'hf.button': 'Mains libres',
@@ -290,6 +292,7 @@ export const es: Messages = {
   'ready.body': 'Colócate sobre tu alfombra, mirando hacia la qibla.',
   'ready.bodyHandsFree': 'Levanta las manos para el takbir y PrayAlong te seguirá.',
   'ready.bodyManual': 'Activa Manos libres para rezar sin tocar nada.',
+  'ready.bodyListen': 'PrayAlong escucha y sigue tu recitación. No hace falta tocar nada.',
   'ready.begin': 'Comenzar {prayer}',
   'ready.orPress': 'o presiona',
   'ready.qibla': 'Qibla a {deg}° del norte',
@@ -305,6 +308,7 @@ export const es: Messages = {
   'dock.guide': 'Guiarme automáticamente (P)',
   'dock.pause': 'Pausar la guía (P)',
   'dock.following': 'Siguiéndote',
+  'dock.pauseListening': 'Te escucha. Toca para pausar',
 
   // Hands-free
   'hf.button': 'Manos libres',
@@ -493,6 +497,7 @@ export const tr: Messages = {
   'ready.body': 'Seccadenizde kıbleye dönerek durun.',
   'ready.bodyHandsFree': 'Tekbir için ellerinizi kaldırın, PrayAlong sizi takip eder.',
   'ready.bodyManual': 'Hiçbir şeye dokunmadan namaz kılmak için Eller Serbest modunu açın.',
+  'ready.bodyListen': 'PrayAlong dinler ve okuyuşunu takip eder. Hiçbir şeye dokunmana gerek yok.',
   'ready.begin': '{prayer} namazına başla',
   'ready.orPress': 'ya da',
   'ready.qibla': 'Kıble kuzeyden {deg}°',
@@ -508,6 +513,7 @@ export const tr: Messages = {
   'dock.guide': 'Otomatik ilerlet (P)',
   'dock.pause': 'Otomatik ilerlemeyi duraklat (P)',
   'dock.following': 'Sizi takip ediyor',
+  'dock.pauseListening': 'Seni dinliyor. Duraklatmak için dokun',
 
   // Hands-free
   'hf.button': 'Eller Serbest',
@@ -696,6 +702,7 @@ export const id: Messages = {
   'ready.body': 'Berdirilah di atas sajadah menghadap kiblat.',
   'ready.bodyHandsFree': 'Angkat tangan untuk takbir, dan PrayAlong akan mengikuti Anda.',
   'ready.bodyManual': 'Aktifkan Tanpa Sentuh agar bisa salat tanpa memegang apa pun.',
+  'ready.bodyListen': 'PrayAlong mendengarkan dan mengikuti bacaanmu. Tidak perlu menyentuh apa pun.',
   'ready.begin': 'Mulai salat {prayer}',
   'ready.orPress': 'atau tekan',
   'ready.qibla': 'Kiblat {deg}° dari utara',
@@ -711,6 +718,7 @@ export const id: Messages = {
   'dock.guide': 'Pandu otomatis (P)',
   'dock.pause': 'Jeda panduan (P)',
   'dock.following': 'Mengikuti Anda',
+  'dock.pauseListening': 'Mendengarkanmu. Ketuk untuk jeda',
 
   // Hands-free
   'hf.button': 'Tanpa Sentuh',
@@ -899,6 +907,7 @@ export const nl: Messages = {
   'ready.body': 'Ga op je gebedskleed staan, met je gezicht naar de qibla.',
   'ready.bodyHandsFree': 'Hef je handen voor de takbier en PrayAlong volgt je.',
   'ready.bodyManual': 'Zet Handsfree aan om te bidden zonder iets aan te raken.',
+  'ready.bodyListen': 'PrayAlong luistert en volgt je recitatie. Je hoeft niets aan te raken.',
   'ready.begin': 'Begin {prayer}',
   'ready.orPress': 'of druk op',
   'ready.qibla': 'Qibla {deg}° vanaf het noorden',
@@ -914,6 +923,7 @@ export const nl: Messages = {
   'dock.guide': 'Automatisch begeleiden (P)',
   'dock.pause': 'Begeleiding pauzeren (P)',
   'dock.following': 'Volgt je',
+  'dock.pauseListening': 'Luistert naar je. Tik om te pauzeren',
 
   // Hands-free
   'hf.button': 'Handsfree',
@@ -1102,6 +1112,7 @@ export const ur: Messages = {
   'ready.body': 'قبلہ رخ ہو کر اپنی جائے نماز پر کھڑے ہو جائیں۔',
   'ready.bodyHandsFree': 'تکبیر کے لیے ہاتھ اٹھائیں، PrayAlong آپ کے ساتھ ساتھ چلے گا۔',
   'ready.bodyManual': 'کچھ چھوئے بغیر نماز پڑھنے کے لیے ہینڈز فری آن کریں۔',
+  'ready.bodyListen': 'PrayAlong سنتا ہے اور آپ کی تلاوت کے ساتھ چلتا ہے۔ کچھ چھونے کی ضرورت نہیں۔',
   'ready.begin': '{prayer} کی نماز شروع کریں',
   'ready.orPress': 'یا دبائیں',
   'ready.qibla': 'قبلہ شمال سے {deg}°',
@@ -1117,6 +1128,7 @@ export const ur: Messages = {
   'dock.guide': 'خودکار رہنمائی (P)',
   'dock.pause': 'رہنمائی روکیں (P)',
   'dock.following': 'آپ کے ساتھ',
+  'dock.pauseListening': 'آپ کو سن رہا ہے۔ روکنے کے لیے دبائیں',
 
   // Hands-free
   'hf.button': 'ہینڈز فری',
@@ -1305,6 +1317,7 @@ export const ar: Messages = {
   'ready.body': 'قف على سجادتك مستقبلًا القبلة.',
   'ready.bodyHandsFree': 'ارفع يديك للتكبير وسيتابعك PrayAlong.',
   'ready.bodyManual': 'فعّل وضع «بدون لمس» لتصلي دون أن تلمس الجهاز.',
+  'ready.bodyListen': 'يستمع PrayAlong إلى تلاوتك ويتابعها، دون أن تلمس شيئًا.',
   'ready.begin': 'ابدأ صلاة {prayer}',
   'ready.orPress': 'أو اضغط',
   'ready.qibla': 'القبلة {deg}° من الشمال',
@@ -1320,6 +1333,7 @@ export const ar: Messages = {
   'dock.guide': 'إرشاد تلقائي (P)',
   'dock.pause': 'إيقاف الإرشاد مؤقتًا (P)',
   'dock.following': 'يتابعك',
+  'dock.pauseListening': 'يستمع إليك. اضغط للإيقاف المؤقت',
 
   // Hands-free
   'hf.button': 'بدون لمس',

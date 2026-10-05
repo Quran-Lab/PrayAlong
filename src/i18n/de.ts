@@ -86,6 +86,7 @@ export const de: Messages = {
   'ready.body': 'Stell dich auf deinen Gebetsteppich, mit Blick zur Qibla.',
   'ready.bodyHandsFree': 'Hebe die Hände zum Takbir, und PrayAlong folgt dir.',
   'ready.bodyManual': 'Mit „Freihändig“ betest du, ohne etwas zu berühren.',
+  'ready.bodyListen': 'PrayAlong hört zu und folgt deiner Rezitation. Du musst nichts berühren.',
   'ready.begin': '{prayer} beginnen',
   'ready.orPress': 'oder drücke',
   'ready.qibla': 'Qibla {deg}° von Norden',
@@ -101,6 +102,7 @@ export const de: Messages = {
   'dock.guide': 'Automatisch weiterführen (P)',
   'dock.pause': 'Anleitung pausieren (P)',
   'dock.following': 'Folgt dir',
+  'dock.pauseListening': 'Hört dir zu. Tippen zum Pausieren',
 
   // Hands-free
   'hf.button': 'Freihändig',

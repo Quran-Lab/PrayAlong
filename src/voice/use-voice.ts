@@ -31,7 +31,7 @@ export interface VoiceState {
   /** Microphone hears speech right now. */
   speaking: boolean
   /** Step and word the follower thinks the person is on. */
-  cursor: { step: number; wordIndex: number } | null
+  cursor: { step: number; wordIndex: number; rep: number } | null
   /**
    * The timer fallback for the current step (ms), for the visible progress
    * slider while voice leads; null when the step has no timer.
@@ -105,7 +105,9 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
     onSession()
     const cursor = () => {
       const snap = core.follower.snapshot()
-      setState((st) => (st.cursor?.step === snap.step && st.cursor.wordIndex === snap.wordIndex ? st : { ...st, cursor: { step: snap.step, wordIndex: snap.wordIndex } }))
+      setState((st) =>
+        st.cursor?.step === snap.step && st.cursor.wordIndex === snap.wordIndex && st.cursor.rep === snap.rep ? st : { ...st, cursor: { step: snap.step, wordIndex: snap.wordIndex, rep: snap.rep } },
+      )
     }
 
     const off = engine.on((e) => {

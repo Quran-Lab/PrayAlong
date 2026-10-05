@@ -1,5 +1,5 @@
-import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
-import { motion } from 'motion/react'
+import { ChevronLeft, ChevronRight, Mic, Pause, Play } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useMemo } from 'react'
 import { postureKey } from '@/content/postures'
 import { useT } from '@/i18n'
@@ -14,7 +14,7 @@ import { Tooltip } from './ui/primitives'
  * movements of this rak'ah as a track that fills as you go (each movement as
  * long as its recitation), and one clear control to lead or pause.
  */
-export function PostureDock({ following }: { following: boolean }) {
+export function PostureDock({ following, listening = false, onListen }: { following: boolean; /** Listen mode is following the user's voice. */ listening?: boolean; onListen?: (on: boolean) => void }) {
   const t = useT()
   const { sequence, index, phase, autoplay, handsFree, next, prev, goTo, setAutoplay } = useSession()
   const segments = useMemo(() => postureSegments(sequence.steps), [sequence])
@@ -29,7 +29,16 @@ export function PostureDock({ following }: { following: boolean }) {
   const leading = handsFree && following
 
   return (
-    <nav aria-label={t('dock.rakah')} className="mx-auto flex w-full max-w-[60rem] items-center gap-2.5 rounded-[1.75rem] border border-line bg-[color-mix(in_oklab,var(--room-2)_88%,transparent)] px-2.5 py-2.5 shadow-[0_24px_70px_-24px_rgba(0,0,0,0.75)] backdrop-blur-md sm:gap-5 sm:px-5 sm:py-3">
+    <motion.nav
+      layout
+      transition={{ layout: { type: 'spring', bounce: 0.1, duration: 0.65 } }}
+      aria-label={t('dock.rakah')}
+      // Compact until the prayer begins, then it widens as the controls arrive.
+      className={cn(
+        'mx-auto flex w-full items-center gap-2.5 rounded-[1.75rem] border border-line bg-[color-mix(in_oklab,var(--room-2)_88%,transparent)] px-2.5 py-2.5 shadow-[0_24px_70px_-24px_rgba(0,0,0,0.75)] backdrop-blur-md sm:gap-5 sm:px-5 sm:py-3',
+        phase === 'ready' ? 'max-w-[42rem]' : 'max-w-[60rem]',
+      )}
+    >
       {/* Rak'ah: a ring that fills over the whole prayer, the number inside. */}
       <div className="flex shrink-0 items-center gap-3">
         <div className="relative grid size-12 place-items-center sm:size-14">
@@ -71,16 +80,30 @@ export function PostureDock({ following }: { following: boolean }) {
               key={`${seg.rakah}-${seg.start}`}
               className={cn('min-w-0 transition-[flex-grow] duration-500', active && 'sm:min-w-max')}
               // The current movement makes room for its name.
-              style={{ flex: `${weight(seg) / total + (active ? 0.35 : 0)} 1 0%` }}
+              style={{
+                flex: `${weight(seg) / total + (active ? 0.35 : 0)} 1 0%`,
+              }}
             >
-              <Tooltip content={<span><span className="text-ink">{label}</span>: {t(`hint.${key}`)}</span>} side="top">
+              <Tooltip
+                content={
+                  <span>
+                    <span className="text-ink">{label}</span>: {t(`hint.${key}`)}
+                  </span>
+                }
+                side="top"
+              >
                 <button
                   onClick={() => goTo(seg.start)}
                   aria-current={active ? 'step' : undefined}
                   aria-label={label}
                   className="group flex w-full cursor-pointer flex-col items-center gap-1.5 rounded-xl px-0.5 pt-1 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-4"
                 >
-                  <span className={cn('flex items-center gap-1.5 transition-colors duration-300', active ? 'text-mint' : done ? 'text-ink-soft' : 'text-ink-muted group-hover:text-ink-soft')}>
+                  <span
+                    className={cn(
+                      'flex items-center gap-1.5 transition-colors duration-300',
+                      active ? 'text-mint' : done ? 'text-ink-soft' : 'text-ink-muted group-hover:text-ink-soft',
+                    )}
+                  >
                     <PostureIcon posture={seg.posture} className={cn('shrink-0 transition-transform duration-300', active ? 'size-7 sm:size-8' : 'size-5 sm:size-6')} />
                     {active && (
                       <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-base font-semibold whitespace-nowrap max-sm:hidden">
@@ -92,7 +115,10 @@ export function PostureDock({ following }: { following: boolean }) {
                     <motion.span
                       className="absolute inset-y-0 start-0 rounded-full bg-mint"
                       initial={false}
-                      animate={{ width: `${fill * 100}%`, opacity: active ? 1 : 0.55 }}
+                      animate={{
+                        width: `${fill * 100}%`,
+                        opacity: active ? 1 : 0.55,
+                      }}
                       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                     />
                   </span>
@@ -104,32 +130,56 @@ export function PostureDock({ following }: { following: boolean }) {
       </ol>
 
       {/* Controls: back, lead/pause (or "following you"), forward. Only once the prayer has begun. */}
-      <div className={cn('flex shrink-0 items-center gap-1.5 transition-opacity duration-300', phase === 'ready' && 'pointer-events-none invisible opacity-0')}>
-        <IconButton label={t('dock.previous')} onClick={prev} disabled={phase === 'ready' || (praying && index === 0)} className="max-sm:hidden">
-          <ChevronLeft className="size-6 rtl:rotate-180" />
-        </IconButton>
-        {leading ? (
-          <div className="flex h-12 items-center gap-2 rounded-full bg-mint/[0.1] px-4 text-sm font-medium text-mint max-sm:hidden">
-            <span className="size-2 animate-breathe rounded-full bg-mint" />
-            {t('dock.following')}
-          </div>
-        ) : (
-          <Tooltip content={autoplay ? t('dock.pause') : t('dock.guide')} side="top">
-            <button
-              onClick={() => setAutoplay(!autoplay)}
-              disabled={phase === 'complete'}
-              aria-label={autoplay ? t('dock.pause') : t('dock.guide')}
-              className="grid size-12 cursor-pointer place-items-center rounded-full bg-mint sm:size-14 text-canvas shadow-[0_10px_30px_-10px_color-mix(in_oklab,var(--accent)_70%,transparent)] transition-transform duration-200 hover:brightness-110 active:scale-95 disabled:opacity-30"
-            >
-              {autoplay ? <Pause className="size-6 fill-current" /> : <Play className="ms-0.5 size-6 fill-current" />}
-            </button>
-          </Tooltip>
+      <AnimatePresence initial={false}>
+        {phase !== 'ready' && (
+          <motion.div
+            key="controls"
+            layout
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.35 }}
+            className="flex shrink-0 items-center gap-1.5"
+          >
+            <IconButton label={t('dock.previous')} onClick={prev} disabled={praying && index === 0} className="max-sm:hidden">
+              <ChevronLeft className="size-6 rtl:rotate-180" />
+            </IconButton>
+            {listening ? (
+              // Your voice leads: one control to pause listening (the prayer then waits for you).
+              <Tooltip content={t('dock.pauseListening')} side="top">
+                <button
+                  onClick={() => onListen?.(false)}
+                  aria-label={t('dock.pauseListening')}
+                  className="relative grid size-12 cursor-pointer place-items-center rounded-full bg-mint text-canvas shadow-[0_10px_30px_-10px_color-mix(in_oklab,var(--accent)_70%,transparent)] transition-transform duration-200 hover:brightness-110 active:scale-95 sm:size-14"
+                >
+                  <span className="absolute inset-0 animate-ping rounded-full bg-mint/30 [animation-duration:2.4s]" aria-hidden />
+                  <Mic className="relative size-6" />
+                </button>
+              </Tooltip>
+            ) : leading ? (
+              <div className="flex h-12 items-center gap-2 rounded-full bg-mint/[0.1] px-4 text-sm font-medium text-mint max-sm:hidden">
+                <span className="size-2 animate-breathe rounded-full bg-mint" />
+                {t('dock.following')}
+              </div>
+            ) : (
+              <Tooltip content={autoplay ? t('dock.pause') : t('dock.guide')} side="top">
+                <button
+                  onClick={() => setAutoplay(!autoplay)}
+                  disabled={phase === 'complete'}
+                  aria-label={autoplay ? t('dock.pause') : t('dock.guide')}
+                  className="grid size-12 cursor-pointer place-items-center rounded-full bg-mint sm:size-14 text-canvas shadow-[0_10px_30px_-10px_color-mix(in_oklab,var(--accent)_70%,transparent)] transition-transform duration-200 hover:brightness-110 active:scale-95 disabled:opacity-30"
+                >
+                  {autoplay ? <Pause className="size-6 fill-current" /> : <Play className="ms-0.5 size-6 fill-current" />}
+                </button>
+              </Tooltip>
+            )}
+            <IconButton label={t('dock.next')} onClick={next} disabled={phase === 'complete'} className="max-sm:hidden">
+              <ChevronRight className="size-6 rtl:rotate-180" />
+            </IconButton>
+          </motion.div>
         )}
-        <IconButton label={t('dock.next')} onClick={next} disabled={phase === 'complete'} className="max-sm:hidden">
-          <ChevronRight className="size-6 rtl:rotate-180" />
-        </IconButton>
-      </div>
-    </nav>
+      </AnimatePresence>
+    </motion.nav>
   )
 }
 

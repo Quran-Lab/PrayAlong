@@ -79,6 +79,16 @@ export function App() {
   const companionSpeaking = useCompanionSpeaking()
   const voice = useVoiceFollow({ enabled: voiceOn, mode: following ? 'lines' : 'full', ignoreCompanion: true, companionSpeaking })
   const voiceDriving = voiceOn && voice.status === 'listening'
+  // Every prayer starts in Listen mode (the click or key that begins it lets the mic start).
+  const prevPhase = useRef(phase)
+  useEffect(() => {
+    if (prevPhase.current === 'ready' && phase === 'praying' && !handsFree) setVoiceOn(true)
+    prevPhase.current = phase
+  }, [phase, handsFree])
+  // If listening cannot start (no mic, permission denied, model failed), guide by time instead.
+  useEffect(() => {
+    if (voiceOn && voice.status === 'error' && phase === 'praying') useSession.getState().setAutoplay(true)
+  }, [voiceOn, voice.status, phase])
   // [voice] end
 
   const toggleHandsFree = useCallback(() => {
@@ -107,7 +117,7 @@ export function App() {
   }, [prayer])
 
   useWakeLock(phase === 'praying')
-  const { speaking, audioMs } = useCompanionAudio({ phase, step, next: sequence.steps[index + 1], prayer, voice: character.id, locale, settings })
+  const { speaking, audioMs } = useCompanionAudio({ phase, step, next: sequence.steps[index + 1], prayer, voice: character.id, locale, settings, listen: voiceOn })
   const appTimedMs = useStepTimer(following, audioMs, voiceDriving)
   // In Listen mode you lead: no countdown on screen (the quiet timer fallback still runs underneath).
   const timedMs = voiceDriving ? null : appTimedMs
@@ -235,6 +245,7 @@ export function App() {
                     <motion.div key="praying" className="w-full" exit={{ opacity: 0 }}>
                       <Recitation step={step} next={sequence.steps[index + 1]} timedMs={timedMs} distance={following} speaking={speaking}
                         heardWord={voiceDriving && voice.cursor?.step === index ? voice.cursor.wordIndex - 1 : null}
+                        heardRep={voiceDriving && voice.cursor?.step === index ? voice.cursor.rep : null}
                       />
                     </motion.div>
                   )}
@@ -245,7 +256,7 @@ export function App() {
 
             {/* Dock */}
             <footer className="relative z-10 shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6 short:pb-2">
-              <PostureDock following={following} />
+              <PostureDock following={following} listening={voiceDriving} onListen={setVoiceOn} />
             </footer>
           </div>
 

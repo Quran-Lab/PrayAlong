@@ -17,27 +17,31 @@ export interface Speaking {
   clip: Clip
   /** AudioContext time the current repetition started. */
   startAt: number
+  /** Which repetition (0-based) of a line said several times. */
+  rep: number
 }
 
-function plan(step: Step, voice: string, locale: Locale, settings: Settings) {
+function plan(step: Step, voice: string, locale: Locale, settings: Settings, listen: boolean) {
   const m = getManifest()?.voices[voice]
   if (!m) return null
   const line = m.lines[step.recitationId]
   if (!line) return null
-  const clips: { clip: Clip; gain: number; isLine: boolean }[] = []
-  if (step.cue && TAKBIR_CUES.has(step.cue) && m.lines['takbir']) clips.push({ clip: m.lines['takbir'], gain: 1, isLine: false })
+  if (listen && !(settings.guide && step.cue && step.groupIndex === 0)) return null
+  const clips: { clip: Clip; gain: number; isLine: boolean; rep: number }[] = []
+  if (step.cue && TAKBIR_CUES.has(step.cue) && m.lines['takbir']) clips.push({ clip: m.lines['takbir'], gain: 1, isLine: false, rep: 0 })
   if (settings.guide && step.cue && step.groupIndex === 0) {
     // One instruction per movement; each salam gets its own side.
     const key = step.posture === 'salam-right' ? 'salamRight' : step.posture === 'salam-left' ? 'salamLeft' : postureKey(step.posture)
     const g = m.guide[locale]?.[`voice.${key}`]
-    if (g) clips.push({ clip: g, gain: 1, isLine: false })
+    if (g) clips.push({ clip: g, gain: 1, isLine: false, rep: 0 })
   }
   const gain = step.voice === 'quiet' ? QUIET_GAIN : 1
-  for (let i = 0; i < step.repeat; i++) clips.push({ clip: line, gain, isLine: true })
+  // In Listen mode you recite: the companion only guides the movements.
+  if (!listen) for (let i = 0; i < step.repeat; i++) clips.push({ clip: line, gain, isLine: true, rep: i })
   const spoken = clips.reduce((t, c) => t + c.clip.dur * 1000, 0) + REPEAT_GAP * 1000 * (clips.length - 1)
   // Pray at the user's pace, not the voice's: leave time to say the line
   // after the companion (repeat-after-me while learning, a breath otherwise).
-  const yours = settings.guide ? line.dur * 1000 * step.repeat * PACE_ROOM[settings.pace] : line.dur * 1000 * 0.35
+  const yours = listen ? 0 : settings.guide ? line.dur * 1000 * step.repeat * PACE_ROOM[settings.pace] : line.dur * 1000 * 0.35
   return { clips, ms: spoken + yours }
 }
 
@@ -46,8 +50,8 @@ function plan(step: Step, voice: string, locale: Locale, settings: Settings) {
  * Returns what is being spoken (for word highlighting) and how long the
  * current step's audio lasts (so timers never cut a recitation short).
  */
-export function useCompanionAudio(opts: { phase: string; step: Step; next?: Step; prayer: PrayerId; voice: string; locale: Locale; settings: Settings }) {
-  const { phase, step, next, prayer, voice, locale, settings } = opts
+export function useCompanionAudio(opts: { phase: string; step: Step; next?: Step; prayer: PrayerId; voice: string; locale: Locale; settings: Settings; listen?: boolean }) {
+  const { phase, step, next, prayer, voice, locale, settings, listen = false } = opts
   const [ready, setReady] = useState(false)
   const [speaking, setSpeaking] = useState<Speaking | null>(null)
   const [unlocked, setUnlocked] = useState(false)
@@ -82,7 +86,7 @@ export function useCompanionAudio(opts: { phase: string; step: Step; next?: Step
   useEffect(() => () => audio.stopAmbience(0.5), [])
 
   // The voice: each line as it comes.
-  const planned = ready && settings.voice ? plan(step, voice, locale, settings) : null
+  const planned = ready && settings.voice ? plan(step, voice, locale, settings, listen) : null
   const stepId = step.id
   const live = useRef(0)
   useEffect(() => {
@@ -97,7 +101,7 @@ export function useCompanionAudio(opts: { phase: string; step: Step; next?: Step
       REPEAT_GAP,
       (i, startAt) => {
         const c = planned.clips[i]!
-        if (run === live.current) setSpeaking(c.isLine ? { stepId, clip: c.clip, startAt } : null)
+        if (run === live.current) setSpeaking(c.isLine ? { stepId, clip: c.clip, startAt, rep: c.rep } : null)
       },
     )
     // Warm the next line so there is no gap.
@@ -105,7 +109,7 @@ export function useCompanionAudio(opts: { phase: string; step: Step; next?: Step
     if (after) audio.preload(after.src)
     return () => audio.stopSpeaking()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, stepId, unlocked, ready, settings.voice, settings.guide, voice, locale])
+  }, [phase, stepId, unlocked, ready, settings.voice, settings.guide, voice, locale, listen])
 
   return { speaking, audioMs: phase === 'praying' && unlocked ? (planned?.ms ?? null) : null }
 }
