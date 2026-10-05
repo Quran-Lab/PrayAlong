@@ -23,9 +23,11 @@ Rules: every index list must be contiguous and in increasing order across Arabic
 Return ONLY JSON: {{"t": [[...],[...]], "m": [[...],[...]]}} with exactly {n} entries in each list.'''
 
 def words(s): return [w for w in re.split(r'\s+', s.strip()) if w]
+# Pronunciation splits after hyphens too, so each piece lights up on its own.
+def twords(s): return [w for w in re.split(r'\s+|(?<=-)', s.strip()) if w]
 
 def job(loc, lid, row):
-    ar, tr, mn = words(row['arabic']), words(row['translit']), words(row['meaning'])
+    ar, tr, mn = words(row['arabic']), twords(row['translit']), words(row['meaning'])
     fmt = lambda ws: '\n'.join(f'{i}: {w}' for i, w in enumerate(ws)) or '(none)'
     body = {'model': 'ag/gemini-3.8-flash', 'stream': False, 'messages': [{'role': 'user', 'content': PROMPT.format(ar=fmt(ar), tr=fmt(tr), mn=fmt(mn), loc=loc, n=len(ar))}]}
     for _ in range(3):

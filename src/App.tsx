@@ -76,6 +76,14 @@ export function App() {
   // voice leads lines and postures; with the camera following: lines only.
   // Turned on from the Listen button (a click, so the microphone can start).
   const [voiceOn, setVoiceOn] = useState(() => new URLSearchParams(location.search).has('voice'))
+  // Pausing listening pauses the prayer (it waits for you); it never silently switches to the timer.
+  const setListen = useCallback((on: boolean | ((v: boolean) => boolean)) => {
+    setVoiceOn((prev) => {
+      const next = typeof on === 'function' ? on(prev) : on
+      if (!next) useSession.getState().setAutoplay(false)
+      return next
+    })
+  }, [])
   const companionSpeaking = useCompanionSpeaking()
   const voice = useVoiceFollow({ enabled: voiceOn, mode: following ? 'lines' : 'full', ignoreCompanion: true, companionSpeaking })
   const voiceDriving = voiceOn && voice.status === 'listening'
@@ -122,13 +130,6 @@ export function App() {
   // In Listen mode you lead: no countdown on screen (the quiet timer fallback still runs underneath).
   const timedMs = voiceDriving ? null : appTimedMs
 
-  // Praying behind the companion: when it recites, it leads (pause any time).
-  const leadOnBegin = useRef(phase)
-  useEffect(() => {
-    const s = useSession.getState()
-    if (leadOnBegin.current === 'ready' && phase === 'praying' && settings.voice && !s.handsFree && !voiceDriving) s.setAutoplay(true)
-    leadOnBegin.current = phase
-  }, [phase, settings.voice, voiceDriving])
   useKeyboard(toggleHandsFree)
 
   // A soft chime when PrayAlong follows a movement, so nobody has to look up.
@@ -185,7 +186,7 @@ export function App() {
                 <Button variant="quiet" size="icon" aria-label={t('settings.title')} onClick={() => setSettingsOpen(true)}>
                   <Settings2 className="size-[18px]" />
                 </Button>
-                <ListenButton on={voiceOn} status={voice.status} error={voice.error} progress={voice.progress} onToggle={() => setVoiceOn((v) => !v)} compact={!wide} />
+                <ListenButton on={voiceOn} status={voice.status} error={voice.error} progress={voice.progress} onToggle={() => setListen((v) => !v)} compact={!wide} />
                 <HandsFreeButton on={handsFree} status={hands.status} onToggle={toggleHandsFree} compact={!wide} />
               </div>
             </header>
@@ -246,6 +247,7 @@ export function App() {
                       <Recitation step={step} next={sequence.steps[index + 1]} timedMs={timedMs} distance={following} speaking={speaking}
                         heardWord={voiceDriving && voice.cursor?.step === index ? voice.cursor.wordIndex - 1 : null}
                         heardRep={voiceDriving && voice.cursor?.step === index ? voice.cursor.rep : null}
+                        heardFill={voiceDriving && voice.cursor?.step === index ? ((voice.cursor as { fill?: number }).fill ?? null) : null}
                       />
                     </motion.div>
                   )}
@@ -256,7 +258,7 @@ export function App() {
 
             {/* Dock */}
             <footer className="relative z-10 shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6 short:pb-2">
-              <PostureDock following={following} listening={voiceDriving} onListen={setVoiceOn} />
+              <PostureDock following={following} listening={voiceDriving} onListen={setListen} />
             </footer>
           </div>
 
