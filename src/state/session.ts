@@ -30,6 +30,8 @@ export interface Settings {
   volume: number
   /** Raise the hands going into ruku and rising from it (raf' al-yadayn). */
   raiseHands: boolean
+  /** Listen mode: the companion recites each line first, then you say it. */
+  repeatAfter: boolean
 }
 
 /** What to show, after applying per-language defaults. */
@@ -98,6 +100,7 @@ export const useSession = create<SessionState>()(
         ambience: true,
         volume: 0.9,
         raiseHands: true,
+        repeatAfter: true,
       },
 
       autoSelectPrayer: (id) => {

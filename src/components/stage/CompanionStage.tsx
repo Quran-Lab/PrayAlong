@@ -9,6 +9,7 @@ import { loadHumanoid } from './rig/humanoid'
 import { Performer, STAGE_HEIGHT } from './rig/performer'
 import type { PoseName } from './rig/prayer-poses'
 import { Scenery } from './Scenery'
+import { currentTuning, tuneFor, type Tuning } from './rig/tuning'
 import type { PrayerId } from '@/sequence/types'
 
 interface StageProps {
@@ -20,6 +21,8 @@ interface StageProps {
   prayer?: PrayerId
   /** Raise the hands going into ruku and rising from it. */
   raiseHands?: boolean
+  /** Live fine-tuning (Tune screen); defaults to the saved tuning. */
+  tuning?: Tuning
   /** Where the companion stands on the page (percent of the window width), so the page's window can sit behind it. */
   onAnchor?: (xPercent: number) => void
   /** Draw the room behind the companion (off when the page draws it). */
@@ -70,7 +73,7 @@ export function CompanionStage(props: StageProps) {
 
 // ————————————————————————————————————————————————————————— character
 
-function Companion({ posture, character, reducedMotion, raiseHands, onLoaded, onError }: StageProps) {
+function Companion({ posture, character, reducedMotion, raiseHands, tuning, onLoaded, onError }: StageProps) {
   const [performer, setPerformer] = useState<Performer | null>(null)
   const fade = useRef(0)
 
@@ -99,9 +102,10 @@ function Companion({ posture, character, reducedMotion, raiseHands, onLoaded, on
   useEffect(() => {
     if (!performer) return
     performer.raiseHands = Boolean(raiseHands)
+    performer.tune = (pose) => tuneFor(tuning ?? currentTuning(), character.id, pose)
     if (reducedMotion) performer.jumpTo(posture)
     else performer.setPosture(posture)
-  }, [performer, posture, reducedMotion, raiseHands])
+  }, [performer, posture, reducedMotion, raiseHands, tuning])
 
   useFrame((_, dt) => {
     if (!performer) return

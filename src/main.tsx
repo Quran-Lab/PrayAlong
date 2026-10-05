@@ -13,13 +13,20 @@ import { App } from './App'
 
 // Dev-only tools: /?lab&pose=sujud (pose tuning), /?lab&voice (microphone engine)
 const PoseLab = lazy(() => import('./lab/PoseLab').then((m) => ({ default: m.PoseLab })))
+// Tune screen, also on the live site: /?tune
+const TuneLab = lazy(() => import('./lab/TuneLab').then((m) => ({ default: m.TuneLab })))
+const tune = new URLSearchParams(location.search).has('tune')
 const VoiceLab = lazy(() => import('./lab/VoiceLab').then((m) => ({ default: m.VoiceLab })))
 const query = new URLSearchParams(location.search)
 const lab = import.meta.env.DEV && query.has('lab')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {lab ? (
+    {tune ? (
+      <Suspense>
+        <TuneLab />
+      </Suspense>
+    ) : lab ? (
       <Suspense>{query.has('voice') ? <VoiceLab /> : <PoseLab />}</Suspense>
     ) : (
       <App />

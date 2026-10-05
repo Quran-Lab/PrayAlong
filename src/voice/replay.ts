@@ -345,7 +345,8 @@ export function scoreReplay(tl: Timeline, steps: readonly Step[], log: ReplayLog
   }
   const readyAt = (i: number) => {
     const takbir = tl.clips.find((c) => c.kind === 'takbir' && c.step === i)
-    if (takbir) return takbir.words.at(-1)?.[1] ?? takbir.start + takbir.dur
+    // Moving while saying "Allahu akbar": ready once "Allahu" has been said.
+    if (takbir) return takbir.words[0]?.[1] ?? takbir.start + takbir.dur / 2
     if (i === 0) return tl.clips[0]!.start
     return lastWordEnd(i - 1)
   }

@@ -169,6 +169,7 @@ export const de: Messages = {
   'settings.sound': 'Ton',
   'settings.voice': 'Mit der Stimme des Begleiters rezitieren',
   'settings.guide': 'Jede Bewegung laut erklären',
+  'settings.repeatAfter': 'Nachsprechen: der Begleiter rezitiert jede Zeile zuerst',
   'settings.ambience': 'Geräusche der Tageszeit am Fenster',
   'settings.volume': 'Lautstärke',
   'settings.language': 'Sprache',

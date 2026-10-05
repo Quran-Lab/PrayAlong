@@ -172,6 +172,7 @@ export const en = {
   'settings.sound': 'Sound',
   'settings.voice': 'Recite with the companion’s voice',
   'settings.guide': 'Explain each movement aloud',
+  'settings.repeatAfter': 'Repeat after me: the companion recites each line first',
   'settings.ambience': 'Sounds of the hour from the window',
   'settings.volume': 'Volume',
   'settings.language': 'Language',

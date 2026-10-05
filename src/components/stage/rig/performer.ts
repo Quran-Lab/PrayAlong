@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { FINGER_CHAINS, type Humanoid, type HumanBone } from './humanoid'
+import { ZERO, type Tune } from './tuning'
 import { GRIPS, PRAYER_POSES, waypoints, type Dir3, type HandSpec, type PoseName, type PrayerPose } from './prayer-poses'
 
 /** Characters are scaled to this standing height so framing is consistent. */
@@ -167,6 +168,8 @@ export class Performer {
 
   /** Raise the hands going into ruku and rising from it (raf' al-yadayn). */
   raiseHands = false
+  /** Per-posture fine-tuning for this character (see tuning.ts). */
+  tune: (pose: PoseName) => Tune = () => ZERO
   private pose: PoseName = 'rest'
   private from: PoseName = 'rest'
   private queue: PoseName[] = []
@@ -467,6 +470,13 @@ export class Performer {
     const forehead = this.pose === 'sujud' ? e : this.from === 'sujud' ? 1 - e : 0
     if (forehead > 0) this.lowerForehead(target, forehead)
 
+    // 2b. Tuned sink into the rug (blends with the posture change).
+    const sink = THREE.MathUtils.lerp(this.tune(this.from).sink, this.tune(this.pose).sink, e) * STAGE_HEIGHT
+    if (sink) {
+      this.rig.position.y -= sink
+      this.root.updateMatrixWorld(true)
+    }
+
     // 3. Hands. Palms on the rug are corrected against their real surface,
     // so fingers never dip through it whatever the hand's shape.
     this.placeArms(target, e)
@@ -624,6 +634,10 @@ export class Performer {
       }
     }
     if (spec.offset) target.add(vec(spec.offset).multiplyScalar(H))
+    // Tuned hand lift for whichever posture this hand spec belongs to.
+    const owner = PRAYER_POSES[this.pose][side] === spec ? this.pose : this.from
+    const t = this.tune(owner)
+    if (t.handUp || t.handFwd) target.add(v().set(0, t.handUp * H, t.handFwd * H).applyQuaternion(this.root.getWorldQuaternion(q())))
     return {
       target: this.root.worldToLocal(target),
       pole: vec(spec.pole).normalize(),

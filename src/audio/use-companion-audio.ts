@@ -26,10 +26,13 @@ function plan(step: Step, voice: string, locale: Locale, settings: Settings, lis
   if (!m) return null
   const line = m.lines[step.recitationId]
   if (!line) return null
-  // In Listen mode the companion stays silent: the microphone is muted while it speaks,
-  // so any guidance would swallow what the user says (e.g. the first tasbih in sujud).
-  // The on-screen cue and the "Then say" prompt guide instead.
-  if (listen) return null
+  // Listen mode: with "repeat after me" on, the companion recites each line once and then
+  // listens while you say it (the mic is muted only while it speaks). Off: it stays silent.
+  if (listen) {
+    if (!settings.repeatAfter) return null
+    const clips = [{ clip: line, gain: step.voice === 'quiet' ? QUIET_GAIN : 1, isLine: true, rep: 0 }]
+    return { clips, ms: line.dur * 1000 }
+  }
   const clips: { clip: Clip; gain: number; isLine: boolean; rep: number }[] = []
   if (step.cue && TAKBIR_CUES.has(step.cue) && m.lines['takbir']) clips.push({ clip: m.lines['takbir'], gain: 1, isLine: false, rep: 0 })
   if (settings.guide && step.cue && step.groupIndex === 0) {
