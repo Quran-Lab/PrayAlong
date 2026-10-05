@@ -95,8 +95,7 @@ export const useSession = create<SessionState>()(
         characterId: 'yusuf',
         voice: true,
         guide: true,
-        // Off until we ship real field recordings (generated ambience was not good enough).
-        ambience: false,
+        ambience: true,
         volume: 0.9,
         raiseHands: true,
       },
@@ -143,10 +142,15 @@ export const useSession = create<SessionState>()(
     }),
     {
       name: 'prayalong:session',
-      version: 2,
+      version: 3,
       partialize: (s) => ({ settings: s.settings }),
       // Older saves predate languages and companions; keep only what still fits.
-      migrate: (persisted) => persisted as { settings: Settings },
+      migrate: (persisted, version) => {
+        const p = persisted as { settings: Partial<Settings> }
+        // v3: real field-recorded ambience ships; turn it on for everyone once.
+        if (version < 3 && p?.settings) p.settings.ambience = true
+        return p as { settings: Settings }
+      },
       merge: (persisted, current) => ({
         ...current,
         settings: { ...current.settings, ...((persisted as { settings?: Partial<Settings> })?.settings ?? {}) },
