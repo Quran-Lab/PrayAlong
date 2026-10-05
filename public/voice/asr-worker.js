@@ -60,6 +60,7 @@ let segAudioSec = 0;
 let segment = 0;
 let published = [];
 let lastLevelAt = -1;
+let decodeTotalMs = 0;
 
 // Energy gate (waveform silence), as in the Quran Lab worker.
 let noiseRms = 0.002;
@@ -111,7 +112,8 @@ self.onmessage = (event) => {
     }
     case "finish":
       finish();
-      postMessage({ type: "finished", id: m.id });
+      // decodeMs: all decoding time so far, for the real-time factor (decodeMs / 1000 / audioSec).
+      postMessage({ type: "finished", id: m.id, decodeMs: Math.round(decodeTotalMs), audioSec });
       break;
   }
 };
@@ -309,6 +311,7 @@ function accept(input, rate) {
 function decode(final) {
   const t0 = performance.now();
   while (recognizer.isReady(stream)) recognizer.decode(stream);
+  decodeTotalMs += performance.now() - t0;
   const result = recognizer.getResult(stream);
   const tokens = Array.isArray(result && result.tokens) ? result.tokens.map(String) : [];
   let common = 0;

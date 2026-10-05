@@ -95,10 +95,13 @@ const kneelingLegs = (hips: number, hipFlex: number, shinLift = 16) => {
  * Thighs forward, shins folded back under them.
  */
 const sittingLegs = {
-  leftUpperLeg: [-78, 0, 4],
-  rightUpperLeg: [-78, 0, -4],
-  leftLowerLeg: [168, 0, 0],
-  rightLowerLeg: [168, 0, 0],
+  // Sitting back on the heels from a kneel, the way people really sit: the
+  // thighs rise a little and the knees fold less than fully, which also keeps
+  // a long robe draping cleanly over the lap.
+  leftUpperLeg: [-59, 0, 4],
+  rightUpperLeg: [-59, 0, -4],
+  leftLowerLeg: [147, 0, 0],
+  rightLowerLeg: [147, 0, 0],
   leftFoot: [92, 0, 0],
   rightFoot: [8, 0, 0],
   rightToes: [-70, 0, 0],

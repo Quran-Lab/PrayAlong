@@ -10,7 +10,8 @@ export function PoseLab() {
   const params = new URLSearchParams(location.search)
   const [pose, setPose] = useState<PoseName>((params.get('pose') as PoseName) ?? 'qiyam')
   const url = params.get('character')
-  const character: CharacterInfo = url ? { id: 'custom', name: 'Custom', url, credit: '' } : CHARACTERS[0]!
+  const known = url ? CHARACTERS.find((c) => url.includes(`/${c.id}.`)) : undefined
+  const character: CharacterInfo = url ? { id: known?.id ?? 'custom', name: known?.name ?? 'Custom', url, credit: '' } : CHARACTERS[0]!
   const [status, setStatus] = useState('loading')
 
   return (

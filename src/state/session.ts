@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { buildSequence, nextPoseChange } from '@/sequence/build'
+import { buildSequence, nextPoseChange, switchSurah as switchSurahIn } from '@/sequence/build'
+import type { SurahId } from '@/content/recitations' // [voice]
 import { READS_ARABIC, type Locale } from '@/i18n/locales'
 import type { PoseClass, PrayerId, PrayerSequence, Step } from '@/sequence/types'
 
@@ -81,9 +82,13 @@ interface SessionState {
    * ever moves forward; starts the prayer from 'ready'.
    */
   followTo: (index: number) => void
+  // [voice] begin: another short surah for a rak'ah (voice follow heard one, or the user chose it).
+  surahs: Partial<Record<number, SurahId>>
+  switchSurah: (rakah: number, surah: SurahId) => void
+  // [voice] end
 }
 
-const fresh = (prayer: PrayerId) => ({ prayer, sequence: buildSequence(prayer), phase: 'ready' as Phase, index: 0 })
+const fresh = (prayer: PrayerId) => ({ prayer, sequence: buildSequence(prayer), phase: 'ready' as Phase, index: 0, surahs: {} as Partial<Record<number, SurahId>> })
 
 export const useSession = create<SessionState>()(
   persist(
@@ -138,6 +143,13 @@ export const useSession = create<SessionState>()(
       setHandsFree: (handsFree) => set({ handsFree, autoplay: false, demo: handsFree && get().demo }),
       setDemo: (demo) => set({ demo, handsFree: demo || get().handsFree, autoplay: false }),
       updateSettings: (patch) => set({ settings: { ...get().settings, ...patch } }),
+      // [voice] begin
+      switchSurah: (rakah, surah) => {
+        const { sequence, surahs, index } = get()
+        if (surahs[rakah] === surah) return
+        set(switchSurahIn(sequence, surahs, rakah, surah, index))
+      },
+      // [voice] end
 
       onPose: (pose) => {
         const { phase, index, sequence } = get()

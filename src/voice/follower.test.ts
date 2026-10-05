@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import phonemeTable from '@/content/phonemes.json'
 import { buildSequence } from '@/sequence/build'
+import { followSteps } from './core'
 import { Follower, skeletonOf } from './follower'
 import { lineSkeleton, skeletonChars } from './phonetic'
 import type { FollowerEvent, FollowStep } from './types'
@@ -50,7 +51,7 @@ function corrupt(tokens: string[], rate: number, rand: () => number): string[] {
 }
 
 const stepsOf = (prayer: Parameters<typeof buildSequence>[0]): FollowStep[] =>
-  buildSequence(prayer).steps.map((s) => ({ lineId: s.recitationId, repeat: s.repeat, voice: s.voice }))
+  followSteps(buildSequence(prayer).steps)
 
 /** Feed tokens a few at a time (as the worker publishes), collecting events. */
 function feed(f: Follower, tokens: string[], t0: number, events: FollowerEvent[], dt = 0.1) {
@@ -126,7 +127,57 @@ describe('Follower', () => {
     expect(done(events)).toEqual([ruku, ruku + 1, ruku + 2])
     const first = events.find((e) => e.kind === 'lineDone') as Extract<FollowerEvent, { kind: 'lineDone' }>
     expect(first.reps).toBe(3)
-    expect(keywords(events)).toContain('tasmi')
+    expect(events.some((e) => e.kind === 'lineStart' && e.lineId === 'tasmi')).toBe(true)
+  })
+
+  describe('movement phrases (takbir nodes in the expected path)', () => {
+    /** The last line before a posture, then "Allahu akbar" (or not), then the new posture's line. */
+    function transition(before: string, after: string, takbir: string[] | null) {
+      const f = new Follower(fajr)
+      f.setAnchor(idx(before))
+      const evs: FollowerEvent[] = []
+      let at = feed(f, tokensOf(before), 0, evs)
+      for (let k = 1; k <= 4; k++) evs.push(...f.level(at + k * 0.1, false))
+      f.segmentEnd()
+      if (takbir) at = feed(f, takbir, at + 0.5, evs)
+      for (let k = 1; k <= 4; k++) evs.push(...f.level(at + k * 0.1, false))
+      f.segmentEnd()
+      feed(f, tokensOf(after), at + 0.5, evs)
+      return evs
+    }
+
+    it('hears the takbir between postures', () => {
+      for (const [before, after] of [['kawthar-3', 'ruku'], ['tahmid', 'sujud'], ['sujud', 'jalsah']] as const) {
+        expect(keywords(transition(before, after, tokensOf('takbir'))), `${before} to ${after}`).toContain('takbir')
+      }
+    })
+
+    it('is fine without it: the next posture line is followed', () => {
+      const evs = transition('tahmid', 'sujud', null)
+      expect(keywords(evs)).toEqual([])
+      expect(evs.some((e) => e.kind === 'word' && e.lineId === 'sujud')).toBe(true)
+    })
+
+    it('never hears a takbir inside a posture, however close a line sounds', () => {
+      // "Allahumma barik" is a few edits from "Allahu akbar"; with no takbir
+      // node inside a posture there is nothing to mistake it for.
+      for (const line of ['thana-1', 'salawat-1', 'salawat-3', 'ikhlas-2', 'tashahhud-2', 'tashahhud-3', 'tashahhud-4', 'fatiha-1', 'taawwudh']) {
+        const f = new Follower(fajr)
+        f.setAnchor(fajr.findIndex((s) => s.lineId === line))
+        const evs: FollowerEvent[] = []
+        feed(f, tokensOf(line), 0, evs)
+        expect(keywords(evs), line).toEqual([])
+      }
+    })
+
+    it('hears the takbir through 15% noise in most takes', () => {
+      let hits = 0
+      for (let seed = 1; seed <= 20; seed++) {
+        const evs = transition('kawthar-3', 'ruku', corrupt(tokensOf('takbir', rng(seed)), 0.15, rng(seed + 100)))
+        if (keywords(evs).includes('takbir')) hits++
+      }
+      expect(hits).toBeGreaterThanOrEqual(14)
+    })
   })
 
   it('accepts a tasbih said once, then the next line', () => {
@@ -365,47 +416,3 @@ describe('Follower', () => {
   })
 })
 
-describe('Keyword spotter', () => {
-  const fajr = stepsOf('fajr')
-
-  it('hears the movement phrases', () => {
-    for (const [line, kind] of [['takbir', 'takbir'], ['tasmi', 'tasmi'], ['salam', 'salam'], ['amin', 'amin']] as const) {
-      const f = new Follower(fajr)
-      const evs: FollowerEvent[] = []
-      feed(f, tokensOf(line), 0, evs)
-      expect(keywords(evs)).toContain(kind)
-    }
-  })
-
-  it('does not hear takbir or salam in lines that only resemble them', () => {
-    const lookalikes = ['thana-1', 'salawat-1', 'salawat-3', 'ikhlas-2', 'tashahhud-2', 'tashahhud-3', 'tashahhud-4', 'fatiha-1', 'taawwudh']
-    for (const line of lookalikes) {
-      // The session is on that line (the follower only ever listens around it).
-      const f = new Follower(fajr)
-      f.setAnchor(fajr.findIndex((s) => s.lineId === line))
-      const evs: FollowerEvent[] = []
-      feed(f, tokensOf(line), 0, evs)
-      expect(keywords(evs).filter((k) => k === 'takbir' || k === 'salam'), line).toEqual([])
-    }
-  })
-
-  it('hears each takbir once, even back to back', () => {
-    const f = new Follower(fajr)
-    const evs: FollowerEvent[] = []
-    let at = feed(f, tokensOf('takbir'), 0, evs)
-    f.segmentEnd()
-    feed(f, tokensOf('takbir'), at + 1, evs)
-    expect(keywords(evs).filter((k) => k === 'takbir')).toHaveLength(2)
-  })
-
-  it('hears takbir through 15% noise in most takes', () => {
-    let hits = 0
-    for (let seed = 1; seed <= 20; seed++) {
-      const f = new Follower(fajr)
-      const evs: FollowerEvent[] = []
-      feed(f, corrupt(tokensOf('takbir', rng(seed)), 0.15, rng(seed + 100)), 0, evs)
-      if (keywords(evs).includes('takbir')) hits++
-    }
-    expect(hits).toBeGreaterThanOrEqual(14)
-  })
-})

@@ -73,6 +73,9 @@ export function applyAction(a: DriverAction) {
     if (s.phase === 'ready') s.begin()
   } else if (a.type === 'finish') {
     if (s.phase === 'praying' && s.index === s.sequence.steps.length - 1) s.next()
+  } else if (a.type === 'surah') {
+    // The person is reciting another short surah: show that one.
+    if (s.phase === 'praying') s.switchSurah(a.rakah, a.surah)
   } else if (s.phase === 'praying' && a.index > s.index) {
     s.goTo(a.index)
   }

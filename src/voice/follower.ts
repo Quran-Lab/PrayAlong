@@ -1,5 +1,6 @@
 import phonemeTable from '@/content/phonemes.json'
 import { delCost, insCost, lineSkeleton, subCost, SymbolStream, VOWELS, type LineSkeleton } from './phonetic'
+import { SHORT_SURAHS, type SurahId } from '@/content/recitations'
 import type { FollowerEvent, FollowStep, KeywordKind } from './types'
 
 /**
@@ -10,37 +11,46 @@ import type { FollowerEvent, FollowStep, KeywordKind } from './types'
  * so an accent, a mumble or a noise can at worst look like "this line" or "the
  * next one", never like something three minutes away.
  *
- * Two independent listeners share one symbol stream:
+ * One aligner over a small prayer graph. Everything heard since the anchor
+ * line started is aligned (edit distance on the skeleton alphabet) against the
+ * expected path from here:
  *
- *  - The line tracker: an edit-distance alignment of everything heard since the
- *    anchor line started against [anchor line x repeat, next line, ...], with
- *    two extra moves so real recitation does not read as errors: SKIP a whole
- *    line (forgot it, or said a tasbih once instead of three times) and
- *    RESTART the current line (hesitation, false start, an extra repetition).
- *    The cheapest alignment's end column is where the person is now.
- *  - The keyword spotter: approximate substring matching of the movement
- *    phrases (Allahu akbar, sami'a Allahu liman hamidah, as-salamu alaykum wa
- *    rahmatullah, amin) anywhere in the stream. Whether a keyword may move the
- *    session is the driver's decision, not the spotter's.
+ *    line x repeat -> [takbir?] -> next posture's line -> ...
+ *                  \-> another short surah's opening (a branch)
+ *
+ *  - Repeated lines are loops: each finished repetition is committed and the
+ *    next utterance can only be the next one; extra repetitions restart the
+ *    last one cheaply.
+ *  - Lines can be skipped (forgot it, tasbih said once) or restarted (false
+ *    start, hesitation); the basmala before a surah is an optional prefix.
+ *  - "Allahu akbar" is an optional node before every posture it announces: the
+ *    movement phrase is reported when the best path goes through it. Inside a
+ *    posture there is no such node, so nothing there can be taken for it.
+ *  - While a short surah is due, the openings of the others are branches; the
+ *    person reciting one is reported (event 'surah') when the best path is in
+ *    it, clearly cheaper than the planned surah and every other branch.
+ *
+ * The cheapest path's end is where the person is now.
  *
  * Every event is monotonic: progress is never reported backwards, and each line
  * completes at most once per evaluation, so a misheard burst can move the
  * session by one line, not several.
  */
 
-const LINES = (phonemeTable as { lines: Record<string, { words: string[] }> }).lines
-const SKELETONS = new Map<string, LineSkeleton>()
+const LINES = (phonemeTable as { lines: Record<string, { words: string[]; optional?: number }> }).lines
+const SKELETONS = new Map<string, LineSkeleton & { optional: number }>()
 /** The target phonemes of one word of a line (for logs). */
 export function targetWord(lineId: string, wordIndex: number): string {
   return LINES[lineId]?.words[wordIndex] ?? ''
 }
 
-export function skeletonOf(lineId: string): LineSkeleton | null {
+/** A line's skeleton; `optional` = how many leading words may be left out (the basmala). */
+export function skeletonOf(lineId: string): (LineSkeleton & { optional: number }) | null {
   let sk = SKELETONS.get(lineId)
   if (!sk) {
     const entry = LINES[lineId]
     if (!entry) return null
-    sk = lineSkeleton(entry.words)
+    sk = { ...lineSkeleton(entry.words), optional: entry.optional ?? 0 }
     SKELETONS.set(lineId, sk)
   }
   return sk
@@ -70,8 +80,14 @@ export interface FollowerOptions {
   wordMatch: number
   /** Matched symbols needed inside a later line before the earlier one counts as finished. */
   enterSymbols: number
-  /** Keyword thresholds: max alignment cost per keyword symbol. */
-  keywordCost: Record<KeywordKind, number>
+  /** Cost of leaving out the optional takbir node before a posture (unheard or whispered). */
+  takbirSkipCost: number
+  /** Cost of entering another short surah than the planned one (a branch). */
+  branchCost: number
+  /** How much cheaper the best branch path must be than the planned surah to switch. */
+  branchMargin: number
+  /** Share of the takbir node that must be heard to report the movement phrase. */
+  takbirMatch: number
   /** Longest heard history kept (symbols) before the tracker re-anchors itself. */
   maxHeard: number
   /** Seconds without new symbols before a partly heard last word finishes its line. */
@@ -80,12 +96,16 @@ export interface FollowerOptions {
   idleLastWord: number
   /** Energy silence after a fully heard line that confirms it is over. */
   confirmSilenceSec: number
-  /** The finished line is held at fill 1 this long before it completes (unless the next line starts). */
+  /** Hold a finished line at fill 1 this long before it completes (0: the UI shows the hold instead, without delaying the session). */
   holdSec: number
   /** Unexplained symbols (no word reported) before looking further ahead. */
   lostSymbols: number
   lostWindowSteps: number
   lostSkipCost: number
+  /** Cost of leaving out an optional prefix (the basmala before a surah). */
+  optionalSkipCost: number
+  /** Cost of one more repetition than a repeated line asks for. */
+  extraRepCost: number
 }
 
 export const DEFAULT_FOLLOWER: FollowerOptions = {
@@ -94,15 +114,20 @@ export const DEFAULT_FOLLOWER: FollowerOptions = {
   repSkipCost: 0.8,
   restartCost: 2.5,
   gapInsCost: 0.5,
-  lineMatch: { aloud: 0.5, quiet: 0.35 },
+  lineMatch: { aloud: 0.4, quiet: 0.3 },
+  optionalSkipCost: 0.6,
+  extraRepCost: 0.8,
   wordMatch: 0.34,
   enterSymbols: 4,
-  keywordCost: { takbir: 0.3, tasmi: 0.28, salam: 0.22, amin: 0.12 },
+  takbirSkipCost: 0.3,
+  branchCost: 1,
+  branchMargin: 2,
+  takbirMatch: 0.55,
   maxHeard: 500,
   idleSec: 1.0,
   idleLastWord: 0.6,
-  confirmSilenceSec: 0.25,
-  holdSec: 0.2,
+  confirmSilenceSec: 0.15,
+  holdSec: 0,
   lostSymbols: 35,
   lostWindowSteps: 12,
   lostSkipCost: 2,
@@ -116,6 +141,16 @@ interface Unit {
   voice: 'aloud' | 'quiet'
   start: number
   end: number
+  /**
+   * line: a line of the prayer (one repetition of it); takbir: the optional
+   * "Allahu akbar" said while moving into `step`; branch: the opening of
+   * another short surah than the planned one, entered from where the planned
+   * surah starts.
+   */
+  kind: 'line' | 'takbir' | 'branch'
+  surah?: SurahId
+  /** End of an optional prefix (the basmala before a surah); = start when none. */
+  optEnd: number
   /** Absolute [start, end) per word. */
   words: { start: number; end: number }[]
 }
@@ -127,12 +162,6 @@ interface Heard {
   n: number
 }
 
-interface Spotted {
-  kind: KeywordKind
-  confidence: number
-  startN: number
-  endN: number
-}
 
 const OP_DIAG = 1
 const OP_INS = 2
@@ -149,6 +178,8 @@ interface Alignment {
   rowMatch: Uint8Array
   /** Per column: was it matched by some heard symbol on the best path. */
   colMatch: Uint8Array
+  /** Cost of the best path ending at each column (all of the heard so far). */
+  endCost: Float32Array
 }
 
 export interface FollowerSnapshot {
@@ -179,6 +210,13 @@ export class Follower {
   private heard: Heard[] = []
   private count = 0
   private lost = false
+  /** Predecessor column (and entry cost) of each target column: the graph's edges. */
+  private prevCol = new Int32Array(1)
+  private prevCost = new Float32Array(1)
+  /** The planned short surah in the window: where it starts, and its step. */
+  private planned: { surah: SurahId; step: number; startCol: number; endCol: number } | null = null
+  /** Steps whose announcing takbir has been reported. */
+  private takbirSaid = new Set<number>()
   /** Symbol count at the last word reported (or anchor move). */
   private progressN = 0
   private idleDoneFor = -1
@@ -190,7 +228,6 @@ export class Follower {
   /** Repetitions fully said, per step (only ever goes up). */
   private repsDone = new Map<number, number>()
   private stream = new SymbolStream()
-  private spotter: KeywordSpotter
   /** Last word reported, as step*1e6 + rep*1e3 + word: reports only ever increase. */
   private wordMark = -1
   private lastDone = -1
@@ -199,16 +236,20 @@ export class Follower {
   private lastSnapshot: FollowerSnapshot = { anchor: 0, step: 0, wordIndex: 0, rep: 0, fill: 0, repsDone: 0, heard: 0, cost: 0 }
 
   constructor(steps: FollowStep[] = [], opts: Partial<FollowerOptions> = {}) {
-    this.opts = { ...DEFAULT_FOLLOWER, ...opts, keywordCost: { ...DEFAULT_FOLLOWER.keywordCost, ...opts.keywordCost } }
-    this.spotter = new KeywordSpotter(this.opts.keywordCost)
+    this.opts = { ...DEFAULT_FOLLOWER, ...opts }
     this.setSteps(steps)
   }
 
   setSteps(steps: FollowStep[], anchor = 0) {
     const same = steps.length === this.steps.length && steps.every((s, i) => s.lineId === this.steps[i]?.lineId)
+    // The same prayer up to here with another surah from now on (the person
+    // began reciting a different one): keep the last seconds just heard, so
+    // the verse they are in the middle of still counts.
+    const samePrefix = anchor > 0 && steps.slice(0, anchor).every((s, i) => s.lineId === this.steps[i]?.lineId)
     this.steps = steps
-    this.heard = []
-    if (!same) {
+    const lastAt = this.heard.at(-1)?.at ?? 0
+    this.heard = samePrefix ? this.heard.filter((h) => h.at >= lastAt - 4) : []
+    if (!same && !samePrefix) {
       // A different prayer: nothing said so far applies.
       this.repsDone.clear()
       this.started.clear()
@@ -281,13 +322,7 @@ export class Follower {
   push(tokens: readonly string[], at: number): FollowerEvent[] {
     const symbols = this.stream.push(tokens)
     if (!symbols.length) return []
-    const spotted: Spotted[] = []
-    for (const s of symbols) {
-      const n = this.count++
-      this.heard.push({ s, at, n })
-      const kw = this.spotter.push(s, n)
-      if (kw) spotted.push(kw)
-    }
+    for (const s of symbols) this.heard.push({ s, at, n: this.count++ })
     if (!this.lost && this.count - this.progressN > this.opts.lostSymbols) this.enterLost()
     if (this.heard.length > this.opts.maxHeard) {
       // Too much unexplained audio: keep only the recent part. The anchor
@@ -296,36 +331,7 @@ export class Follower {
       this.heard = this.heard.slice(-60)
       this.reanchor(this.anchor, true)
     }
-    const events = this.evaluate(at)
-    // A keyword only counts when the expected lines do not already explain
-    // those sounds: "Allahumma barik" is phonetically close to "Allahu akbar",
-    // but while the person is on that salawat line the tracker has matched it.
-    const keywordEvents: FollowerEvent[] = []
-    for (const kw of spotted) {
-      if (this.explainedElsewhere(kw)) continue
-      const first = this.heard.find((h) => h.n >= kw.startN)
-      keywordEvents.push({ kind: kw.kind, confidence: kw.confidence, at, start: first?.at ?? at })
-    }
-    return [...keywordEvents, ...events]
-  }
-
-  /** Share of the keyword's symbols matched by the tracker to a different line. */
-  private explainedElsewhere(kw: Spotted): boolean {
-    const al = this.last
-    if (!al) return false
-    const line = KEYWORD_LINES[kw.kind]
-    let total = 0
-    let other = 0
-    for (let i = 0; i < this.heard.length; i++) {
-      const h = this.heard[i]!
-      if (h.n < kw.startN || h.n > kw.endN) continue
-      total++
-      if (!al.rowMatch[i]) continue
-      const col = al.rowCol[i]!
-      const unit = this.units.find((u) => col > u.start && col <= u.end)
-      if (unit && unit.lineId !== line) other++
-    }
-    return total > 0 && other / total >= 0.6
+    return this.evaluate(at)
   }
 
   /** Re-run the decision rules without new audio (e.g. after a pause). */
@@ -376,36 +382,77 @@ export class Follower {
     this.buildWindow()
   }
 
+  /**
+   * The expected path from the anchor as a graph over target columns:
+   *   [takbir?] line x repeat, [takbir?] next line, ...
+   * plus, while a short surah is due, a branch per other short surah entered
+   * from where the planned one starts. Each column has one predecessor (and an
+   * entry cost); skips, restarts and loops are epsilon edges (see jumps()).
+   */
   private buildWindow() {
     this.last = null
     this.units = []
     this.T = []
+    const prevCol: number[] = [0]
+    const prevCost: number[] = [0]
     const bounds: number[] = [0]
+    const add = (unit: Omit<Unit, 'start' | 'end' | 'words' | 'optEnd'>, sk: LineSkeleton & { optional: number }, entry?: { col: number; cost: number }) => {
+      const start = this.T.length
+      for (const s of sk.symbols) {
+        prevCol.push(this.T.length)
+        prevCost.push(0)
+        this.T.push(s)
+      }
+      if (entry) {
+        prevCol[start + 1] = entry.col
+        prevCost[start + 1] = entry.cost
+      }
+      const u: Unit = {
+        ...unit,
+        start,
+        end: this.T.length,
+        words: sk.words.map((w) => ({ start: start + w.start, end: start + w.end })),
+        optEnd: start + (sk.optional ? sk.words[sk.optional - 1]!.end : 0),
+      }
+      this.units.push(u)
+      bounds.push(this.T.length)
+      return u
+    }
+    this.planned = null
     const span = this.lost ? this.opts.lostWindowSteps : this.opts.windowSteps
+    const takbir = skeletonOf('takbir')
     for (let step = this.anchor; step < Math.min(this.steps.length, this.anchor + span); step++) {
       const info = this.steps[step]!
       const sk = skeletonOf(info.lineId)
       if (!sk || !sk.symbols.length) continue
+      // "Allahu akbar" while moving into this posture: an optional node.
+      if (info.takbirBefore && step > this.anchor && takbir) add({ step, rep: 0, lineId: 'takbir', lastRep: true, voice: 'aloud', kind: 'takbir' }, takbir)
       const reps = Math.max(1, info.repeat)
       // Repetitions already said are not in the window: new speech can only
       // be the next repetition (or a restart of it), never an earlier one.
       const firstRep = step === this.anchor ? Math.min(this.repsDone.get(step) ?? 0, reps - 1) : 0
       for (let rep = firstRep; rep < reps; rep++) {
-        const start = this.T.length
-        this.T.push(...sk.symbols)
-        this.units.push({
-          step,
-          rep,
-          lineId: info.lineId,
-          lastRep: rep === reps - 1,
-          voice: info.voice,
-          start,
-          end: this.T.length,
-          words: sk.words.map((w) => ({ start: start + w.start, end: start + w.end })),
-        })
-        bounds.push(this.T.length)
+        const u = add({ step, rep, lineId: info.lineId, lastRep: rep === reps - 1, voice: info.voice, kind: 'line' }, sk)
+        const surah = (Object.keys(SHORT_SURAHS) as SurahId[]).find((x) => SHORT_SURAHS[x].lines[0] === info.lineId)
+        if (surah && !this.planned) this.planned = { surah, step, startCol: u.start, endCol: u.end }
+        else if (this.planned && SHORT_SURAHS[this.planned.surah].lines.includes(info.lineId as never)) this.planned.endCol = u.end
       }
     }
+    // Branches: the other short surahs' openings, entered from the planned
+    // surah's start (al-Asr's first verse is one word, so its second too).
+    if (this.planned && this.planned.step >= this.anchor) {
+      for (const surah of Object.keys(SHORT_SURAHS) as SurahId[]) {
+        if (surah === this.planned.surah) continue
+        const lines = SHORT_SURAHS[surah].lines.slice(0, surah === 'asr' ? 3 : 2)
+        lines.forEach((lineId, k) => {
+          const sk = skeletonOf(lineId)
+          if (!sk) return
+          add({ step: this.planned!.step + k, rep: 0, lineId, lastRep: true, voice: 'aloud', kind: 'branch', surah }, sk, k === 0 ? { col: this.planned!.startCol, cost: this.opts.branchCost } : undefined)
+        })
+      }
+    }
+    this.prevCol = Int32Array.from(prevCol)
+    this.prevCost = Float32Array.from(prevCost)
     this.boundary = new Uint8Array(this.T.length + 1)
     for (const b of bounds) this.boundary[b] = 1
     this.lastSnapshot = { anchor: this.anchor, step: this.anchor, wordIndex: 0, rep: 0, fill: 0, repsDone: this.repsDone.get(this.anchor) ?? 0, heard: this.heard.length, cost: 0 }
@@ -434,10 +481,12 @@ export class Follower {
     const op = new Uint8Array((n + 1) * W)
     const src = new Int32Array((n + 1) * W)
     const { gapInsCost } = this.opts
+    const P = this.prevCol
+    const PC = this.prevCost
 
-    // Row 0: nothing heard yet; reaching column j means deleting T[0..j).
+    // Row 0: nothing heard yet; reaching column j means deleting the path to it.
     for (let j = 1; j <= M; j++) {
-      D[j] = D[j - 1]! + delCost(T[j - 1]!)
+      D[j] = D[P[j]!]! + PC[j]! + delCost(T[j - 1]!)
       op[j] = OP_DEL
     }
     this.jumps(D, op, src, 0, W)
@@ -453,12 +502,13 @@ export class Follower {
         let o = OP_INS
         if (j > 0) {
           const t = T[j - 1]!
-          const diag = D[prev + j - 1]! + subCost(h, t)
+          const p = P[j]!
+          const diag = D[prev + p]! + PC[j]! + subCost(h, t)
           if (diag < best) {
             best = diag
             o = OP_DIAG
           }
-          const del = D[base + j - 1]! + delCost(t)
+          const del = D[base + p]! + PC[j]! + delCost(t)
           if (del < best) {
             best = del
             o = OP_DEL
@@ -493,27 +543,39 @@ export class Follower {
           colMatch[j] = 1
         }
         i--
-        j--
+        j = P[j]!
       } else if (o === OP_INS) {
         rowCol[i - 1] = j
         i--
       } else if (o === OP_DEL) {
-        j--
+        j = P[j]!
       } else if (o === OP_SKIP || o === OP_RESTART) {
         j = src[k]!
       } else {
         break
       }
     }
-    return { end, cost: D[last + end]!, rowCol, rowMatch, colMatch }
+    return { end, cost: D[last + end]!, rowCol, rowMatch, colMatch, endCost: D.slice(last, last + W) }
   }
 
   /** Skip and restart moves, applied to row i after the ordinary DP. */
   private jumps(D: Float32Array, op: Uint8Array, src: Int32Array, i: number, W: number) {
     const base = i * W
     const { skipCost, repSkipCost, restartCost } = this.opts
-    // Restart: from anywhere inside a unit (or its end) back to its start.
+    const P = this.prevCol
+    // Deletions onward from a column whose value just improved (same line only).
+    const propagate = (from: number, until: number) => {
+      for (let j = from + 1; j <= until; j++) {
+        if (P[j] !== j - 1) break
+        const d = D[base + j - 1]! + delCost(this.T[j - 1]!)
+        if (d >= D[base + j]!) break
+        D[base + j] = d
+        op[base + j] = OP_DEL
+      }
+    }
+    // Restart: from anywhere inside a line (or its end) back to its start.
     for (const u of this.units) {
+      if (u.kind !== 'line') continue
       let bestJ = -1
       let bestV = Infinity
       for (let j = u.start + 1; j <= u.end; j++) {
@@ -527,23 +589,44 @@ export class Follower {
         op[base + u.start] = OP_RESTART
         src[base + u.start] = bestJ
       }
+      // One more repetition of a repeated line (tasbih said 4 or 5 times):
+      // from its finished last repetition back to its start, cheaply, so the
+      // extra ones never read as the next posture's identical line.
+      if (u.lastRep && (this.steps[u.step]?.repeat ?? 1) > 1) {
+        const v = D[base + u.end]! + this.opts.extraRepCost
+        if (v < D[base + u.start]!) {
+          D[base + u.start] = v
+          op[base + u.start] = OP_RESTART
+          src[base + u.start] = u.end
+        }
+      }
     }
     // Skip whole units, left to right so several can be skipped in a row.
     for (const u of this.units) {
-      const cost = u.rep > 0 ? repSkipCost : this.lost ? this.opts.lostSkipCost : skipCost
+      // The basmala before a surah may be said or not: skipping it is cheap.
+      // A branch's basmala is entered from the planned surah's start.
+      if (u.optEnd > u.start) {
+        const fromBranch = u.kind === 'branch' && this.planned && P[u.start + 1] !== u.start
+        const srcCol = fromBranch ? this.planned!.startCol : u.start
+        const v = D[base + srcCol]! + (fromBranch ? this.opts.branchCost : 0) + this.opts.optionalSkipCost
+        if (v < D[base + u.optEnd]!) {
+          D[base + u.optEnd] = v
+          op[base + u.optEnd] = OP_SKIP
+          src[base + u.optEnd] = srcCol
+          propagate(u.optEnd, u.end)
+        }
+      }
+      if (u.kind === 'branch') continue
+      // A takbir node is optional (often whispered or unheard); lines cost more.
+      const cost = u.kind === 'takbir' ? this.opts.takbirSkipCost : u.rep > 0 ? repSkipCost : this.lost ? this.opts.lostSkipCost : skipCost
       const v = D[base + u.start]! + cost
       if (v < D[base + u.end]!) {
         D[base + u.end] = v
         op[base + u.end] = OP_SKIP
         src[base + u.end] = u.start
         // Re-propagate deletions into the next unit from the new boundary value.
-        for (let j = u.end + 1; j <= this.T.length; j++) {
-          const d = D[base + j - 1]! + delCost(this.T[j - 1]!)
-          if (d >= D[base + j]!) break
-          D[base + j] = d
-          op[base + j] = OP_DEL
-          if (this.boundary[j]) break
-        }
+        const next = this.units.find((x) => x.start === u.end && x.kind !== 'branch')
+        if (next) propagate(u.end, next.end)
       }
     }
   }
@@ -572,9 +655,49 @@ export class Follower {
     let cur = units.findIndex((u) => al.end < u.end || (al.end === u.end && u === units.at(-1)))
     if (cur < 0) cur = units.length - 1
 
-    // Words: report every word the cursor has passed, in order, once.
-    words: for (let ui = 0; ui <= cur; ui++) {
+    // The best path is in another surah's opening: decide whether to switch.
+    // Only with enough of it heard and clearly cheaper than the planned surah.
+    // The unit the path ends in (a column at a unit's end belongs to it).
+    const endUnit = units.find((u) => u.kind === 'branch' && al.end > u.start && al.end <= u.end)
+    if (endUnit && this.planned) {
+      const surah = endUnit.surah!
+      const branch = units.filter((u) => u.kind === 'branch' && u.surah === surah)
+      const heardOf = branch.reduce((n, u) => n + unitMatched[units.indexOf(u)]!, 0)
+      let bestBranch = Infinity
+      for (const u of branch) for (let c = u.start + 1; c <= u.end; c++) bestBranch = Math.min(bestBranch, al.endCost[c]!)
+      let bestPlanned = Infinity
+      for (let c = this.planned.startCol; c <= this.planned.endCol; c++) bestPlanned = Math.min(bestPlanned, al.endCost[c]!)
+      // ...and than every other branch: al-Falaq and an-Nas share their first
+      // three words, so their last word decides.
+      let bestOther = Infinity
+      for (const u of units) {
+        if (u.kind !== 'branch' || u.surah === surah) continue
+        for (let c = u.start + 1; c <= u.end; c++) bestOther = Math.min(bestOther, al.endCost[c]!)
+      }
+      if (heardOf >= 8 && bestBranch + this.opts.branchMargin <= bestPlanned && bestBranch + this.opts.branchMargin / 2 <= bestOther) {
+        const len = branch.reduce((n, u) => n + u.end - u.start, 0)
+        events.push({ kind: 'surah', surah, step: this.planned.step, confidence: round(Math.min(1, heardOf / Math.max(8, len * 0.6))), at })
+      }
+      // Lines before the surah (amin) may still finish below; nothing else moves.
+    }
+    const inBranch = !!endUnit
+
+    // The movement phrase: the path went through (or is in) a takbir node and
+    // most of it was heard.
+    for (let ui = 0; ui <= cur; ui++) {
       const u = units[ui]!
+      if (u.kind !== 'takbir' || this.takbirSaid.has(u.step)) continue
+      const matched = unitMatched[ui]! / Math.max(1, u.end - u.start)
+      if (matched >= this.opts.takbirMatch) {
+        this.takbirSaid.add(u.step)
+        events.push({ kind: 'takbir', confidence: round(matched), at, start: at })
+      }
+    }
+
+    // Words: report every word the cursor has passed, in order, once.
+    words: for (let ui = 0; ui <= cur && !inBranch; ui++) {
+      const u = units[ui]!
+      if (u.kind !== 'line') continue
       for (let wi = 0; wi < u.words.length; wi++) {
         const w = u.words[wi]!
         if (w.end > al.end) break words
@@ -593,15 +716,15 @@ export class Follower {
     }
 
     // Line start: the person is confidently inside a step's first unit.
-    for (let ui = 0; ui <= cur; ui++) {
+    for (let ui = 0; ui <= cur && !inBranch; ui++) {
       const u = units[ui]!
-      if (u.rep !== 0 || this.started.has(u.step)) continue
-      const stepMatched = units.filter((v) => v.step === u.step).reduce((sum, v) => sum + unitMatched[units.indexOf(v)]!, 0)
+      if (u.kind !== 'line' || u.rep !== 0 || this.started.has(u.step)) continue
+      const stepMatched = units.filter((v) => v.step === u.step && v.kind === 'line').reduce((sum, v) => sum + unitMatched[units.indexOf(v)]!, 0)
       const firstWord = u.words[0]
       const need = this.opts.enterSymbols + 2
       if (stepMatched >= need && firstWord && (wordFrac(firstWord) >= 0.6 || stepMatched >= 2 * need)) {
         this.started.add(u.step)
-        const total = units.filter((v) => v.step === u.step).reduce((sum, v) => sum + (v.end - v.start), 0)
+        const total = units.filter((v) => v.step === u.step && v.kind === 'line').reduce((sum, v) => sum + (v.end - v.start), 0)
         events.push({ kind: 'lineStart', step: u.step, lineId: u.lineId, confidence: round(Math.min(1, stepMatched / Math.max(6, total * 0.3))), at })
       }
     }
@@ -609,8 +732,8 @@ export class Follower {
     // A repetition said to its end (tasbih x3) is committed: its phonemes and
     // its unit leave the window, so the next utterance can only be the next
     // repetition. Confirmed like a line: the next one has begun, or quiet.
-    if (!this.committing) {
-      const own = units.filter((u) => u.step === this.anchor)
+    if (!this.committing && !inBranch) {
+      const own = units.filter((u) => u.step === this.anchor && u.kind === 'line')
       const first = own[0]
       if (first && own.length > 1 && al.end >= first.end) {
         const fi = units.indexOf(first)
@@ -641,13 +764,15 @@ export class Follower {
 
     // Line done: at most one per evaluation, strictly in order.
     const nextStep = this.lastDone + 1
-    const stepUnits = units.filter((u) => u.step === nextStep)
-    if (stepUnits.length) {
+    const stepUnits = units.filter((u) => u.step === nextStep && u.kind === 'line')
+    if (stepUnits.length && !(inBranch && this.planned && nextStep >= this.planned.step)) {
       const lastUnit = stepUnits.at(-1)!
       const voice = lastUnit.voice
       const done = al.end >= lastUnit.end
       const matchedLast = unitMatched[units.indexOf(lastUnit)]! / Math.max(1, lastUnit.end - lastUnit.start)
-      const laterMatched = units.filter((u) => u.step > nextStep && units.indexOf(u) <= cur).reduce((s, u) => s + unitMatched[units.indexOf(u)]!, 0)
+      // Heard of what comes after this step (its next line, or the takbir of
+      // the next posture); branches count only once they are switched to.
+      const laterMatched = units.filter((u) => u.step > nextStep && u.kind !== 'branch' && units.indexOf(u) <= cur).reduce((s, u) => s + unitMatched[units.indexOf(u)]!, 0)
       // Repetitions committed earlier are no longer in the window: count them in.
       const repsSaid = stepUnits[0]!.rep + stepUnits.filter((u) => unitMatched[units.indexOf(u)]! >= Math.max(2, (u.end - u.start) * this.opts.lineMatch[voice])).length
       const lastWord = lastUnit.words.at(-1)
@@ -703,9 +828,16 @@ export class Follower {
     // Snapshot for the UI: the word in progress and how far through it.
     // A line whose last phoneme has just been heard stays on its last word
     // with fill 1 until the next line actually starts.
-    let cu = units[cur]
-    const prev = units[cur - 1]
-    if (cu && prev && al.end === prev.end) cu = prev
+    if (inBranch) return events
+    // The cursor is on a line: inside a takbir node, the person has finished
+    // the line before it.
+    let ci = cur
+    while (ci > 0 && units[ci]!.kind !== 'line') ci--
+    let cu = units[ci]?.kind === 'line' ? units[ci] : undefined
+    let prevLine = ci - 1
+    while (prevLine >= 0 && units[prevLine]!.kind !== 'line') prevLine--
+    const prev = units[prevLine]
+    if (cu && prev && (al.end === prev.end || ci !== cur)) cu = ci !== cur ? units[ci] : prev
     if (cu) {
       let wordIndex = cu.words.findIndex((w) => w.end > al.end)
       let fill = 1
@@ -717,7 +849,7 @@ export class Follower {
       // A completed line always shows its last word whole (the idle rule can
       // finish a line whose last phonemes the model never emitted).
       if (cu.step <= this.lastDone && cu.step >= this.anchor) {
-        const lastOfStep = [...units].reverse().find((u) => u.step === cu!.step)
+        const lastOfStep = [...units].reverse().find((u) => u.step === cu!.step && u.kind === 'line')
         if (lastOfStep) {
           cu = lastOfStep
           wordIndex = cu.words.length - 1
@@ -726,7 +858,7 @@ export class Follower {
       }
       // Repetitions said to their end so far (live; never goes down).
       const step = cu.step
-      const passed = (units.find((u) => u.step === step)?.rep ?? 0) + units.filter((u) => u.step === step && al.end >= u.end && unitMatched[units.indexOf(u)]! >= 2).length
+      const passed = (units.find((u) => u.step === step && u.kind === 'line')?.rep ?? 0) + units.filter((u) => u.step === step && u.kind === 'line' && al.end >= u.end && unitMatched[units.indexOf(u)]! >= 2).length
       const repsDone = Math.max(this.repsDone.get(step) ?? 0, passed)
       this.repsDone.set(step, repsDone)
       this.lastSnapshot = { anchor: this.anchor, step, rep: cu.rep, wordIndex, fill: round(fill), repsDone, heard: this.heard.length, cost: round(al.cost) }
@@ -754,73 +886,3 @@ function wordHeardToEnd(al: Alignment, w: { start: number; end: number }): boole
  * different short vowel is cheap in the alignment cost but is not evidence.
  */
 const isMatch = (h: string, t: string) => h === t || (!VOWELS.has(h) && !VOWELS.has(t) && subCost(h, t) <= 0.45)
-
-/**
- * Approximate substring matching (Sellers) of each keyword against the symbol
- * stream: the keyword may start anywhere, and a detection fires as soon as the
- * cost of the best alignment ending here drops under the threshold.
- */
-export class KeywordSpotter {
-  private patterns: { kind: KeywordKind; P: string[]; col: Float32Array; startAt: Float64Array; limit: number; cooldown: number }[] = []
-
-  constructor(costs: Record<KeywordKind, number>) {
-    for (const kind of Object.keys(KEYWORD_LINES) as KeywordKind[]) {
-      const sk = skeletonOf(KEYWORD_LINES[kind])
-      if (!sk) continue
-      const P = sk.symbols
-      const col = new Float32Array(P.length + 1)
-      this.patterns.push({ kind, P, col, startAt: new Float64Array(P.length + 1), limit: costs[kind] * P.length, cooldown: 0 })
-      this.resetPattern(this.patterns.at(-1)!)
-    }
-  }
-
-  private resetPattern(p: KeywordSpotter['patterns'][number]) {
-    p.col[0] = 0
-    for (let j = 1; j <= p.P.length; j++) p.col[j] = p.col[j - 1]! + delCost(p.P[j - 1]!) + 2 // fresh start must see the beginning
-    p.startAt.fill(Infinity)
-  }
-
-  /** One more heard symbol (`n` = its running number). */
-  push(s: string, n: number): Spotted | null {
-    let fired: Spotted | null = null
-    for (const p of this.patterns) {
-      const { P, col, startAt } = p
-      let diagPrev = col[0]!
-      let diagStart = n
-      col[0] = 0
-      startAt[0] = n
-      for (let j = 1; j <= P.length; j++) {
-        const up = col[j]! + insCost(s)
-        const diag = diagPrev + subCost(s, P[j - 1]!)
-        const left = col[j - 1]! + delCost(P[j - 1]!)
-        diagPrev = col[j]!
-        const prevStart = startAt[j]!
-        let v = up
-        let st = prevStart
-        if (diag < v) {
-          v = diag
-          st = diagStart
-        }
-        if (left < v) {
-          v = left
-          st = startAt[j - 1]!
-        }
-        diagStart = prevStart
-        col[j] = v
-        startAt[j] = st
-      }
-      if (p.cooldown > 0) {
-        p.cooldown--
-        continue
-      }
-      const cost = col[P.length]!
-      if (cost <= p.limit && !fired) {
-        const startN = startAt[P.length]!
-        fired = { kind: p.kind, confidence: round(Math.max(0, 1 - cost / (P.length * 0.5))), startN: Number.isFinite(startN) ? startN : n, endN: n }
-        this.resetPattern(p)
-        p.cooldown = Math.ceil(P.length / 2)
-      }
-    }
-    return fired
-  }
-}

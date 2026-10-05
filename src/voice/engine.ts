@@ -35,7 +35,10 @@ export interface VoiceEngineOptions {
 
 const asset = (path: string) => new URL(path, document.baseURI).href
 
-export const DEFAULT_MODEL_BASE: string = import.meta.env.VITE_VOICE_MODEL_URL || 'voice/model/'
+// [voice] Model: the 160 ms streaming chunk (v31-slim-int8-preopt-c8-1, sha256 e3007fcd...).
+// Same line accuracy as 320 ms (voice/model/c16-1/) and the lowest lag. 480 ms is voice/model/.
+// See docs/voice.md.
+export const DEFAULT_MODEL_BASE: string = import.meta.env.VITE_VOICE_MODEL_URL || 'voice/model/c8-1/'
 
 export function voiceSupported(): boolean {
   return (
@@ -56,6 +59,8 @@ export class VoiceEngine {
    * uses it to line the worker's audio clock up with a fake-capture file.
    */
   micLeadSec = 0
+  /** Total decoding time and audio decoded so far (real-time factor = decodeMs / 1000 / audioSec), from the last finish(). */
+  decodeStats = { decodeMs: 0, audioSec: 0 }
   private micOpenedAt = 0
   private worker: Worker | null = null
   private ctx: AudioContext | null = null
@@ -137,6 +142,7 @@ export class VoiceEngine {
             break
           case 'ack':
           case 'finished':
+            if (typeof m.decodeMs === 'number') this.decodeStats = { decodeMs: m.decodeMs, audioSec: m.audioSec }
             this.pending.get(m.id)?.()
             this.pending.delete(m.id)
             break

@@ -1,6 +1,6 @@
 import { POSE_OF } from '@/content/postures'
 import { PRAYER_BY_ID } from '@/content/prayers'
-import { getLine, surahsByRakah, type RecitationId } from '@/content/recitations'
+import { getLine, surahFor, type RecitationId, type SurahId } from '@/content/recitations'
 import type { CueId, GroupId, Posture, PrayerId, PrayerSequence, Step, StepTiming, Voice } from './types'
 
 /**
@@ -24,7 +24,7 @@ interface Block {
   cue?: CueId
 }
 
-function rakahBlocks(prayer: PrayerId, rakah: number): Block[] {
+function rakahBlocks(prayer: PrayerId, rakah: number, surahs?: Partial<Record<number, SurahId>>): Block[] {
   const info = PRAYER_BY_ID[prayer]
   const last = rakah === info.rakahs
   const aloud: Voice = info.aloudRakahs.includes(rakah) ? 'aloud' : 'quiet'
@@ -35,7 +35,7 @@ function rakahBlocks(prayer: PrayerId, rakah: number): Block[] {
     blocks.push({ posture: 'qiyam', group: 'opening', lines: ['thana-1', 'thana-2', 'taawwudh'], cue: 'fold' })
   }
 
-  const surah = surahsByRakah[rakah]
+  const surah = surahFor(rakah, surahs)
   blocks.push({
     posture: 'qiyam',
     group: 'fatiha',
@@ -69,12 +69,16 @@ function rakahBlocks(prayer: PrayerId, rakah: number): Block[] {
   return blocks
 }
 
-export function buildSequence(prayer: PrayerId): PrayerSequence {
+/**
+ * The steps of one prayer. `surahs` replaces the planned short surah of a
+ * rak'ah (1 and 2), e.g. when the worshipper recites another one.
+ */
+export function buildSequence(prayer: PrayerId, surahs?: Partial<Record<number, SurahId>>): PrayerSequence {
   const info = PRAYER_BY_ID[prayer]
   const steps: Step[] = []
 
   for (let rakah = 1; rakah <= info.rakahs; rakah++) {
-    for (const block of rakahBlocks(prayer, rakah)) {
+    for (const block of rakahBlocks(prayer, rakah, surahs)) {
       const repeat = block.repeat ?? 1
       block.lines.forEach((recitationId, i) => {
         steps.push({
@@ -96,6 +100,32 @@ export function buildSequence(prayer: PrayerId): PrayerSequence {
   }
 
   return { version: 1, prayer, rakahs: info.rakahs, steps }
+}
+
+/**
+ * The same prayer with another short surah in `rakah` (the worshipper chose or
+ * started reciting a different one). The position moves with it: if the
+ * session was on amin or anywhere in that rak'ah's surah, it lands on the new
+ * surah's first line; anywhere else it stays on the same step.
+ */
+export function switchSurah(
+  seq: PrayerSequence,
+  surahs: Partial<Record<number, SurahId>>,
+  rakah: number,
+  surah: SurahId,
+  index: number,
+): { sequence: PrayerSequence; surahs: Partial<Record<number, SurahId>>; index: number } {
+  const chosen = { ...surahs, [rakah]: surah }
+  const next = buildSequence(seq.prayer, chosen)
+  const isSurahGroup = (s: Step) => s.rakah === rakah && s.posture === 'qiyam' && s.group !== 'fatiha' && s.group !== 'amin' && s.group !== 'opening'
+  const here = seq.steps[index]
+  const firstNew = next.steps.findIndex(isSurahGroup)
+  const oldStart = seq.steps.findIndex(isSurahGroup)
+  const oldEnd = oldStart < 0 ? -1 : oldStart + seq.steps.filter(isSurahGroup).length
+  let to = index
+  if (here && here.rakah === rakah && (here.group === 'amin' || isSurahGroup(here)) && firstNew >= 0) to = Math.max(index, firstNew)
+  else if (oldEnd >= 0 && index >= oldEnd) to = index + (next.steps.length - seq.steps.length)
+  return { sequence: next, surahs: chosen, index: Math.min(to, next.steps.length - 1) }
 }
 
 /** A run of consecutive steps that share a posture — one item in the dock. */

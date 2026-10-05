@@ -1,3 +1,5 @@
+import type { SurahId } from '@/content/recitations'
+
 /**
  * Vocabulary of the microphone engine. The follower and driver are pure and
  * run anywhere (tests, worker, main thread); only engine.ts touches the DOM.
@@ -26,6 +28,8 @@ export type FollowerEvent =
   | { kind: 'lineStart'; step: number; lineId: string; confidence: number; at: number }
   | { kind: 'lineDone'; step: number; lineId: string; confidence: number; reps: number; at: number }
   | { kind: KeywordKind; confidence: number; at: number; start: number }
+  /** A different short surah than planned is being recited (`step`: where the planned one starts). */
+  | { kind: 'surah'; surah: SurahId; step: number; confidence: number; at: number }
 
 /**
  * The fusion API: one shape for camera and voice evidence so the main thread
@@ -33,7 +37,7 @@ export type FollowerEvent =
  */
 export interface Evidence {
   source: 'voice' | 'camera'
-  kind: 'takbir' | 'tasmi' | 'salam' | 'amin' | 'lineStart' | 'lineDone' | 'word' | 'pose'
+  kind: 'takbir' | 'tasmi' | 'salam' | 'amin' | 'lineStart' | 'lineDone' | 'word' | 'pose' | 'surah'
   confidence: number
   at: number
   /** Step the evidence is about, when it is about a specific line. */
@@ -47,4 +51,6 @@ export interface FollowStep {
   lineId: string
   repeat: number
   voice: 'aloud' | 'quiet'
+  /** The person says "Allahu akbar" while moving into this step (an optional takbir node before it). */
+  takbirBefore?: boolean
 }

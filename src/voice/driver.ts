@@ -1,5 +1,6 @@
 import { nextPoseChange } from '@/sequence/build'
 import type { Step } from '@/sequence/types'
+import type { SurahId } from '@/content/recitations'
 import { KEYWORD_LINES } from './follower'
 import type { FollowerEvent, KeywordKind } from './types'
 
@@ -37,6 +38,8 @@ export type DriverAction =
   | { type: 'begin'; reason: string }
   | { type: 'goTo'; index: number; reason: string }
   | { type: 'finish'; reason: string }
+  /** Another short surah is being recited in this rak'ah: switch the session to it. */
+  | { type: 'surah'; rakah: number; surah: SurahId; reason: string }
 
 export interface DriverConfig {
   mode: DriverMode
@@ -96,6 +99,9 @@ export class VoiceDriver {
   private wordsOnStep = 0
   private lineDone = false
   private lineDoneAt = 0
+  /** Furthest step a word was heard clearly in, and when. */
+  private confidentStep = -1
+  private confidentAt = -Infinity
 
   constructor(cfg: Partial<DriverConfig> & Pick<DriverConfig, 'stepMs'>) {
     this.cfg = { ...DEFAULT_DRIVER, ...cfg }
@@ -133,6 +139,10 @@ export class VoiceDriver {
     if (e.kind === 'word') {
       this.lastWordAt = now
       if (e.step === s.index) this.wordsOnStep++
+      if (e.confidence >= 0.6 && e.step >= this.confidentStep) {
+        this.confidentStep = e.step
+        this.confidentAt = now
+      }
     }
     if (mode === 'evidence' || s.phase === 'complete') return null
 
@@ -156,7 +166,13 @@ export class VoiceDriver {
         if (!after) return { type: 'finish', reason: 'lineDone' }
         // The person already finished a line beyond the next one, so they are
         // past this step's posture change too.
-        if (e.step > i && (mode === 'full' || after.pose === here.pose)) return this.move(i + 1, 'catchUp')
+        // Only on a line that was actually heard, or (listening started late)
+        // when words of a later line have been heard clearly: never on a line
+        // merely inferred as skipped ahead of the voice.
+        if (e.step > i) {
+          const heardBeyond = this.confidentStep > e.step && now - this.confidentAt < 10_000
+          return (e.confidence >= 0.5 || heardBeyond) && (mode === 'full' || after.pose === here.pose) ? this.move(i + 1, 'catchUp') : null
+        }
         this.lineDone = true
         this.lineDoneAt = now
         const samePose = after.pose === here.pose
@@ -189,12 +205,19 @@ export class VoiceDriver {
         if (now - this.arrivedAt < this.cfg.minDwellMs) return null
         const t = this.transitionTarget(e.kind, s)
         if (t <= i) return null
-        // Lines still to go in this posture while the voice is being followed:
-        // a phrase heard now is more likely a mishearing than a skipped passage.
-        const linesLeft = t - i - 1
-        const following = now - this.lastWordAt < 4000 && here.voice === 'aloud'
-        if (linesLeft > 1 && following) return null
+        // One phrase, one step: a movement phrase only moves from the last line
+        // before that movement. If lines were left (the session is behind),
+        // the line rules catch up first.
+        if (t !== i + 1) return null
         return this.move(t, e.kind)
+      }
+      case 'surah': {
+        // Only around where that surah starts: from the end of al-Fatiha
+        // until the planned surah's second line.
+        const planned = steps[e.step]
+        if (!planned || planned.rakah !== here.rakah) return null
+        if (i < e.step - 3 || i > e.step + 1) return null
+        return { type: 'surah', rakah: planned.rakah, surah: e.surah, reason: 'surah' }
       }
       default:
         return null
@@ -250,7 +273,10 @@ export class VoiceDriver {
     if (here.repeat > 1 && !this.lineDone && reps < here.repeat && (reps > 0 || this.wordsOnStep > 0)) {
       return quietFor >= this.cfg.repeatSilenceMs ? (after ? this.move(i + 1, 'timer') : { type: 'finish', reason: 'timer' }) : null
     }
-    const expected = this.cfg.stepMs(here) * (this.wordsOnStep > 0 && !this.lineDone ? this.cfg.trackingSlack : 1)
+    // Slower when the line is being followed but not done, and on an aloud
+    // line nobody has started yet (a pause before reciting is not silence).
+    const notStarted = here.voice === 'aloud' && this.lastSpeechAt < this.arrivedAt
+    const expected = this.cfg.stepMs(here) * (this.wordsOnStep > 0 && !this.lineDone ? this.cfg.trackingSlack : notStarted ? 2 : 1)
     if (!after) return elapsed >= expected || (this.lineDone && now - this.lineDoneAt >= this.cfg.postureAfterDoneMs) ? { type: 'finish', reason: 'timer' } : null
     const samePosture = after.pose === here.pose && after.posture === here.posture
     if (samePosture || (mode === 'full' && after.pose === here.pose)) {

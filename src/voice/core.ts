@@ -1,10 +1,12 @@
-import type { Step } from '@/sequence/types'
-import { VoiceDriver, type DriverAction, type DriverConfig, type SessionView } from './driver'
+import type { SurahId } from '@/content/recitations'
+import { switchSurah } from '@/sequence/build'
+import type { PrayerId, Step } from '@/sequence/types'
+import { announcedBy, VoiceDriver, type DriverAction, type DriverConfig, type SessionView } from './driver'
 import { Follower, type FollowerOptions } from './follower'
 import type { FollowerEvent, FollowStep } from './types'
 
 export const followSteps = (steps: readonly Step[]): FollowStep[] =>
-  steps.map((s) => ({ lineId: s.recitationId, repeat: s.repeat, voice: s.voice }))
+  steps.map((s, i) => ({ lineId: s.recitationId, repeat: s.repeat, voice: s.voice, takbirBefore: announcedBy(steps, i) === 'takbir' }))
 
 export interface CoreHooks {
   /** Current session state. */
@@ -95,7 +97,12 @@ export class VoiceCore {
 export class SessionSim {
   phase: SessionView['phase'] = 'ready'
   index = 0
-  constructor(readonly steps: readonly Step[]) {}
+  steps: readonly Step[]
+  surahs: Partial<Record<number, SurahId>> = {}
+  /** `prayer` enables surah switches (needed to rebuild the sequence). */
+  constructor(steps: readonly Step[], readonly prayer?: PrayerId) {
+    this.steps = steps
+  }
   view = (): SessionView => ({ phase: this.phase, index: this.index, steps: this.steps })
   apply = (a: DriverAction) => {
     if (a.type === 'begin') {
@@ -105,6 +112,13 @@ export class SessionSim {
       }
     } else if (a.type === 'finish') {
       if (this.phase === 'praying' && this.index === this.steps.length - 1) this.phase = 'complete'
+    } else if (a.type === 'surah') {
+      if (!this.prayer || this.surahs[a.rakah] === a.surah) return
+      const seq = { version: 1 as const, prayer: this.prayer, rakahs: 0, steps: [...this.steps] }
+      const r = switchSurah(seq, this.surahs, a.rakah, a.surah, this.index)
+      this.steps = r.sequence.steps
+      this.surahs = r.surahs
+      this.index = r.index
     } else if (this.phase === 'praying' && a.index > this.index) {
       this.index = Math.min(a.index, this.steps.length - 1)
     }

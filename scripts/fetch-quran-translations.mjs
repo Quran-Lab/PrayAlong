@@ -25,6 +25,13 @@ const VERSES = {
   'fatiha-5': [1, 5], 'fatiha-6': [1, 6], 'fatiha-7': [1, 7],
   'kawthar-1': [108, 1], 'kawthar-2': [108, 2], 'kawthar-3': [108, 3],
   'ikhlas-1': [112, 1], 'ikhlas-2': [112, 2], 'ikhlas-3': [112, 3], 'ikhlas-4': [112, 4],
+  // Other short surahs people often recite after Al-Fatiha (voice follow accepts them).
+  'asr-1': [103, 1], 'asr-2': [103, 2], 'asr-3': [103, 3],
+  'kafirun-1': [109, 1], 'kafirun-2': [109, 2], 'kafirun-3': [109, 3], 'kafirun-4': [109, 4], 'kafirun-5': [109, 5], 'kafirun-6': [109, 6],
+  'nasr-1': [110, 1], 'nasr-2': [110, 2], 'nasr-3': [110, 3],
+  'masad-1': [111, 1], 'masad-2': [111, 2], 'masad-3': [111, 3], 'masad-4': [111, 4], 'masad-5': [111, 5],
+  'falaq-1': [113, 1], 'falaq-2': [113, 2], 'falaq-3': [113, 3], 'falaq-4': [113, 4], 'falaq-5': [113, 5],
+  'nas-1': [114, 1], 'nas-2': [114, 2], 'nas-3': [114, 3], 'nas-4': [114, 4], 'nas-5': [114, 5], 'nas-6': [114, 6],
 }
 
 for (const [locale, [edition, credit]] of Object.entries(EDITIONS)) {
