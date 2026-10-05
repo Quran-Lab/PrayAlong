@@ -786,7 +786,9 @@ export class Follower {
       this.fullFor = full ? nextStep : -1
       // Confirmed once the person is quiet (energy) or the next line has
       // begun, and after a short hold so the finished line is seen whole.
-      const quiet = at - this.voicedAt >= this.opts.confirmSilenceSec || (idle && at - (this.heard.at(-1)?.at ?? at) >= 0.6)
+      const energyQuiet = at - this.voicedAt >= this.opts.confirmSilenceSec
+      const gapQuiet = idle && at - (this.heard.at(-1)?.at ?? at) >= 0.6
+      const quiet = energyQuiet || gapQuiet
       const finishedHere = full && (nextStarted || (quiet && at - this.fullAt >= this.opts.holdSec))
       this.pending = full && !finishedHere
       const movedOn = laterMatched >= this.opts.enterSymbols && repsSaid > 0
@@ -821,7 +823,8 @@ export class Follower {
         }
         this.lastDone = nextStep
         const conf = finishedHere ? matchedLast : stoppedInLastWord ? Math.min(0.7, matchedLast) : movedOn ? 0.6 : 0.35
-        events.push({ kind: 'lineDone', step: nextStep, lineId: lastUnit.lineId, confidence: round(conf), reps: this.repsDone.get(nextStep) ?? repsSaid, at })
+        const why = finishedHere ? (nextStarted ? 'next' : energyQuiet ? 'quiet' : 'gap') : stoppedInLastWord ? 'stopped' : 'moved-on'
+        events.push({ kind: 'lineDone', step: nextStep, lineId: lastUnit.lineId, confidence: round(conf), reps: this.repsDone.get(nextStep) ?? repsSaid, at, why })
       }
     }
 

@@ -26,7 +26,7 @@ export type KeywordKind = 'takbir' | 'tasmi' | 'salam' | 'amin'
 export type FollowerEvent =
   | { kind: 'word'; step: number; lineId: string; wordIndex: number; rep: number; confidence: number; at: number }
   | { kind: 'lineStart'; step: number; lineId: string; confidence: number; at: number }
-  | { kind: 'lineDone'; step: number; lineId: string; confidence: number; reps: number; at: number }
+  | { kind: 'lineDone'; step: number; lineId: string; confidence: number; reps: number; at: number; why?: 'quiet' | 'gap' | 'next' | 'stopped' | 'moved-on' }
   | { kind: KeywordKind; confidence: number; at: number; start: number }
   /** A different short surah than planned is being recited (`step`: where the planned one starts). */
   | { kind: 'surah'; surah: SurahId; step: number; confidence: number; at: number }
