@@ -98,10 +98,20 @@ describe('VoiceDriver', () => {
     expect(d.tick(view(i), ms + 1000)).toEqual({ type: 'goTo', index: i + 1, reason: 'timer' })
   })
 
+  it('waits twice as long on an aloud line nobody has started', () => {
+    const i = idx('fatiha-2')
+    const d = driver()
+    d.sync(view(i), 0)
+    const ms = stepMs(steps[i]!)
+    expect(d.tick(view(i), ms + 100)).toBeNull()
+    expect(d.tick(view(i), 2 * ms + 100)).toEqual({ type: 'goTo', index: i + 1, reason: 'timer' })
+  })
+
   it('gives posture changes extra grace before timing out', () => {
     const last = idx('ruku') - 1
     const d = driver()
     d.sync(view(last), 0)
+    d.onLevel(true, 10) // the person has started (an aloud line nobody started waits twice as long)
     const ms = stepMs(steps[last]!)
     expect(d.tick(view(last), ms + 100)).toBeNull()
     expect(d.tick(view(last), ms + d.cfg.postureGraceMs + 100)).toEqual({ type: 'goTo', index: last + 1, reason: 'timer' })

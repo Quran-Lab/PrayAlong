@@ -273,7 +273,10 @@ export class VoiceDriver {
     if (here.repeat > 1 && !this.lineDone && reps < here.repeat && (reps > 0 || this.wordsOnStep > 0)) {
       return quietFor >= this.cfg.repeatSilenceMs ? (after ? this.move(i + 1, 'timer') : { type: 'finish', reason: 'timer' }) : null
     }
-    const expected = this.cfg.stepMs(here) * (this.wordsOnStep > 0 && !this.lineDone ? this.cfg.trackingSlack : 1)
+    // Slower when the line is being followed but not done, and on an aloud
+    // line nobody has started yet (a pause before reciting is not silence).
+    const notStarted = here.voice === 'aloud' && this.lastSpeechAt < this.arrivedAt
+    const expected = this.cfg.stepMs(here) * (this.wordsOnStep > 0 && !this.lineDone ? this.cfg.trackingSlack : notStarted ? 2 : 1)
     if (!after) return elapsed >= expected || (this.lineDone && now - this.lineDoneAt >= this.cfg.postureAfterDoneMs) ? { type: 'finish', reason: 'timer' } : null
     const samePosture = after.pose === here.pose && after.posture === here.posture
     if (samePosture || (mode === 'full' && after.pose === here.pose)) {

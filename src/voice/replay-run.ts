@@ -1,8 +1,10 @@
+import { getLine } from '@/content/recitations'
 import { buildSequence } from '@/sequence/build'
 import type { PrayerId, Step } from '@/sequence/types'
 import { SessionSim, VoiceCore } from './core'
 import { VoiceEngine } from './engine'
 import { buildTimeline, encodeWav, renderTimeline, scoreReplay, type ReplayLog, type ReplayMetrics, type Timeline, type VoiceManifest } from './replay'
+import type { FollowerEvent } from './types'
 
 /**
  * Browser half of the replay harness (driven by scripts/voice-replay.mjs, or
@@ -149,6 +151,141 @@ export async function replayRecording(file: Blob, prayer: PrayerId, log: (line: 
   await engine.finish()
   engine.stop()
   return { phase: sim.phase, index: sim.index, events, moves, timerMoves }
+}
+
+export interface RealItem {
+  /** URL of a 16 kHz WAV. */
+  url: string
+  /** The surah recited, and which verses. */
+  surah: string
+  ayahs: [number, number]
+}
+
+export interface RealResult {
+  url: string
+  surah: string
+  ayahs: [number, number]
+  /** Expected lines (after any switch) and which of them completed. */
+  expected: string[]
+  done: string[]
+  /** Surah the session ended up on, and whether a switch happened. */
+  switchedTo: string | null
+  /** Words of the expected lines reported / total. */
+  words: [number, number]
+  /** Seconds from the end of voiced audio to the last line's completion (null: never). */
+  endLag: number | null
+  /** Session moves by timer (should be 0: the voice was there). */
+  timerMoves: number
+  audioSec: number
+  /** What the decoder emitted (phonetic script), and the follower state at the end. */
+  heard?: string
+  final?: string
+}
+
+/**
+ * Real recordings of short surahs, one at a time, through the real worker,
+ * follower and driver. Each starts on amin of the rak'ah whose planned surah
+ * is al-Kawthar (rak'ah 1) or al-Ikhlas (rak'ah 2, used for al-Ikhlas only),
+ * or on the verse itself for single-verse clips, so a different surah must be
+ * recognised and followed.
+ */
+export async function runRealBatch(items: RealItem[], onProgress?: (k: number) => void): Promise<RealResult[]> {
+  const engine = new VoiceEngine()
+  await engine.start({ mic: false })
+  if (engine.status !== 'listening') throw new Error(`engine ${engine.status}: ${engine.error}`)
+  const out: RealResult[] = []
+  let handler: ((e: Parameters<Parameters<VoiceEngine['on']>[0]>[0]) => void) | null = null
+  engine.on((e) => handler?.(e))
+  for (let k = 0; k < items.length; k++) {
+    onProgress?.(k)
+    const it = items[k]!
+    const ctx = new OfflineAudioContext(1, SR, SR)
+    const pcm = (await ctx.decodeAudioData(await (await fetch(it.url)).arrayBuffer())).getChannelData(0).slice()
+    const rakah = it.surah === 'ikhlas' ? 2 : 1
+    const steps = buildSequence('fajr').steps
+    const sim = new SessionSim(steps, 'fajr')
+    sim.phase = 'praying'
+    const single = it.ayahs[0] === it.ayahs[1]
+    const lineId = `${it.surah}-${it.ayahs[0]}`
+    sim.index = single && steps.some((s) => s.recitationId === lineId)
+      ? steps.findIndex((s) => s.recitationId === lineId && s.rakah === rakah)
+      : steps.findIndex((s) => s.recitationId === 'amin' && s.rakah === rakah)
+    const events: { e: FollowerEvent; t: number }[] = []
+    let timerMoves = 0
+    let switchedTo: string | null = null
+    const core = new VoiceCore(steps, { mode: 'full', stepMs: (s) => Math.max(s.timing.minMs, s.timing.expectedMs) }, {
+      view: sim.view,
+      apply: sim.apply,
+      onEvent: (e, now) => events.push({ e, t: now / 1000 }),
+      onAction: (a) => {
+        if (a.type === 'goTo' && a.reason === 'timer') timerMoves++
+        if (a.type === 'surah') switchedTo = a.surah
+      },
+    })
+    let t0 = -1
+    let lastVoiced = 0
+    const heard: string[] = []
+    handler = (e) => {
+      if (e.type === 'tokens') {
+        heard.push(e.tokens.join(""))
+        core.tokens(e.tokens, e.at - t0, (e.at - t0) * 1000 + e.decodeMs)
+      }
+      else if (e.type === 'endpoint') core.endpoint(e.at - t0, (e.at - t0) * 1000)
+      else if (e.type === 'level') {
+        if (t0 < 0) t0 = e.at - 0.1
+        const at = e.at - t0
+        if (e.speech && at <= pcm.length / SR + 0.2) lastVoiced = at
+        core.level(e.speech, at, at * 1000)
+        core.tick(at * 1000)
+      }
+    }
+    core.sync(0)
+    const chunk = SR / 10
+    const silence = new Float32Array(SR * 2.5)
+    const all = new Float32Array(pcm.length + silence.length)
+    all.set(pcm)
+    const inflight: Promise<void>[] = []
+    for (let off = 0; off < all.length; off += chunk) {
+      inflight.push(engine.feed(all.slice(off, off + chunk), SR))
+      if (inflight.length >= 16) await inflight.shift()
+    }
+    await Promise.all(inflight)
+    await engine.finish()
+    handler = null
+    // What should have been followed: the recited verses of the recited surah.
+    const lines: string[] = []
+    for (let a = it.ayahs[0]; a <= it.ayahs[1]; a++) lines.push(`${it.surah}-${a}`)
+    const doneSteps = new Set(events.filter((x) => x.e.kind === 'lineDone').map((x) => (x.e as { step: number }).step))
+    const done = lines.filter((l) => sim.steps.some((s, i) => s.recitationId === l && doneSteps.has(i)))
+    const lastIdx = sim.steps.findIndex((s) => s.recitationId === lines.at(-1))
+    const lastDone = events.find((x) => x.e.kind === 'lineDone' && (x.e as { step: number }).step === lastIdx)
+    const wordsTotal = lines.reduce((n, l) => n + (sim.steps.find((s) => s.recitationId === l) ? (getWordCount(l) ?? 0) : 0), 0)
+    const wordsSeen = new Set(events.filter((x) => x.e.kind === 'word' && lines.includes((x.e as { lineId: string }).lineId)).map((x) => `${(x.e as { lineId: string }).lineId}:${(x.e as { wordIndex: number }).wordIndex}`)).size
+    out.push({
+      url: it.url,
+      surah: it.surah,
+      ayahs: it.ayahs,
+      expected: lines,
+      done,
+      switchedTo,
+      words: [wordsSeen, wordsTotal],
+      endLag: lastDone ? Math.round((lastDone.t - lastVoiced) * 100) / 100 : null,
+      timerMoves,
+      heard: heard.join(' '),
+      final: JSON.stringify(core.follower.snapshot()),
+      audioSec: Math.round((pcm.length / SR) * 10) / 10,
+    })
+  }
+  engine.stop()
+  return out
+}
+
+function getWordCount(lineId: string): number | null {
+  try {
+    return getLine(lineId).arabic.split(/\s+/).length
+  } catch {
+    return null
+  }
 }
 
 export function wavOf(pcm: Float32Array) {

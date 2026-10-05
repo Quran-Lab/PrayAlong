@@ -4,7 +4,7 @@ import { PRAYERS } from '@/content/prayers'
 import type { PrayerId } from '@/sequence/types'
 import { currentStep, useSession } from '@/state/session'
 import type { DriverMode } from '@/voice/driver'
-import { prepareReplay, replayParams, replayRecording, runReplay, wavOf, type ReplayResult } from '@/voice/replay-run'
+import { prepareReplay, replayParams, replayRecording, runRealBatch, runReplay, wavOf, type ReplayResult } from '@/voice/replay-run'
 import type { FollowerEvent } from '@/voice/types'
 import { useVoiceFollow } from '@/voice/use-voice'
 
@@ -23,6 +23,7 @@ declare global {
     __voiceResult?: ReplayResult | { error: string }
     __voiceProgress?: number
     __voiceWav?: () => Promise<string>
+    __voiceRealBatch?: typeof runRealBatch
   }
 }
 
@@ -40,6 +41,11 @@ const fmt = (e: FollowerEvent) => {
 
 export function VoiceLab() {
   const params = useMemo(() => new URLSearchParams(location.search), [])
+  if (params.has('batch')) {
+    // Real-voice batch (scripts/voice-real.mjs drives it).
+    window.__voiceRealBatch = runRealBatch
+    return <div id="voice-batch" className="p-6 font-mono text-xs text-ink">real-voice batch runner ready</div>
+  }
   return params.has('replay') ? <ReplayPanel params={params} /> : <LivePanel />
 }
 
