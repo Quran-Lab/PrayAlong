@@ -113,7 +113,36 @@ async function renderTake(src, out, line, p) {
   const tail = p.room ? 0.35 : 0
   const scale = 1 / p.tempo
   const dur = (p.holdLast > 1 ? line.dur + (line.words.at(-1)?.[1] - line.words.at(-1)?.[0]) * (p.holdLast - 1) : line.dur) * scale + tail
-  return { dur: Math.round(dur * 1000) / 1000, words: words.map(([s, e]) => [Math.round(s * scale * 1000) / 1000, Math.round(e * scale * 1000) / 1000]) }
+  const scaled = words.map(([s, e]) => [s * scale, e * scale])
+  // The source labels end a word where its faint tail ends; stretched (a held
+  // last word, slow tempo) that tail grows to most of a second of near
+  // silence. Ground truth for the last word is where the take is last audible.
+  if (scaled.length) {
+    const end = audibleEnd(await readFile(out))
+    const last = scaled.at(-1)
+    if (end !== null && end + 0.05 < last[1]) last[1] = Math.max(last[0] + 0.05, end + 0.05)
+  }
+  return { dur: Math.round(dur * 1000) / 1000, words: scaled.map(([s, e]) => [Math.round(s * 1000) / 1000, Math.round(e * 1000) / 1000]) }
+}
+
+/** Seconds to the end of the last 10 ms frame within 35 dB of the take's loudest (16-bit mono WAV). */
+function audibleEnd(wav) {
+  const at = wav.indexOf('data')
+  if (at < 0) return null
+  const sr = wav.readUInt32LE(24)
+  const pcm = new Int16Array(wav.buffer.slice(wav.byteOffset + at + 8, wav.byteOffset + at + 8 + (wav.readUInt32LE(at + 4) & ~1)))
+  const hop = Math.round(sr / 100)
+  const rms = []
+  for (let i = 0; i + hop <= pcm.length; i += hop) {
+    let q = 0
+    for (let k = i; k < i + hop; k++) q += pcm[k] * pcm[k]
+    rms.push(Math.sqrt(q / hop))
+  }
+  const peak = Math.max(...rms)
+  if (!peak) return null
+  const floor = peak * 10 ** (-35 / 20)
+  for (let j = rms.length - 1; j >= 0; j--) if (rms[j] > floor) return ((j + 1) * hop) / sr
+  return null
 }
 
 /**
