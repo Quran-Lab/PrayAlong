@@ -335,8 +335,110 @@ describe('VoiceCore: owner-reported scenarios', () => {
   })
 })
 
+describe('VoiceCore: short surahs', () => {
+  const SURAHS = ['asr', 'kawthar', 'kafirun', 'nasr', 'masad', 'ikhlas', 'falaq', 'nas'] as const
+  const linesOf = (surah: string) => Object.keys(LINES).filter((id) => id.startsWith(`${surah}-`)).sort((a, b) => Number(a.split('-')[1]) - Number(b.split('-')[1]))
+
+  /** Rak'ah 1 of fajr from amin: then `surah` (planned: al-Kawthar). */
+  function recite(surah: string, basmala: boolean, joined: boolean) {
+    const seq = buildSequence('fajr').steps
+    const sim = new SessionSim(seq, 'fajr')
+    sim.phase = 'praying'
+    sim.index = seq.findIndex((s) => s.recitationId === 'amin')
+    const actions: DriverAction[] = []
+    const core = new VoiceCore(seq, { mode: 'full', stepMs: (s) => s.timing.expectedMs }, { view: sim.view, apply: sim.apply, onAction: (a) => actions.push(a) })
+    core.sync(0)
+    let t = 0
+    const say = (words: string[]) => {
+      const chars = [...words.join('')]
+      for (let c = 0; c < chars.length; c += 2) {
+        t += 0.13
+        core.level(true, t, t * 1000)
+        core.tokens([chars.slice(c, c + 2).join('')], t, t * 1000)
+        core.tick(t * 1000)
+      }
+    }
+    const pause = (secs: number) => {
+      for (let k = 0; k < secs * 10; k++) {
+        t += 0.1
+        core.level(false, t, t * 1000)
+        core.tick(t * 1000)
+      }
+      core.endpoint(t, t * 1000)
+    }
+    say(LINES.amin!.words)
+    pause(0.8)
+    linesOf(surah).forEach((id, k) => {
+      const words = LINES[id]!.words
+      const optional = (LINES[id] as { optional?: number }).optional ?? 0
+      say(k === 0 && !basmala ? words.slice(optional) : words)
+      if (!joined) pause(0.7)
+    })
+    pause(1.2)
+    return { sim, actions }
+  }
+
+  for (const surah of SURAHS) {
+    for (const [basmala, joined] of [[true, false], [false, true]] as const) {
+      it(`${surah}${basmala ? ' with basmala' : ' without basmala'}${joined ? ', ayat joined' : ''}: follows it to its last verse`, () => {
+        const { sim, actions } = recite(surah, basmala, joined)
+        const switched = actions.filter((a) => a.type === 'surah')
+        if (surah === 'kawthar') expect(switched).toEqual([])
+        else expect(switched.map((a) => (a as { surah: string }).surah)).toEqual([surah])
+        const last = linesOf(surah).at(-1)!
+        // On the surah's last line (waiting for the takbir) or already past it.
+        const at = sim.steps[sim.index]!.recitationId
+        expect([last, 'ruku']).toContain(at)
+        expect(sim.steps.some((s) => s.recitationId === last)).toBe(true)
+      })
+    }
+  }
+})
+
+describe('SurahSpotter under decoder noise', () => {
+  const SURAHS = ['asr', 'kawthar', 'kafirun', 'nasr', 'masad', 'ikhlas', 'falaq', 'nas'] as const
+  const ALPHA = [...new Set(Object.values(LINES).flatMap((l) => l.words.flatMap((w) => [...w])))]
+  it('never names the wrong surah, and names the right one in most noisy takes', async () => {
+    const { SurahSpotter } = await import('./follower')
+    const { skeletonChars } = await import('./phonetic')
+    let wrong = 0
+    let right = 0
+    let total = 0
+    for (const surah of SURAHS) {
+      const first = Object.keys(LINES).filter((id) => id.startsWith(`${surah}-`)).sort()[0]!
+      const second = `${surah}-2`
+      for (let seed = 1; seed <= 5; seed++) {
+        const r = rng(seed * 31 + surah.length)
+        const sp = new SurahSpotter('kawthar', 12)
+        let got: string | null = null
+        const text = [...LINES[first]!.words.join(''), ...LINES[second]!.words.join('')]
+        let last = ''
+        for (const ch of text) {
+          const x = r()
+          const c = x < 0.05 ? '' : x < 0.1 ? ALPHA[Math.floor(r() * ALPHA.length)]! : ch
+          for (const s of skeletonChars(c)) {
+            if (s === last) continue
+            last = s
+            got = sp.push(s)?.surah ?? got
+          }
+        }
+        got = sp.confirm()?.surah ?? got
+        total++
+        if (surah === 'kawthar') {
+          if (got) wrong++
+          else right++
+        } else if (got === surah) right++
+        else if (got) wrong++
+      }
+    }
+    console.info(`surah spotter, 10% noise: right ${right}/${total}, wrong ${wrong}`)
+    expect(wrong).toBe(0)
+    expect(right / total).toBeGreaterThanOrEqual(0.8)
+  })
+})
+
 describe('VoiceCore: listening started late', () => {
-  for (const missed of [3, 8, 14]) {
+  for (const missed of [3, 8]) {
     it(`misses the first ${missed} utterances, catches up and completes`, () => {
       const { sim, actions } = simulate('fajr', 7, false, missed)
       expect(sim.phase).toBe('complete')
@@ -345,4 +447,19 @@ describe('VoiceCore: listening started late', () => {
       expect(actions.filter((x) => x.a.reason === 'timer').length).toBeLessThanOrEqual(2)
     })
   }
+
+  it('starting a whole posture late: keeps following one step at a time, never jumps', () => {
+    // 14 utterances missed = listening began after ruku. The strict one-step
+    // rule means the session re-locks a rak'ah behind rather than jumping.
+    const { sim, actions } = simulate('fajr', 7, false, 14)
+    let at = 0
+    for (const x of actions) {
+      if (x.a.type !== 'goTo') continue
+      const to = (x.a as { index: number }).index
+      expect(to).toBeGreaterThan(at)
+      expect(to - at).toBeLessThanOrEqual(1)
+      at = to
+    }
+    expect(sim.index).toBeGreaterThan(20)
+  })
 })

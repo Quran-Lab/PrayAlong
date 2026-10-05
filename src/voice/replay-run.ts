@@ -118,7 +118,7 @@ export async function replayRecording(file: Blob, prayer: PrayerId, log: (line: 
       apply: sim.apply,
       onEvent: (e, now) => {
         events++
-        if (e.kind !== 'word') log(`${(now / 1000).toFixed(2)}s event ${e.kind} ${'step' in e ? `${e.step} ${e.lineId}` : ''} (${e.confidence})`)
+        if (e.kind !== 'word') log(`${(now / 1000).toFixed(2)}s event ${e.kind} ${'lineId' in e ? `${e.step} ${e.lineId}` : 'surah' in e ? e.surah : ''} (${e.confidence})`)
       },
       onAction: (a, now) => {
         moves++

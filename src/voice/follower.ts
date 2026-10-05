@@ -1,5 +1,6 @@
 import phonemeTable from '@/content/phonemes.json'
 import { delCost, insCost, lineSkeleton, subCost, SymbolStream, VOWELS, type LineSkeleton } from './phonetic'
+import { SHORT_SURAHS, type SurahId } from '@/content/recitations'
 import type { FollowerEvent, FollowStep, KeywordKind } from './types'
 
 /**
@@ -28,19 +29,20 @@ import type { FollowerEvent, FollowStep, KeywordKind } from './types'
  * session by one line, not several.
  */
 
-const LINES = (phonemeTable as { lines: Record<string, { words: string[] }> }).lines
-const SKELETONS = new Map<string, LineSkeleton>()
+const LINES = (phonemeTable as { lines: Record<string, { words: string[]; optional?: number }> }).lines
+const SKELETONS = new Map<string, LineSkeleton & { optional: number }>()
 /** The target phonemes of one word of a line (for logs). */
 export function targetWord(lineId: string, wordIndex: number): string {
   return LINES[lineId]?.words[wordIndex] ?? ''
 }
 
-export function skeletonOf(lineId: string): LineSkeleton | null {
+/** A line's skeleton; `optional` = how many leading words may be left out (the basmala). */
+export function skeletonOf(lineId: string): (LineSkeleton & { optional: number }) | null {
   let sk = SKELETONS.get(lineId)
   if (!sk) {
     const entry = LINES[lineId]
     if (!entry) return null
-    sk = lineSkeleton(entry.words)
+    sk = { ...lineSkeleton(entry.words), optional: entry.optional ?? 0 }
     SKELETONS.set(lineId, sk)
   }
   return sk
@@ -86,6 +88,10 @@ export interface FollowerOptions {
   lostSymbols: number
   lostWindowSteps: number
   lostSkipCost: number
+  /** Cost of leaving out an optional prefix (the basmala before a surah). */
+  optionalSkipCost: number
+  /** Cost of one more repetition than a repeated line asks for. */
+  extraRepCost: number
 }
 
 export const DEFAULT_FOLLOWER: FollowerOptions = {
@@ -94,15 +100,17 @@ export const DEFAULT_FOLLOWER: FollowerOptions = {
   repSkipCost: 0.8,
   restartCost: 2.5,
   gapInsCost: 0.5,
-  lineMatch: { aloud: 0.5, quiet: 0.35 },
+  lineMatch: { aloud: 0.4, quiet: 0.3 },
+  optionalSkipCost: 0.6,
+  extraRepCost: 0.8,
   wordMatch: 0.34,
   enterSymbols: 4,
   keywordCost: { takbir: 0.3, tasmi: 0.28, salam: 0.22, amin: 0.12 },
   maxHeard: 500,
   idleSec: 1.0,
   idleLastWord: 0.6,
-  confirmSilenceSec: 0.25,
-  holdSec: 0.2,
+  confirmSilenceSec: 0.2,
+  holdSec: 0.15,
   lostSymbols: 35,
   lostWindowSteps: 12,
   lostSkipCost: 2,
@@ -116,6 +124,8 @@ interface Unit {
   voice: 'aloud' | 'quiet'
   start: number
   end: number
+  /** End of an optional prefix (the basmala before a surah); = start when none. */
+  optEnd: number
   /** Absolute [start, end) per word. */
   words: { start: number; end: number }[]
 }
@@ -179,6 +189,7 @@ export class Follower {
   private heard: Heard[] = []
   private count = 0
   private lost = false
+  private surahSpot: SurahSpotter | null = null
   /** Symbol count at the last word reported (or anchor move). */
   private progressN = 0
   private idleDoneFor = -1
@@ -206,9 +217,14 @@ export class Follower {
 
   setSteps(steps: FollowStep[], anchor = 0) {
     const same = steps.length === this.steps.length && steps.every((s, i) => s.lineId === this.steps[i]?.lineId)
+    // The same prayer up to here with another surah from now on (the person
+    // began reciting a different one): keep the last seconds just heard, so
+    // the verse they are in the middle of still counts.
+    const samePrefix = anchor > 0 && steps.slice(0, anchor).every((s, i) => s.lineId === this.steps[i]?.lineId)
     this.steps = steps
-    this.heard = []
-    if (!same) {
+    const lastAt = this.heard.at(-1)?.at ?? 0
+    this.heard = samePrefix ? this.heard.filter((h) => h.at >= lastAt - 4) : []
+    if (!same && !samePrefix) {
       // A different prayer: nothing said so far applies.
       this.repsDone.clear()
       this.started.clear()
@@ -258,6 +274,11 @@ export class Follower {
    */
   level(at: number, speech = false): FollowerEvent[] {
     if (speech) this.voicedAt = at
+    // A pause after a surah's opening settles which surah it is.
+    if (!speech && at - this.voicedAt >= 0.3 && this.surahSpot) {
+      const other = this.surahSpot.confirm()
+      if (other) return [{ kind: 'surah', surah: other.surah, step: this.surahSpot.step, confidence: other.confidence, at }]
+    }
     const lastAt = this.heard.at(-1)?.at
     if (lastAt === undefined) return []
     if (this.pending) return this.evaluate(at, true)
@@ -282,11 +303,14 @@ export class Follower {
     const symbols = this.stream.push(tokens)
     if (!symbols.length) return []
     const spotted: Spotted[] = []
+    const surahs: FollowerEvent[] = []
     for (const s of symbols) {
       const n = this.count++
       this.heard.push({ s, at, n })
       const kw = this.spotter.push(s, n)
       if (kw) spotted.push(kw)
+      const other = this.surahSpot?.push(s)
+      if (other && this.surahSpot) surahs.push({ kind: 'surah', surah: other.surah, step: this.surahSpot.step, confidence: other.confidence, at })
     }
     if (!this.lost && this.count - this.progressN > this.opts.lostSymbols) this.enterLost()
     if (this.heard.length > this.opts.maxHeard) {
@@ -306,7 +330,7 @@ export class Follower {
       const first = this.heard.find((h) => h.n >= kw.startN)
       keywordEvents.push({ kind: kw.kind, confidence: kw.confidence, at, start: first?.at ?? at })
     }
-    return [...keywordEvents, ...events]
+    return [...surahs, ...keywordEvents, ...events]
   }
 
   /** Share of the keyword's symbols matched by the tracker to a different line. */
@@ -402,10 +426,23 @@ export class Follower {
           start,
           end: this.T.length,
           words: sk.words.map((w) => ({ start: start + w.start, end: start + w.end })),
+          optEnd: start + (sk.optional ? sk.words[sk.optional - 1]!.end : 0),
         })
         bounds.push(this.T.length)
       }
     }
+    // A short surah is about to start or under way: listen for another one.
+    let surahStep = -1
+    let planned: SurahId | null = null
+    for (let st = Math.max(0, this.anchor - 1); st < Math.min(this.steps.length, this.anchor + 4) && !planned; st++) {
+      const id = (Object.keys(SHORT_SURAHS) as SurahId[]).find((x) => SHORT_SURAHS[x].lines[0] === this.steps[st]!.lineId)
+      if (id) {
+        planned = id
+        surahStep = st
+      }
+    }
+    if (!planned) this.surahSpot = null
+    else if (!this.surahSpot || this.surahSpot.step !== surahStep || this.surahSpot.expected !== planned) this.surahSpot = new SurahSpotter(planned, surahStep)
     this.boundary = new Uint8Array(this.T.length + 1)
     for (const b of bounds) this.boundary[b] = 1
     this.lastSnapshot = { anchor: this.anchor, step: this.anchor, wordIndex: 0, rep: 0, fill: 0, repsDone: this.repsDone.get(this.anchor) ?? 0, heard: this.heard.length, cost: 0 }
@@ -527,9 +564,35 @@ export class Follower {
         op[base + u.start] = OP_RESTART
         src[base + u.start] = bestJ
       }
+      // One more repetition of a repeated line (tasbih said 4 or 5 times):
+      // from its finished last repetition back to its start, cheaply, so the
+      // extra ones never read as the next posture's identical line.
+      if (u.lastRep && (this.steps[u.step]?.repeat ?? 1) > 1) {
+        const v = D[base + u.end]! + this.opts.extraRepCost
+        if (v < D[base + u.start]!) {
+          D[base + u.start] = v
+          op[base + u.start] = OP_RESTART
+          src[base + u.start] = u.end
+        }
+      }
     }
     // Skip whole units, left to right so several can be skipped in a row.
     for (const u of this.units) {
+      // The basmala before a surah may be said or not: skipping it is cheap.
+      if (u.optEnd > u.start) {
+        const v = D[base + u.start]! + this.opts.optionalSkipCost
+        if (v < D[base + u.optEnd]!) {
+          D[base + u.optEnd] = v
+          op[base + u.optEnd] = OP_SKIP
+          src[base + u.optEnd] = u.start
+          for (let j = u.optEnd + 1; j <= u.end; j++) {
+            const d = D[base + j - 1]! + delCost(this.T[j - 1]!)
+            if (d >= D[base + j]!) break
+            D[base + j] = d
+            op[base + j] = OP_DEL
+          }
+        }
+      }
       const cost = u.rep > 0 ? repSkipCost : this.lost ? this.opts.lostSkipCost : skipCost
       const v = D[base + u.start]! + cost
       if (v < D[base + u.end]!) {
@@ -822,5 +885,84 @@ export class KeywordSpotter {
       }
     }
     return fired
+  }
+}
+
+/**
+ * Which short surah is being recited, among the common ones (al-Asr,
+ * al-Kawthar, al-Kafirun, an-Nasr, al-Masad, al-Ikhlas, al-Falaq, an-Nas).
+ * Approximate substring matching of each one's opening (after the optional
+ * basmala; al-Asr's first verse is one word, so its second is included).
+ * A surah is reported only when its opening matches well AND clearly better
+ * than both the planned surah and every other candidate: al-Falaq and an-Nas
+ * share their first three words, so the margin decides at their last word.
+ */
+export class SurahSpotter {
+  private patterns: { surah: SurahId; P: string[]; col: Float32Array; best: number; bestAt: number }[] = []
+  private fired = false
+
+  constructor(
+    readonly expected: SurahId,
+    readonly step: number,
+    private limits = { maxCostPerSymbol: 0.3, margin: 2 },
+  ) {
+    for (const surah of Object.keys(SHORT_SURAHS) as SurahId[]) {
+      const lines = SHORT_SURAHS[surah].lines
+      const P: string[] = []
+      for (const id of surah === 'asr' ? lines.slice(0, 2) : lines.slice(0, 1)) {
+        const sk = skeletonOf(id)
+        if (!sk) continue
+        const from = sk.optional ? sk.words[sk.optional - 1]!.end : 0
+        P.push(...sk.symbols.slice(from))
+      }
+      const col = new Float32Array(P.length + 1)
+      for (let j = 1; j <= P.length; j++) col[j] = col[j - 1]! + delCost(P[j - 1]!) + 2
+      this.patterns.push({ surah, P, col, best: Infinity, bestAt: 0 })
+    }
+  }
+
+  private n = 0
+
+  /** One more heard symbol; returns the surah being recited instead, once. */
+  push(s: string): { surah: SurahId; confidence: number } | null {
+    this.n++
+    for (const p of this.patterns) {
+      const { P, col } = p
+      let diagPrev = col[0]!
+      col[0] = 0
+      for (let j = 1; j <= P.length; j++) {
+        const v = Math.min(col[j]! + insCost(s), diagPrev + subCost(s, P[j - 1]!), col[j - 1]! + delCost(P[j - 1]!))
+        diagPrev = col[j]!
+        col[j] = v
+      }
+      // Best whole-opening match so far, and when it was reached.
+      if (col[P.length]! < p.best) {
+        p.best = col[P.length]!
+        p.bestAt = this.n
+      }
+    }
+    return this.decide(4)
+  }
+
+  /** The person paused: decide now if one opening clearly matched. */
+  confirm(): { surah: SurahId; confidence: number } | null {
+    return this.decide(0)
+  }
+
+  /**
+   * Decide only some symbols after the leader's best match, so a longer
+   * opening still being said (an-Nas's prefix inside al-Falaq) can overtake.
+   */
+  private decide(wait: number) {
+    if (this.fired) return null
+    const ranked = [...this.patterns].sort((a, b) => a.best / a.P.length - b.best / b.P.length)
+    const top = ranked[0]!
+    if (!Number.isFinite(top.best) || this.n - top.bestAt < wait) return null
+    if (top.best > this.limits.maxCostPerSymbol * top.P.length) return null
+    // Clearly better than every other candidate, the planned one included.
+    for (const other of ranked.slice(1)) if (top.best + this.limits.margin > other.best) return null
+    this.fired = true
+    if (top.surah === this.expected) return null
+    return { surah: top.surah, confidence: round(Math.max(0, 1 - top.best / (top.P.length * 0.5))) }
   }
 }
