@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { FINGER_CHAINS, type Drape, type Humanoid, type HumanBone } from './humanoid'
+import { ZERO, type Tune } from './tuning'
 import { GRIPS, PRAYER_POSES, waypoints, type Dir3, type HandSpec, type PoseName, type PrayerPose } from './prayer-poses'
 
 /** Characters are scaled to this standing height so framing is consistent. */
@@ -20,7 +21,7 @@ const DRAPE: Partial<Record<PoseName, Drape>> = {
 }
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
-const v = () => new THREE.Vector3()
+const v = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z)
 const q = () => new THREE.Quaternion()
 const vec = (d: Dir3, out = v()) => out.set(d[0], d[1], d[2])
 
@@ -207,6 +208,12 @@ export class Performer {
   private hands = { left: new SampleSet([]), right: new SampleSet([]) }
   private face = new SampleSet([])
 
+  /** Raise the hands going into ruku and rising from it (raf' al-yadayn). */
+  raiseHands = false
+  /** Where each upper leg sits in its parent at rest (for the tuned leg drop). */
+  private legRest = new Map<'left' | 'right', THREE.Vector3>()
+  /** Per-posture fine-tuning for this character (see tuning.ts). */
+  tune: (pose: PoseName) => Tune = () => ZERO
   private pose: PoseName = 'rest'
   private from: PoseName = 'rest'
   private queue: PoseName[] = []
@@ -214,6 +221,8 @@ export class Performer {
   private duration = 1
 
   private fkCurrent = new Map<HumanBone, THREE.Quaternion>()
+  /** This frame's leg rotations (posture, rest-slant fix and tune), for the forehead solver. */
+  private legPosed = new Map<HumanBone, THREE.Quaternion>()
   private fkFrom = new Map<HumanBone, THREE.Quaternion>()
   private armFrom: { left: ArmState; right: ArmState } | null = null
   private eyes = 0
@@ -230,6 +239,10 @@ export class Performer {
         o.receiveShadow = false
       }
     })
+    for (const side of ['left', 'right'] as const) {
+      const b = humanoid.raw[`${side}UpperLeg`]
+      if (b) this.legRest.set(side, b.position.clone())
+    }
     this.measure()
     this.jumpTo('rest')
   }
@@ -457,7 +470,7 @@ export class Performer {
   setPosture(name: PoseName) {
     const last = this.queue.at(-1) ?? this.pose
     if (name === last) return
-    this.queue = waypoints(last, name)
+    this.queue = waypoints(last, name, this.raiseHands)
     this.startNext()
   }
 
@@ -500,10 +513,39 @@ export class Performer {
       const from = this.fkFrom.get(bone) ?? q()
       this.fkCurrent.set(bone, (this.fkCurrent.get(bone) ?? q()).copy(from).slerp(to, e))
     }
-    for (const bone of Object.keys(h.raw) as HumanBone[]) h.setRotation(bone, this.fkCurrent.get(bone) ?? q())
+    // Tuned extra leg bend (degrees), blended with the posture change.
+    const ta = this.tune(this.from), tb = this.tune(this.pose)
+    const mix = (k: 'thigh' | 'shin' | 'foot' | 'spread') => THREE.MathUtils.lerp(ta[k], tb[k], e)
+    const legTune: Partial<Record<HumanBone, THREE.Quaternion>> = {}
+    const [thigh, shin, foot, spread] = [mix('thigh'), mix('shin'), mix('foot'), mix('spread')]
+    if (thigh || shin || foot || spread) {
+      for (const side of ['left', 'right'] as const) {
+        const s = side === 'left' ? 1 : -1
+        legTune[`${side}UpperLeg`] = this.toQuat([-thigh, 0, s * spread])
+        legTune[`${side}LowerLeg`] = this.toQuat([shin, 0, 0])
+        legTune[`${side}Foot`] = this.toQuat([foot, 0, 0])
+      }
+    }
+    // Per-bone tuned rotations (degrees), blended between the two postures.
+    for (const bone of new Set([...Object.keys(ta.bones), ...Object.keys(tb.bones)]) as Set<HumanBone>) {
+      const a = ta.bones[bone] ?? [0, 0, 0], b = tb.bones[bone] ?? [0, 0, 0]
+      const d = [0, 1, 2].map((i) => THREE.MathUtils.lerp(a[i]!, b[i]!, e))
+      const extra = this.toQuat(d)
+      legTune[bone] = legTune[bone] ? legTune[bone]!.clone().multiply(extra) : extra
+    }
+    // Folded legs first lose the rig's own rest slant (legRotation), then take the tune.
+    const legBones = new Set<HumanBone>(['leftUpperLeg', 'rightUpperLeg', 'leftLowerLeg', 'rightLowerLeg'])
+    for (const bone of Object.keys(h.raw) as HumanBone[]) {
+      const base = legBones.has(bone) ? this.legRotation(bone as 'leftUpperLeg') : (this.fkCurrent.get(bone) ?? q())
+      const rot = legTune[bone] ? base.clone().multiply(legTune[bone]!) : base
+      if (legBones.has(bone)) this.legPosed.set(bone, rot)
+      h.setRotation(bone, rot)
+    }
+    // Legs back at their rest place before any tuned drop below.
     for (const side of ['left', 'right'] as const) {
-      h.setRotation(`${side}UpperLeg`, this.legRotation(`${side}UpperLeg`))
-      h.setRotation(`${side}LowerLeg`, this.legRotation(`${side}LowerLeg`))
+      const b = h.raw[`${side}UpperLeg`]
+      const rest = this.legRest.get(side)
+      if (b && rest) b.position.copy(rest)
     }
     this.poseFingers(target, e)
 
@@ -524,6 +566,27 @@ export class Performer {
     this.ground(target)
     const forehead = this.pose === 'sujud' ? e : this.from === 'sujud' ? 1 - e : 0
     if (forehead > 0) this.lowerForehead(target, forehead)
+
+    // 2b. Tuned sink into the rug (blends with the posture change).
+    const sink = THREE.MathUtils.lerp(this.tune(this.from).sink, this.tune(this.pose).sink, e) * STAGE_HEIGHT
+    const mv = [0, 1, 2].map((i) => THREE.MathUtils.lerp(ta.move[i]!, tb.move[i]!, e) * STAGE_HEIGHT)
+    if (sink || mv.some(Boolean)) {
+      this.rig.position.y -= sink - mv[1]!
+      this.rig.position.x += mv[0]!
+      this.rig.position.z += mv[2]!
+      this.root.updateMatrixWorld(true)
+    }
+    // 2c. Tuned leg drop: legs move down from the hips (into the rug), the body stays.
+    const drop = THREE.MathUtils.lerp(ta.legDrop, tb.legDrop, e) * STAGE_HEIGHT
+    if (drop) {
+      for (const side of ['left', 'right'] as const) {
+        const b = h.raw[`${side}UpperLeg`]
+        if (!b?.parent) continue
+        const wp = b.getWorldPosition(v()).add(v(0, -drop, 0))
+        b.position.copy(b.parent.worldToLocal(wp))
+      }
+      this.root.updateMatrixWorld(true)
+    }
 
     // 3. Hands. Palms on the rug are corrected against their real surface,
     // so fingers never dip through it whatever the hand's shape.
@@ -631,8 +694,8 @@ export class Performer {
       const bend = q().setFromAxisAngle(X, extra)
       const unbend = q().setFromAxisAngle(X, -extra)
       h.setRotation('hips', (this.fkCurrent.get('hips') ?? q()).clone().premultiply(bend))
-      h.setRotation('leftUpperLeg', unbend.clone().multiply(this.legRotation('leftUpperLeg')))
-      h.setRotation('rightUpperLeg', unbend.clone().multiply(this.legRotation('rightUpperLeg')))
+      h.setRotation('leftUpperLeg', unbend.clone().multiply(this.legPosed.get('leftUpperLeg') ?? this.legRotation('leftUpperLeg')))
+      h.setRotation('rightUpperLeg', unbend.clone().multiply(this.legPosed.get('rightUpperLeg') ?? this.legRotation('rightUpperLeg')))
       h.applyPose()
       this.root.updateMatrixWorld(true)
       this.ground(target)
@@ -700,6 +763,10 @@ export class Performer {
       }
     }
     if (spec.offset) target.add(vec(spec.offset).multiplyScalar(H))
+    // Tuned hand lift for whichever posture this hand spec belongs to.
+    const owner = PRAYER_POSES[this.pose][side] === spec ? this.pose : this.from
+    const t = this.tune(owner)
+    if (t.handUp || t.handFwd) target.add(v().set(0, t.handUp * H, t.handFwd * H).applyQuaternion(this.root.getWorldQuaternion(q())))
     return {
       target: this.root.worldToLocal(target),
       pole: vec(spec.pole).normalize(),

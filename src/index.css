@@ -4,29 +4,44 @@
 @custom-variant short (@media (orientation: landscape) and (max-height: 540px));
 
 /*
- * PrayAlong design tokens. Dark, calm and warm: near-black with a green
- * undertone, one mint accent, and a per-prayer ambient hue (set at runtime
- * on :root as --ambient) used only for glows.
+ * PrayAlong design tokens. A calm interior at the hour of the prayer: a dark
+ * wall (contrast for text read from across the room) and one arched window
+ * showing that prayer's sky. Each prayer sets its own palette on <html
+ * data-prayer>; components only use the tokens below.
  */
 @theme {
-  --font-sans: "Inter Variable", "Noto Sans Arabic Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Figtree Variable", "Noto Sans Arabic Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Source Serif 4 Variable", Georgia, serif;
   --font-arabic: "Amiri", "Noto Naskh Arabic", "Geeza Pro", serif;
+  --font-quran: "Amiri Quran", "Amiri", "Noto Naskh Arabic", serif;
 
-  --color-canvas: #0a0d0c;
-  --color-surface: #111614;
-  --color-raised: #161c1a;
-  --color-line: rgb(255 255 255 / 0.08);
-  --color-line-strong: rgb(255 255 255 / 0.14);
-  --color-ink: #eef2ef;
-  --color-ink-soft: rgb(238 242 239 / 0.72);
-  --color-ink-muted: rgb(238 242 239 / 0.48);
-  --color-ink-faint: rgb(238 242 239 / 0.28);
-  --color-mint: oklch(0.86 0.12 166);
-  --color-mint-strong: oklch(0.78 0.14 164);
-  --color-mint-deep: oklch(0.42 0.08 166);
+  --color-canvas: var(--room);
+  --color-surface: var(--room-2);
+  --color-raised: var(--room-3);
+  --color-line: rgb(255 255 255 / 0.09);
+  --color-line-strong: rgb(255 255 255 / 0.16);
+  --color-ink: #f4f1ec;
+  --color-ink-soft: rgb(244 241 236 / 0.76);
+  --color-ink-muted: rgb(244 241 236 / 0.54);
+  --color-ink-faint: rgb(244 241 236 / 0.32);
+  /* The accent follows the prayer (kept under the old name so every
+     component picks it up). */
+  --color-mint: var(--accent);
+  --color-mint-strong: var(--accent-strong);
+  --color-mint-deep: var(--accent-deep);
+
+  /* Fluid type: comfortable on a phone, readable from 1.5 m on a laptop
+     sitting on the floor. */
+  --text-meta: clamp(0.92rem, 0.82rem + 0.25vw, 1.08rem);
+  --text-body: clamp(1rem, 0.9rem + 0.35vw, 1.2rem);
+  --text-meaning: clamp(1.05rem, 0.86rem + 0.62vw, 1.5rem);
+  --text-hero: clamp(1.9rem, 1.1rem + 2.5vw, 3.7rem);
+  --text-hero-long: clamp(1.55rem, 0.95rem + 1.9vw, 2.9rem);
+  --text-arabic: clamp(2.2rem, 1.2rem + 3vw, 4.4rem);
+  --text-arabic-sub: clamp(1.6rem, 1rem + 1.8vw, 2.8rem);
 
   --ease-calm: cubic-bezier(0.22, 1, 0.36, 1);
-  --shadow-glow: 0 0 0 1px oklch(0.86 0.12 166 / 0.45), 0 0 24px -4px oklch(0.86 0.12 166 / 0.45);
+  --shadow-glow: 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent), 0 0 24px -4px color-mix(in oklab, var(--accent) 45%, transparent);
 
   --animate-pop: pop 180ms cubic-bezier(0.22, 1, 0.36, 1);
   --animate-breathe: breathe 2.4s ease-in-out infinite;
@@ -44,15 +59,109 @@
   }
 }
 
-:root {
-  --ambient: oklch(0.78 0.13 165);
+/* Laptops and desktops in landscape: stage and words side by side. */
+@custom-variant wide (@media (min-width: 1100px) and (min-aspect-ratio: 5/4));
+
+/* Palettes, one per prayer. sky-* fill the window; room-* the wall. */
+:root,
+:root[data-prayer="dhuhr"] {
+  --sky-top: #3f86c4;
+  --sky-mid: #79b7e0;
+  --sky-low: #cfe8f2;
+  --sun: #fff6d6;
+  --sun-glow: rgb(255 240 200 / 0.75);
+  --room: #0b1418;
+  --room-2: #111c21;
+  --room-3: #16232a;
+  --accent: oklch(0.86 0.11 190);
+  --accent-strong: oklch(0.78 0.13 190);
+  --accent-deep: oklch(0.42 0.07 200);
+  --spill: rgb(160 215 235 / 0.16);
+  --stars: 0;
   color-scheme: dark;
+}
+:root[data-prayer="fajr"] {
+  --sky-top: #1b2150;
+  --sky-mid: #5a4a86;
+  --sky-low: #e7a59a;
+  --sun: #ffe0c8;
+  --sun-glow: rgb(255 190 170 / 0.55);
+  --room: #0c0d1c;
+  --room-2: #131427;
+  --room-3: #1a1b33;
+  --accent: oklch(0.84 0.09 30);
+  --accent-strong: oklch(0.76 0.12 30);
+  --accent-deep: oklch(0.42 0.07 300);
+  --spill: rgb(230 160 160 / 0.14);
+  --stars: 0.55;
+}
+:root[data-prayer="asr"] {
+  --sky-top: #4d6aa0;
+  --sky-mid: #c7a77a;
+  --sky-low: #f3cf8a;
+  --sun: #fff1c4;
+  --sun-glow: rgb(255 215 140 / 0.7);
+  --room: #15110c;
+  --room-2: #1d1812;
+  --room-3: #261f17;
+  --accent: oklch(0.85 0.12 80);
+  --accent-strong: oklch(0.77 0.14 75);
+  --accent-deep: oklch(0.45 0.08 70);
+  --spill: rgb(245 200 120 / 0.17);
+  --stars: 0;
+}
+:root[data-prayer="maghrib"] {
+  --sky-top: #2b2350;
+  --sky-mid: #a4517a;
+  --sky-low: #f39a5f;
+  --sun: #ffd9a8;
+  --sun-glow: rgb(255 150 100 / 0.7);
+  --room: #150d12;
+  --room-2: #1e131a;
+  --room-3: #281a22;
+  --accent: oklch(0.8 0.13 45);
+  --accent-strong: oklch(0.72 0.15 40);
+  --accent-deep: oklch(0.42 0.09 20);
+  --spill: rgb(245 140 100 / 0.15);
+  --stars: 0.2;
+}
+:root[data-prayer="isha"] {
+  --sky-top: #05081a;
+  --sky-mid: #0d1636;
+  --sky-low: #1d2c5c;
+  --sun: #eef1ff;
+  --sun-glow: rgb(190 205 255 / 0.45);
+  --room: #070912;
+  --room-2: #0d1020;
+  --room-3: #13172b;
+  --accent: oklch(0.84 0.07 270);
+  --accent-strong: oklch(0.75 0.1 270);
+  --accent-deep: oklch(0.4 0.07 270);
+  --spill: rgb(170 185 255 / 0.1);
+  --stars: 1;
+}
+/* Your own recitation lights up in a colour of its own (the companion uses the accent). */
+:root {
+  --you: oklch(0.86 0.14 150);
+}
+:root[data-prayer="dhuhr"] {
+  --you: oklch(0.86 0.13 120);
+}
+:root {
+  --ambient: var(--accent);
+  transition: --room 1.2s;
 }
 
 html,
 body,
 #root {
   height: 100%;
+}
+
+/* Everything in rem grows with the screen, so a laptop on the floor stays
+   readable from the prayer mat (16px on phones, up to 19px on big screens). */
+html {
+  font-size: clamp(16px, 9.5px + 0.62vw, 19px);
 }
 
 body {
@@ -74,7 +183,7 @@ body {
 }
 
 ::selection {
-  background: oklch(0.86 0.12 166 / 0.3);
+  background: color-mix(in oklab, var(--accent) 30%, transparent);
 }
 
 :focus-visible {
@@ -91,10 +200,17 @@ body {
 
 /* Overlays that float on the 3D stage. */
 @utility frosted {
-  background: rgb(17 22 20 / 0.72);
+  background: color-mix(in oklab, var(--room-2) 78%, transparent);
   border: 1px solid var(--color-line);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+
+@utility quran {
+  font-family: var(--font-quran);
+  font-feature-settings: "calt", "liga", "mark", "mkmk";
+  line-height: 2;
+  word-spacing: 0.08em;
 }
 
 @utility arabic {

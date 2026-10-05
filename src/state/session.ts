@@ -20,6 +20,20 @@ export interface Settings {
   /** Soft chime + haptic when hands-free follows a movement. */
   sounds: boolean
   characterId: string
+  /** The companion recites each line aloud (quiet lines softly). */
+  voice: boolean
+  /** The companion briefly says what to do at each movement, in your language. */
+  guide: boolean
+  /** Quiet sounds of the hour from the window (no music). */
+  ambience: boolean
+  /** 0..1 */
+  volume: number
+  /** Raise the hands going into ruku and rising from it (raf' al-yadayn). */
+  raiseHands: boolean
+  /** Listen mode: the companion recites each line first, then you say it. */
+  repeatAfter: boolean
+  /** Keep this session's microphone audio and voice log on this device, to save and send for debugging. */
+  recordSessions: boolean
 }
 
 /** What to show, after applying per-language defaults. */
@@ -60,8 +74,13 @@ interface SessionState {
   setHandsFree: (on: boolean) => void
   setDemo: (on: boolean) => void
   updateSettings: (patch: Partial<Settings>) => void
-  /** A stable pose reported by the hands-free engine. */
+  /** A stable pose reported by demo mode (or the compatibility engine). */
   onPose: (pose: PoseClass) => void
+  /**
+   * The hands-free decoder recognised a movement: go to this step. Only
+   * ever moves forward; starts the prayer from 'ready'.
+   */
+  followTo: (index: number) => void
 }
 
 const fresh = (prayer: PrayerId) => ({ prayer, sequence: buildSequence(prayer), phase: 'ready' as Phase, index: 0 })
@@ -83,13 +102,20 @@ export const useSession = create<SessionState>()(
         pace: 'normal',
         sounds: true,
         characterId: 'yusuf',
+        voice: true,
+        guide: true,
+        ambience: true,
+        volume: 0.9,
+        raiseHands: true,
+        repeatAfter: true,
+        recordSessions: false,
       },
 
       autoSelectPrayer: (id) => {
         const { prayerSource, phase, prayer } = get()
         if (prayerSource === 'auto' && phase === 'ready' && prayer !== id) set(fresh(id))
       },
-      choosePrayer: (id) => set({ ...fresh(id), prayerSource: 'manual' }),
+      choosePrayer: (id) => set({ ...fresh(id), prayerSource: 'manual', autoplay: false }),
       begin: () => set({ phase: 'praying', index: 0 }),
       next: () => {
         const { phase, index, sequence } = get()
@@ -107,7 +133,7 @@ export const useSession = create<SessionState>()(
         const { sequence } = get()
         set({ phase: 'praying', index: Math.max(0, Math.min(index, sequence.steps.length - 1)) })
       },
-      restart: () => set({ ...fresh(get().prayer) }),
+      restart: () => set({ ...fresh(get().prayer), autoplay: false }),
       setAutoplay: (autoplay) => set({ autoplay }),
       setHandsFree: (handsFree) => set({ handsFree, autoplay: false, demo: handsFree && get().demo }),
       setDemo: (demo) => set({ demo, handsFree: demo || get().handsFree, autoplay: false }),
@@ -124,13 +150,24 @@ export const useSession = create<SessionState>()(
         const target = nextPoseChange(sequence.steps, index)
         if (target >= 0 && sequence.steps[target]!.pose === pose) set({ index: target })
       },
+      followTo: (target) => {
+        const { phase, index, sequence } = get()
+        if (phase === 'complete' || target < 0 || target >= sequence.steps.length) return
+        if (phase === 'ready') return set({ phase: 'praying', index: target })
+        if (target > index) set({ index: target })
+      },
     }),
     {
       name: 'prayalong:session',
-      version: 2,
+      version: 3,
       partialize: (s) => ({ settings: s.settings }),
       // Older saves predate languages and companions; keep only what still fits.
-      migrate: (persisted) => persisted as { settings: Settings },
+      migrate: (persisted, version) => {
+        const p = persisted as { settings: Partial<Settings> }
+        // v3: real field-recorded ambience ships; turn it on for everyone once.
+        if (version < 3 && p?.settings) p.settings.ambience = true
+        return p as { settings: Settings }
+      },
       merge: (persisted, current) => ({
         ...current,
         settings: { ...current.settings, ...((persisted as { settings?: Partial<Settings> })?.settings ?? {}) },

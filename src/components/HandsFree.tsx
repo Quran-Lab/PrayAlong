@@ -1,7 +1,9 @@
 import { Pause, Play, RefreshCw, Sparkles, Video, VideoOff } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef } from 'react'
+import type { Blocker } from '@/handsfree/advice'
 import { isFallback, isFollowing, type Framing, type HandsFreeStatus } from '@/handsfree/types'
+import { postureKey } from '@/content/postures'
 import { useT } from '@/i18n'
 import { cn } from '@/lib/cn'
 import type { PoseClass, Posture } from '@/sequence/types'
@@ -26,7 +28,7 @@ export function HandsFreeButton({ on, status, onToggle, compact }: { on: boolean
         className={cn(
           'relative flex h-10 cursor-pointer items-center gap-2.5 rounded-full border text-sm font-medium whitespace-nowrap transition-all duration-300',
           compact ? 'w-10 justify-center' : 'ps-4 pe-3.5',
-          on ? 'border-mint/50 bg-mint/[0.1] text-ink shadow-[0_0_26px_-8px_oklch(0.86_0.12_166/0.7)]' : 'glass text-ink-soft hover:text-ink',
+          on ? 'border-mint/50 bg-mint/[0.1] text-ink shadow-[0_0_26px_-8px_color-mix(in_oklab,var(--accent)_70%,transparent)]' : 'glass text-ink-soft hover:text-ink',
         )}
       >
         {!compact && <span>{t('hf.button')}</span>}
@@ -53,6 +55,8 @@ export function useStatusText() {
       starting: t('hf.status.starting'),
       loading: t('hf.status.loading'),
       watching: t('hf.status.watching'),
+      reconnecting: t('hf.status.reconnecting'),
+      'camera-lost': t('hf.status.fallback'),
       demo: t('hf.status.demo'),
       denied: t('hf.status.fallback'),
       'no-camera': t('hf.status.fallback'),
@@ -63,7 +67,42 @@ export function useStatusText() {
 export function useFallbackText() {
   const t = useT()
   return (status: HandsFreeStatus) =>
-    status === 'denied' ? t('hf.msg.denied') : status === 'no-camera' ? t('hf.msg.noCamera') : status === 'no-model' ? t('hf.msg.noModel') : null
+    status === 'denied'
+      ? t('hf.msg.denied')
+      : status === 'no-camera'
+        ? t('hf.msg.noCamera')
+        : status === 'no-model'
+          ? t('hf.msg.noModel')
+          : status === 'camera-lost'
+            ? t('hf.msg.cameraLost')
+            : null
+}
+
+export function useBlockerText() {
+  const t = useT()
+  return (b: Blocker) => (b ? t(`hf.block.${b}`) : null)
+}
+
+/** A thin ring that fills as the camera grows sure of the next movement. */
+export function ConfidenceRing({ value, className }: { value: number; className?: string }) {
+  const r = 7
+  const c = 2 * Math.PI * r
+  return (
+    <svg viewBox="0 0 18 18" className={cn('size-[18px] shrink-0 -rotate-90', className)} aria-hidden>
+      <circle cx="9" cy="9" r={r} fill="none" strokeWidth="2" className="stroke-white/15" />
+      <circle
+        cx="9"
+        cy="9"
+        r={r}
+        fill="none"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={c * (1 - Math.max(0, Math.min(1, value)))}
+        className="stroke-mint transition-[stroke-dashoffset] duration-200"
+      />
+    </svg>
+  )
 }
 
 /** A small, friendly mirror so people trust what the camera sees. No skeletons. */
@@ -71,7 +110,9 @@ export function CameraBubble({
   stream,
   status,
   pose,
-  framing,
+  expected,
+  progress = 0,
+  blocker = null,
   onOpen,
   onRetry,
   onDemo,
@@ -79,7 +120,14 @@ export function CameraBubble({
   stream: MediaStream | null
   status: HandsFreeStatus
   pose: PoseClass | null
-  framing: Framing
+  /** How much of the person the camera sees (kept for callers; the blocker says why). */
+  framing?: Framing
+  /** The movement the camera waits for next. */
+  expected?: Posture | null
+  /** 0..1: how sure the camera is getting about it. */
+  progress?: number
+  /** What is stopping the camera from following, if anything. */
+  blocker?: Blocker
   onOpen: () => void
   onRetry: () => void
   onDemo: () => void
@@ -87,6 +135,7 @@ export function CameraBubble({
   const t = useT()
   const statusText = useStatusText()
   const fallback = useFallbackText()(status)
+  const blockerText = useBlockerText()(blocker)
   const watching = status === 'watching'
 
   return (
@@ -102,7 +151,7 @@ export function CameraBubble({
           <CameraPreview stream={stream} className="aspect-[4/3] w-full opacity-90" />
         </button>
       )}
-      <div className="flex items-start gap-2 px-3 py-2.5 text-xs">
+      <div className="flex items-start gap-2 px-3 py-2.5 text-sm">
         <span className={cn('mt-1 size-1.5 shrink-0 rounded-full', isFollowing(status) ? 'animate-breathe bg-mint' : isFallback(status) ? 'bg-amber-300/80' : 'animate-breathe bg-white/50')} />
         <div className="min-w-0 leading-relaxed">
           <div className="text-ink-soft">{statusText(status)}</div>
@@ -120,8 +169,13 @@ export function CameraBubble({
                 </button>
               </div>
             </>
-          ) : watching && framing !== 'full' ? (
-            <div className="text-amber-200/90">{t('hf.msg.noPerson')}</div>
+          ) : watching && blockerText ? (
+            <div className="text-amber-200/90">{blockerText}</div>
+          ) : watching && expected ? (
+            <div className="mt-0.5 flex items-center gap-1.5 text-mint">
+              <ConfidenceRing value={progress} />
+              <span>{t('hf.next', { posture: t(`posture.${postureKey(expected)}`) })}</span>
+            </div>
           ) : (
             <AnimatePresence mode="wait">
               <motion.div key={pose ?? 'none'} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-mint">
@@ -168,7 +222,7 @@ export function DemoBar({
       role="toolbar"
       aria-label={t('demo.title')}
     >
-      <span className="hidden ps-2 pe-1 text-[11px] font-medium tracking-[0.14em] text-ink-muted uppercase sm:inline">{t('demo.title')}</span>
+      <span className="hidden ps-2 pe-1 text-sm font-medium text-ink-muted sm:inline">{t('demo.title')}</span>
       {DEMO_POSES.map(({ pose, icon }) => (
         <Tooltip key={pose} content={`${t(`pose.${pose}`)} · ${t('demo.keys')}`} side="top">
           <button
@@ -188,7 +242,7 @@ export function DemoBar({
       <span className="mx-0.5 h-7 w-px bg-line" />
       <button
         onClick={() => onAuto(!auto)}
-        className={cn('flex h-11 cursor-pointer items-center gap-1.5 rounded-xl px-3 text-xs font-medium', auto ? 'bg-mint/15 text-mint' : 'text-ink-soft hover:bg-white/[0.07]')}
+        className={cn('flex h-11 cursor-pointer items-center gap-1.5 rounded-xl px-3 text-sm font-medium', auto ? 'bg-mint/15 text-mint' : 'text-ink-soft hover:bg-white/[0.07]')}
       >
         {auto ? <Pause className="size-4 fill-current" /> : <Play className="size-4 fill-current" />}
         <span className="hidden sm:inline">{auto ? t('demo.stop') : t('demo.auto')}</span>

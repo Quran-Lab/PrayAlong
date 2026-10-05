@@ -3,11 +3,17 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "prayalong",
+  "account_id": "a04f68eb4a3c42642bb23718c532d0b4",
+  "main": "./worker/index.ts",
   "compatibility_date": "2026-10-01",
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // The voice model comes from R2 (see worker/index.ts).
+    "run_worker_first": ["/voice/model/*"]
   },
+  "r2_buckets": [{ "binding": "MODELS", "bucket_name": "prayalong-models" }],
   "routes": [
     { "pattern": "prayalong.me", "custom_domain": true },
     { "pattern": "www.prayalong.me", "custom_domain": true }

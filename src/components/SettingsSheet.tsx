@@ -12,7 +12,7 @@ import { Kbd, Segmented, Switch } from './ui/primitives'
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-2">
-      <h3 className="text-[11px] font-medium tracking-[0.14em] text-ink-muted uppercase">{title}</h3>
+      <h3 className="text-sm font-semibold text-ink-soft">{title}</h3>
       {children}
     </section>
   )
@@ -53,13 +53,38 @@ export function SettingsSheet({ open, onOpenChange, clock }: { open: boolean; on
                 >
                   <span className="min-w-0">
                     <span className="block truncate">{l.label}</span>
-                    {l.hint && <span className="block truncate text-[11px] text-ink-muted">{l.hint}</span>}
+                    {l.hint && <span className="block truncate text-sm text-ink-muted">{l.hint}</span>}
                   </span>
                   {active && <Check className="size-4 shrink-0 text-mint" />}
                 </button>
               )
             })}
           </div>
+        </Section>
+
+        <Section title={t('settings.sound')}>
+          <Switch label={t('settings.voice')} checked={settings.voice} onCheckedChange={(v) => update({ voice: v })} />
+          <Switch label={t('settings.guide')} checked={settings.guide} onCheckedChange={(v) => update({ guide: v })} />
+          <Switch label={t('settings.repeatAfter')} checked={settings.repeatAfter} onCheckedChange={(v) => update({ repeatAfter: v })} />
+          <Switch label={t('settings.record')} checked={settings.recordSessions} onCheckedChange={(v) => update({ recordSessions: v })} />
+          <Switch label={t('settings.ambience')} checked={settings.ambience} onCheckedChange={(v) => update({ ambience: v })} />
+          <label className="flex items-center justify-between gap-4 pt-1 text-sm text-ink-soft">
+            {t('settings.volume')}
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={settings.volume}
+              onChange={(e) => update({ volume: Number(e.target.value) })}
+              className="w-40 accent-[var(--accent)]"
+            />
+          </label>
+        </Section>
+
+        <Section title={t('settings.practice')}>
+          <Switch label={t('settings.raiseHands')} checked={settings.raiseHands} onCheckedChange={(v) => update({ raiseHands: v })} />
+          <p className="text-sm leading-relaxed text-ink-faint">{t('settings.raiseHandsNote')}</p>
         </Section>
 
         <Section title={t('settings.show')}>
@@ -136,21 +161,21 @@ export function SettingsSheet({ open, onOpenChange, clock }: { open: boolean; on
               </span>
             </span>
             {place.source !== 'gps' && (
-              <button onClick={clock.useMyLocation} disabled={clock.locating} className="shrink-0 cursor-pointer text-xs font-medium text-mint hover:underline disabled:opacity-50">
+              <button onClick={clock.useMyLocation} disabled={clock.locating} className="shrink-0 cursor-pointer text-sm font-medium text-mint hover:underline disabled:opacity-50">
                 {clock.locating ? t('settings.locating') : t('settings.useLocation')}
               </button>
             )}
           </div>
-          <p className="text-xs text-ink-faint">{t('settings.method', { method: methodLabel() })}</p>
+          <p className="text-sm text-ink-faint">{t('settings.method', { method: methodLabel() })}</p>
         </Section>
 
-        <div className="hidden flex-wrap gap-x-3 gap-y-1.5 border-t border-line pt-4 text-xs text-ink-muted md:flex">
+        <div className="hidden flex-wrap gap-x-3 gap-y-1.5 border-t border-line pt-4 text-sm text-ink-muted md:flex">
           <span className="flex items-center gap-1.5"><Kbd>Space</Kbd> {t('settings.keys.next')}</span>
           <span className="flex items-center gap-1.5"><Kbd>←</Kbd> {t('settings.keys.back')}</span>
           <span className="flex items-center gap-1.5"><Kbd>P</Kbd> {t('settings.keys.auto')}</span>
           <span className="flex items-center gap-1.5"><Kbd>H</Kbd> {t('settings.keys.hf')}</span>
         </div>
-        <p className="text-[11px] leading-relaxed text-ink-faint">{t('settings.sources', { credit: quranCredit(locale) })}</p>
+        <p className="text-sm leading-relaxed text-ink-faint">{t('settings.sources', { credit: quranCredit(locale) })}</p>
       </div>
     </Sheet>
   )

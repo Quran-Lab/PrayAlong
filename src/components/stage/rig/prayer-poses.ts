@@ -182,7 +182,9 @@ export const PRAYER_POSES: Record<PoseName, PrayerPose> = {
   },
   kneel: {
     fk: { hips: [12, 0, 0], spine: [4, 0, 0], neck: [8, 0, 0], head: [8, 0, 0], ...kneelingLegs(12, 12) },
-    ...handsOnThighs,
+    // Passing through: hands come forward towards the mat with soft elbows.
+    left: { anchor: 'thighs', offset: [0.02, 0.07, 0.11], pole: [0.6, -0.2, -1], fingers: [0, -0.6, 1], palm: [0, -1, 0], grip: 'relaxed' },
+    right: { anchor: 'thighs', offset: [-0.02, 0.07, 0.11], pole: [-0.6, -0.2, -1], fingers: [0, -0.6, 1], palm: [0, -1, 0], grip: 'relaxed' },
     eyesClosed: 1,
     contacts: ['knees', 'toes'],
   },
@@ -214,7 +216,9 @@ const KNEELING = new Set<PoseName>(['sujud', 'jalsah', 'tashahhud', 'salam-right
 const STANDING = new Set<PoseName>(['rest', 'takbir', 'qiyam', 'ruku', 'itidal'])
 
 /** Intermediate poses so the body goes down knees-first and rises naturally. */
-export function waypoints(from: PoseName, to: PoseName): PoseName[] {
+export function waypoints(from: PoseName, to: PoseName, raiseHands = false): PoseName[] {
+  // Raising the hands (raf' al-yadayn) going into ruku and rising from it.
+  if (raiseHands && ((from === 'qiyam' && to === 'ruku') || (from === 'ruku' && to === 'itidal'))) return ['takbir', to]
   if ((STANDING.has(from) && KNEELING.has(to)) || (KNEELING.has(from) && STANDING.has(to))) return ['kneel', to]
   return [to]
 }

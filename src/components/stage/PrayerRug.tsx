@@ -68,16 +68,11 @@ export function PrayerRug() {
     }
     pompoms.castShadow = true
 
-    // A soft round "stage" under the rug, with the rug's blurred shadow baked in.
+    // The rug's blurred contact shadow, baked in.
     const c = document.createElement('canvas')
     c.width = c.height = 512
     const g = c.getContext('2d')!
-    const radial = g.createRadialGradient(256, 256, 0, 256, 256, 256)
-    radial.addColorStop(0, 'rgba(120, 210, 175, 0.16)')
-    radial.addColorStop(0.65, 'rgba(120, 210, 175, 0.05)')
-    radial.addColorStop(1, 'rgba(120, 210, 175, 0)')
-    g.fillStyle = radial
-    g.fillRect(0, 0, 512, 512)
+    // (The window light on the floor comes from the room behind the canvas.)
     g.filter = 'blur(18px)'
     g.fillStyle = 'rgba(0, 8, 5, 0.75)'
     const sx = (RUG.width / 3.6) * 512

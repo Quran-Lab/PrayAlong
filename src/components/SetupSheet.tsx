@@ -1,14 +1,18 @@
-import { CheckCircle2, Footprints, Hand, RefreshCw, Smartphone, SwitchCamera } from 'lucide-react'
+import { CheckCircle2, Footprints, Laptop, MonitorUp, RefreshCw, ScanFace, SwitchCamera } from 'lucide-react'
+import type { Blocker } from '@/handsfree/advice'
 import { isFallback, type Framing, type HandsFreeStatus } from '@/handsfree/types'
+import type { CheckState } from '@/handsfree/use-hands-free'
 import { useT } from '@/i18n'
 import { cn } from '@/lib/cn'
-import { CameraPreview, useFallbackText, useStatusText } from './HandsFree'
+import { CameraPreview, useBlockerText, useFallbackText, useStatusText } from './HandsFree'
 import { Sheet } from './ui/Sheet'
 import { Button } from './ui/primitives'
 
 /**
- * Getting hands-free right the first time: where to put the device, a live
- * framing check, and a way out (demo) if there's no camera.
+ * Getting hands-free right the first time, for the real setup: a laptop on
+ * the floor at the front of the rug. Live coaching on the placement (what
+ * the camera can't see and what to change), a standing calibration, a
+ * ten-second "quick ruku and sit" check, and a way out (demo).
  */
 export function SetupSheet({
   open,
@@ -16,6 +20,10 @@ export function SetupSheet({
   status,
   stream,
   framing,
+  blocker = null,
+  calibrated = false,
+  check = { state: 'idle' },
+  onCheck,
   engineLabel,
   facingMode,
   onFlip,
@@ -27,6 +35,10 @@ export function SetupSheet({
   status: HandsFreeStatus
   stream: MediaStream | null
   framing: Framing
+  blocker?: Blocker
+  calibrated?: boolean
+  check?: CheckState
+  onCheck?: () => void
   engineLabel: string | null
   facingMode: 'user' | 'environment'
   onFlip: () => void
@@ -36,50 +48,65 @@ export function SetupSheet({
   const t = useT()
   const statusText = useStatusText()
   const fallback = useFallbackText()(status)
+  const blockerText = useBlockerText()(blocker)
   const watching = status === 'watching'
 
-  const check = !watching
+  const coach = !watching
     ? { tone: 'muted', text: statusText(status) }
-    : framing === 'full'
-      ? { tone: 'ok', text: t('setup.seeYou') }
-      : framing === 'partial'
-        ? { tone: 'warn', text: t('hf.msg.noPerson') }
-        : { tone: 'muted', text: t('setup.lookingForYou') }
+    : blockerText
+      ? { tone: 'warn', text: blockerText }
+      : framing === 'none'
+        ? { tone: 'muted', text: t('setup.lookingForYou') }
+        : !calibrated
+          ? { tone: 'muted', text: t('setup.standStill') }
+          : { tone: 'ok', text: t('setup.seeYou') }
 
   const steps = [
-    { icon: Smartphone, text: t('setup.step1') },
-    { icon: Footprints, text: t('setup.step2') },
-    { icon: Hand, text: t('setup.step3') },
+    { icon: Laptop, text: t('setup.step1') },
+    { icon: MonitorUp, text: t('setup.step2') },
+    { icon: Footprints, text: t('setup.step3') },
   ]
+
+  const checkText =
+    check.state === 'running'
+      ? check.stage === 'bowing'
+        ? t('setup.check.bow')
+        : t('setup.check.sit')
+      : check.state === 'done'
+        ? check.result.ok
+          ? t('setup.check.ok')
+          : t('setup.check.missed', { what: check.result.missing.map((m) => t(m === 'bowing' ? 'posture.ruku' : 'posture.jalsah')).join(', ') })
+        : null
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={t('setup.title')} description={t('setup.body')}>
       <div className="relative mt-2 overflow-hidden rounded-2xl border border-line bg-black/40">
         {stream ? (
-          <CameraPreview stream={stream} mirror={facingMode === 'user'} className="aspect-[3/4] w-full sm:aspect-[4/5]" />
+          <CameraPreview stream={stream} mirror={facingMode === 'user'} className="aspect-[4/3] w-full" />
         ) : (
-          <div className="grid aspect-[3/4] w-full place-items-center p-6 text-center text-sm text-ink-muted sm:aspect-[4/5]">
+          <div className="grid aspect-[4/3] w-full place-items-center p-6 text-center text-sm text-ink-muted">
             {fallback ?? <span className="animate-breathe">{statusText(status)}</span>}
           </div>
         )}
-        {/* A soft guide for where the body should be. */}
+        {/* Where the head and shoulders should be when standing (the legs may be cut off). */}
         {stream && (
           <div
             aria-hidden
             className={cn(
-              'pointer-events-none absolute inset-x-[22%] inset-y-[8%] rounded-[45%_45%_18%_18%/30%_30%_10%_10%] border-2 border-dashed transition-colors duration-500',
-              framing === 'full' ? 'border-mint/70' : 'border-white/30',
+              'pointer-events-none absolute inset-x-[30%] top-[5%] h-[45%] rounded-[50%_50%_22%_22%/42%_42%_14%_14%] border-2 border-dashed transition-colors duration-500',
+              coach.tone === 'ok' ? 'border-mint/70' : 'border-white/30',
             )}
           />
         )}
         <div
+          role="status"
           className={cn(
-            'absolute inset-x-3 bottom-3 flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm backdrop-blur-md',
-            check.tone === 'ok' ? 'bg-mint/20 text-mint' : check.tone === 'warn' ? 'bg-amber-400/15 text-amber-100' : 'bg-black/45 text-ink-soft',
+            'absolute inset-x-3 bottom-3 flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-center text-sm backdrop-blur-md',
+            coach.tone === 'ok' ? 'bg-mint/20 text-mint' : coach.tone === 'warn' ? 'bg-amber-400/15 text-amber-100' : 'bg-black/45 text-ink-soft',
           )}
         >
-          {check.tone === 'ok' && <CheckCircle2 className="size-4" />}
-          {check.text}
+          {coach.tone === 'ok' && <CheckCircle2 className="size-4 shrink-0" />}
+          {coach.text}
         </div>
         {stream && (
           <button
@@ -92,8 +119,8 @@ export function SetupSheet({
         )}
       </div>
 
-      {engineLabel && status === 'watching' && (
-        <p className="mt-2 text-center text-[11px] text-ink-faint">{engineLabel} · {t('hf.private')}</p>
+      {engineLabel && watching && (
+        <p className="mt-2 text-center text-sm text-ink-faint">{engineLabel} · {t('hf.private')}</p>
       )}
 
       <ol className="mt-4 space-y-2.5">
@@ -106,6 +133,20 @@ export function SetupSheet({
           </li>
         ))}
       </ol>
+
+      {watching && onCheck && (
+        <div className="mt-4 flex items-center gap-3 rounded-xl bg-white/[0.04] px-3 py-2.5 text-sm">
+          <ScanFace className="size-4 shrink-0 text-mint" />
+          <span className={cn('flex-1', check.state === 'done' && !check.result.ok ? 'text-amber-100' : 'text-ink-soft')}>
+            {checkText ?? t('setup.check.intro')}
+          </span>
+          {check.state !== 'running' && (
+            <Button variant="quiet" onClick={onCheck} disabled={!calibrated}>
+              {check.state === 'done' ? t('hf.retry') : t('setup.check.start')}
+            </Button>
+          )}
+        </div>
+      )}
 
       <div className="mt-5 flex flex-col gap-2">
         {isFallback(status) && status !== 'no-model' ? (

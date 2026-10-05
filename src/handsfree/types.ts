@@ -28,10 +28,12 @@ export type HandsFreeStatus =
   | 'starting' // asking for the camera
   | 'loading' // loading the pose model
   | 'watching' // running
+  | 'reconnecting' // the camera dropped; retrying (1 s, 3 s, 10 s) and holding the prayer still
+  | 'camera-lost' // retries ran out: timed guidance until the camera comes back
   | 'demo' // poses come from on-screen buttons / keys 1–5
   | 'denied' // camera permission refused
   | 'no-camera' // no camera, or not a secure context
   | 'no-model' // pose tracking couldn't start on this device
 
-export const isFollowing = (s: HandsFreeStatus) => s === 'watching' || s === 'demo'
-export const isFallback = (s: HandsFreeStatus) => s === 'denied' || s === 'no-camera' || s === 'no-model'
+export const isFollowing = (s: HandsFreeStatus) => s === 'watching' || s === 'demo' || s === 'reconnecting'
+export const isFallback = (s: HandsFreeStatus) => s === 'denied' || s === 'no-camera' || s === 'no-model' || s === 'camera-lost'

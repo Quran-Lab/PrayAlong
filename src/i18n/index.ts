@@ -4,7 +4,7 @@ import { en, type MessageKey, type Messages } from './en'
 import { ar, es, fr, id, nl, tr, ur } from './more'
 import { detectLocale, type Locale } from './locales'
 
-const MESSAGES: Record<Locale, Messages> = { en, de, fr, es, tr, id, nl, ur, ar }
+export const MESSAGES: Record<Locale, Messages> = { en, de, fr, es, tr, id, nl, ur, ar }
 
 export type { Locale, MessageKey }
 export { LOCALES, READS_ARABIC, detectLocale } from './locales'

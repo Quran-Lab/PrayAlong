@@ -232,3 +232,6 @@ export const surahsByRakah: Record<number, { group: 'kawthar' | 'ikhlas'; lines:
   1: { group: 'kawthar', lines: ['kawthar-1', 'kawthar-2', 'kawthar-3'] },
   2: { group: 'ikhlas', lines: ['ikhlas-1', 'ikhlas-2', 'ikhlas-3', 'ikhlas-4'] },
 }
+
+/** Every line id, in reading order (for audio generation and checks). */
+export const LINE_IDS: readonly RecitationId[] = lines.map((line) => line.id)

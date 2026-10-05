@@ -14,7 +14,10 @@ const dist = (a: Keypoint, b: Keypoint) => Math.hypot(a.x - b.x, a.y - b.y)
  * automatic calibration); it lets us recognise a bow seen head-on, where the
  * torso foreshortens instead of tilting.
  */
-export function classifyPose(kp: readonly Keypoint[], standingTorso?: number): Reading {
+export function classifyPose(raw: readonly Keypoint[], standingTorso?: number, aspect = 1): Reading {
+  // Square units: normalized x and y are different lengths on a 4:3 frame,
+  // so scale x by the frame's aspect before measuring any distance.
+  const kp = aspect === 1 ? raw : raw.map((k) => ({ ...k, x: k.x * aspect }))
   const p = (i: number) => kp[i]!
   const shoulders = mid(p(KP.leftShoulder), p(KP.rightShoulder))
   const hips = mid(p(KP.leftHip), p(KP.rightHip))
@@ -46,8 +49,10 @@ export function classifyPose(kp: readonly Keypoint[], standingTorso?: number): R
   else if (tilt < 32 && wristsUp) pose = 'hands-raised'
   else if (tilt < 32 && kneeDrop > 0.55 && shinDrop > 0.5) pose = 'standing'
 
-  // Salam: the nose swings past the ears. The camera sees a mirror image of
-  // the worshipper, so their right is image-left.
+  // Salam: the nose swings past the ears. In the camera's (unmirrored)
+  // frames the worshipper's right is image-left. Only the compatibility
+  // engine uses this; the sequence decoder learns the direction from the
+  // first salam instead (decoder.ts).
   const ears = mid(p(KP.leftEar), p(KP.rightEar))
   const shoulderWidth = Math.max(dist(p(KP.leftShoulder), p(KP.rightShoulder)), 1e-3)
   const swing = (nose.x - ears.x) / shoulderWidth
@@ -56,7 +61,8 @@ export function classifyPose(kp: readonly Keypoint[], standingTorso?: number): R
   return { pose, headTurn }
 }
 
-/** Torso length, for the standing calibration. */
-export function torsoLength(kp: readonly Keypoint[]) {
+/** Torso length, for the standing calibration (same units as classifyPose with this aspect). */
+export function torsoLength(raw: readonly Keypoint[], aspect = 1) {
+  const kp = aspect === 1 ? raw : raw.map((k) => ({ ...k, x: k.x * aspect }))
   return dist(mid(kp[KP.leftShoulder]!, kp[KP.rightShoulder]!), mid(kp[KP.leftHip]!, kp[KP.rightHip]!))
 }

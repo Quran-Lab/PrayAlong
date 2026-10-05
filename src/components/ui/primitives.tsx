@@ -22,7 +22,7 @@ export function Tooltip({ content, children, side = 'bottom' }: { content: React
 
 export function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-line-strong bg-white/[0.04] px-1.5 font-sans text-[10.5px] font-medium text-ink-muted">
+    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-line-strong bg-white/[0.04] px-1.5 font-sans text-xs font-medium text-ink-muted">
       {children}
     </kbd>
   )
@@ -37,10 +37,10 @@ export function Button({ variant = 'ghost', size = 'md', className, ...props }: 
       className={cn(
         'inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full font-medium transition-[background,box-shadow,color,transform] duration-200 ease-(--ease-calm) active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40',
         size === 'md' && 'h-10 px-4 text-sm',
-        size === 'lg' && 'h-12 px-6 text-[15px]',
+        size === 'lg' && 'h-12 px-6 text-base',
         size === 'icon' && 'size-10',
         variant === 'primary' &&
-          'bg-mint text-[#06231a] shadow-[0_8px_30px_-8px_oklch(0.86_0.12_166/0.6)] hover:bg-[oklch(0.9_0.11_166)]',
+          'bg-mint text-canvas shadow-[0_8px_30px_-8px_color-mix(in_oklab,var(--accent)_60%,transparent)] hover:brightness-110',
         variant === 'ghost' && 'glass text-ink hover:bg-white/[0.08]',
         variant === 'quiet' && 'text-ink-muted hover:bg-white/[0.06] hover:text-ink',
         className,
@@ -86,7 +86,7 @@ export function Segmented<T extends string>({
           title={o.title}
           onClick={() => onChange(o.value)}
           className={cn(
-            'relative h-8 cursor-pointer rounded-lg px-2 text-[13px] transition-colors',
+            'relative h-8 cursor-pointer rounded-lg px-2 text-sm transition-colors',
             o.value === value ? 'text-ink' : 'text-ink-muted hover:text-ink-soft',
           )}
         >

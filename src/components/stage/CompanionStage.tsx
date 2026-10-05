@@ -1,6 +1,5 @@
-import { Billboard, ContactShadows, Environment, Lightformer, PerformanceMonitor } from '@react-three/drei'
+import { ContactShadows, Environment, Lightformer, PerformanceMonitor } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { EffectComposer, N8AO, Vignette } from '@react-three/postprocessing'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { oklchToHex } from '@/lib/color'
@@ -9,14 +8,25 @@ import { PrayerRug, RUG } from './PrayerRug'
 import { loadHumanoid } from './rig/humanoid'
 import { Performer, STAGE_HEIGHT } from './rig/performer'
 import type { PoseName } from './rig/prayer-poses'
-
-const BACKDROP = '#0a0d0c'
+import { Scenery } from './Scenery'
+import { currentTuning, tuneFor, type Tuning } from './rig/tuning'
+import type { PrayerId } from '@/sequence/types'
 
 interface StageProps {
   posture: PoseName
   character: CharacterInfo
   /** Prayer-of-the-day tint for the glow and rim light. */
   ambient: string
+  /** Sets the window's sky and the light in the room. */
+  prayer?: PrayerId
+  /** Raise the hands going into ruku and rising from it. */
+  raiseHands?: boolean
+  /** Live fine-tuning (Tune screen); defaults to the saved tuning. */
+  tuning?: Tuning
+  /** Where the companion stands on the page (percent of the window width), so the page's window can sit behind it. */
+  onAnchor?: (xPercent: number) => void
+  /** Draw the room behind the companion (off when the page draws it). */
+  scenery?: boolean
   reducedMotion?: boolean
   /** Dev: force the camera azimuth (radians) to inspect a pose from the side. */
   azimuth?: number
@@ -29,19 +39,25 @@ export function CompanionStage(props: StageProps) {
   const coarse = useMemo(() => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches, [])
   const [quality, setQuality] = useState<'high' | 'low'>(coarse ? 'low' : 'high')
 
+  const prayer = props.prayer ?? 'dhuhr'
+  // The room's window sits behind wherever the companion is drawn.
+  const [localAnchor, setLocalAnchor] = useState(50)
   return (
+    <div className="absolute inset-0">
+      {props.scenery !== false && <Scenery prayer={prayer} windowX={localAnchor} />}
     <Canvas
       shadows
       dpr={quality === 'high' ? [1, 2] : [1, 1.5]}
-      gl={{ antialias: true, toneMapping: THREE.NeutralToneMapping, powerPreference: 'high-performance' }}
+      gl={{ antialias: true, alpha: true, toneMapping: THREE.NeutralToneMapping, powerPreference: 'high-performance' }}
       camera={{ fov: 24, near: 0.1, far: 60, position: [1.6, 1.3, 5] }}
       aria-hidden
     >
-      <color attach="background" args={[BACKDROP]} />
       <PerformanceMonitor onDecline={() => setQuality('low')} />
       <CameraRig posture={props.posture} reducedMotion={props.reducedMotion} azimuth={props.azimuth} />
-      <Glow color={ambient} />
-      <StageLights ambient={ambient} />
+      {props.onAnchor && <Anchor onAnchor={props.onAnchor} />}
+      {props.scenery !== false && <Anchor inCanvas onAnchor={setLocalAnchor} />}
+
+      <StageLights ambient={ambient} prayer={prayer} />
       <Environment resolution={128} frames={1}>
         <Lightformer form="rect" intensity={1.6} position={[0, 5, 3]} scale={[8, 3, 1]} color="#fff7ec" />
         <Lightformer form="rect" intensity={0.9} position={[-5, 2, 1]} rotation-y={Math.PI / 2} scale={[4, 3, 1]} color="#f1efe9" />
@@ -50,19 +66,14 @@ export function CompanionStage(props: StageProps) {
       <PrayerRug />
       <Companion {...props} />
       <ContactShadows position={[0, RUG.top + 0.001, RUG.center]} scale={[RUG.width + 0.4, RUG.length + 0.4]} blur={2.4} far={1.4} opacity={0.55} resolution={512} color="#0b3328" />
-      {quality === 'high' && (
-        <EffectComposer multisampling={4}>
-          <N8AO halfRes aoRadius={0.16} intensity={0.7} distanceFalloff={0.5} color="#1b2a24" />
-          <Vignette offset={0.32} darkness={0.55} />
-        </EffectComposer>
-      )}
     </Canvas>
+    </div>
   )
 }
 
 // ————————————————————————————————————————————————————————— character
 
-function Companion({ posture, character, reducedMotion, onLoaded, onError }: StageProps) {
+function Companion({ posture, character, reducedMotion, raiseHands, tuning, onLoaded, onError }: StageProps) {
   const [performer, setPerformer] = useState<Performer | null>(null)
   const fade = useRef(0)
 
@@ -90,9 +101,11 @@ function Companion({ posture, character, reducedMotion, onLoaded, onError }: Sta
 
   useEffect(() => {
     if (!performer) return
+    performer.raiseHands = Boolean(raiseHands)
+    performer.tune = (pose) => tuneFor(tuning ?? currentTuning(), character.id, pose)
     if (reducedMotion) performer.jumpTo(posture)
     else performer.setPosture(posture)
-  }, [performer, posture, reducedMotion])
+  }, [performer, posture, reducedMotion, raiseHands, tuning])
 
   useFrame((_, dt) => {
     if (!performer) return
@@ -132,48 +145,41 @@ function applyClay(scene: THREE.Object3D) {
 
 // ————————————————————————————————————————————————————————— set dressing
 
-function Glow({ color }: { color: string }) {
-  const texture = useMemo(() => {
-    const c = document.createElement('canvas')
-    c.width = c.height = 256
-    const g = c.getContext('2d')!
-    const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128)
-    grad.addColorStop(0, 'rgba(255,255,255,0.55)')
-    grad.addColorStop(0.35, 'rgba(255,255,255,0.18)')
-    grad.addColorStop(1, 'rgba(255,255,255,0)')
-    g.fillStyle = grad
-    g.fillRect(0, 0, 256, 256)
-    const t = new THREE.CanvasTexture(c)
-    t.colorSpace = THREE.SRGBColorSpace
-    return t
-  }, [])
-  const ref = useRef<THREE.Group>(null)
-  const { camera } = useThree()
+/** Reports where the companion's chest lands on the page, horizontally. */
+function Anchor({ onAnchor, inCanvas = false }: { onAnchor: (xPercent: number) => void; /** Report as a percent of the canvas instead of the page. */ inCanvas?: boolean }) {
+  const { camera, gl } = useThree()
+  const last = useRef(-1)
+  const p = useMemo(() => new THREE.Vector3(), [])
   useFrame(() => {
-    // Keep the glow just behind the companion from wherever the camera is.
-    const dir = new THREE.Vector3().subVectors(new THREE.Vector3(0, 0.8, 0.3), camera.position).normalize()
-    ref.current?.position.set(0, 0.8, 0.3).addScaledVector(dir, 2.2)
+    p.set(0, 0.95, 0.2).project(camera)
+    const r = gl.domElement.getBoundingClientRect()
+    const x = inCanvas ? ((p.x + 1) / 2) * 100 : ((r.left + ((p.x + 1) / 2) * r.width) / window.innerWidth) * 100
+    if (Math.abs(x - last.current) > 0.25) {
+      last.current = x
+      onAnchor(x)
+    }
   })
-  return (
-    <Billboard ref={ref}>
-      <mesh>
-        <planeGeometry args={[5.5, 5.5]} />
-        <meshBasicMaterial map={texture} color={color} transparent opacity={0.32} depthWrite={false} toneMapped={false} />
-      </mesh>
-    </Billboard>
-  )
+  return null
 }
 
-function StageLights({ ambient }: { ambient: string }) {
+/** The light of each prayer's hour: sky fill, a sun or moon key, and the window behind. */
+const LIGHT: Record<PrayerId, { sky: string; ground: string; hemi: number; key: string; keyI: number; keyPos: [number, number, number]; back: string; backI: number; fill: string; fillI: number }> = {
+  fajr: { sky: '#cfc8ff', ground: '#2a2440', hemi: 0.95, key: '#ffd6c6', keyI: 1.9, keyPos: [-3, 2.4, 3.2], back: '#ffb4a2', backI: 2.4, fill: '#ece6ff', fillI: 0.9 },
+  dhuhr: { sky: '#eef6ff', ground: '#36463f', hemi: 1.1, key: '#fffaf0', keyI: 2.7, keyPos: [-2.4, 4.6, 3.4], back: '#c4e6ff', backI: 2.4, fill: '#fff6ec', fillI: 0.9 },
+  asr: { sky: '#fff1d8', ground: '#3a3020', hemi: 1.0, key: '#ffdca4', keyI: 2.6, keyPos: [-3.2, 2.8, 2.6], back: '#ffcb78', backI: 2.6, fill: '#fff2e2', fillI: 0.85 },
+  maghrib: { sky: '#ffd6c8', ground: '#2c1b22', hemi: 0.9, key: '#ffb084', keyI: 2.2, keyPos: [-3.4, 1.8, 2.4], back: '#ff8f62', backI: 3, fill: '#ffe4d6', fillI: 0.85 },
+  isha: { sky: '#bcc8ff', ground: '#151a30', hemi: 0.75, key: '#dfe6ff', keyI: 1.5, keyPos: [-2.2, 4, 3], back: '#a3b3ff', backI: 2.1, fill: '#ffdcb6', fillI: 1.1 },
+}
+
+function StageLights({ ambient, prayer }: { ambient: string; prayer: PrayerId }) {
+  const L = LIGHT[prayer]
   return (
     <>
-      <hemisphereLight args={['#fff4e6', '#3a4a42', 1.0]} />
-      {/* Soft front fill: faces sit inside caps and hijabs and need light from the viewer's side. */}
-      <directionalLight position={[0.6, 1.5, 4]} intensity={0.9} color="#fff6ec" />
+      <hemisphereLight args={[L.sky, L.ground, L.hemi]} />
       <directionalLight
-        position={[-2.4, 4.6, 3.4]}
-        intensity={2.6}
-        color="#fff3e2"
+        position={L.keyPos}
+        intensity={L.keyI}
+        color={L.key}
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0004}
@@ -183,8 +189,11 @@ function StageLights({ ambient }: { ambient: string }) {
         shadow-camera-top={2.2}
         shadow-camera-bottom={-1}
       />
-      <directionalLight position={[3, 1.8, 2.2]} intensity={0.7} color="#ffe9d2" />
-      <directionalLight position={[1.4, 2.6, -3.2]} intensity={3.2} color={ambient} />
+      {/* Soft front fill: faces sit inside caps and hijabs and need light from the viewer's side. */}
+      <directionalLight position={[0.6, 1.5, 4]} intensity={L.fillI} color={L.fill} />
+      {/* The window behind the companion: a rim of the sky's light. */}
+      <directionalLight position={[1.4, 2.6, -3.2]} intensity={L.backI} color={L.back} />
+      <directionalLight position={[-1.6, 2.2, -3]} intensity={L.backI * 0.35} color={ambient} />
     </>
   )
 }
@@ -192,10 +201,10 @@ function StageLights({ ambient }: { ambient: string }) {
 // ————————————————————————————————————————————————————————— camera
 
 const SHOTS: Record<'standing' | 'bowing' | 'floor' | 'sitting', { azimuth: number; elevation: number; target: [number, number, number]; fit: [number, number] }> = {
-  standing: { azimuth: 0.3, elevation: 0.16, target: [0, 0.8, 0.22], fit: [2.15, 1.6] },
-  bowing: { azimuth: 0.9, elevation: 0.17, target: [0, 0.66, 0.24], fit: [2.0, 1.9] },
-  floor: { azimuth: 0.95, elevation: 0.24, target: [0, 0.42, 0.4], fit: [1.7, 2.0] },
-  sitting: { azimuth: 0.6, elevation: 0.2, target: [0, 0.5, 0.3], fit: [1.7, 1.7] },
+  standing: { azimuth: 0.3, elevation: 0.16, target: [0, 0.72, 0.26], fit: [2.45, 1.75] },
+  bowing: { azimuth: 0.9, elevation: 0.17, target: [0, 0.6, 0.28], fit: [2.2, 2.05] },
+  floor: { azimuth: 0.95, elevation: 0.24, target: [0, 0.36, 0.42], fit: [1.85, 2.2] },
+  sitting: { azimuth: 0.6, elevation: 0.2, target: [0, 0.44, 0.34], fit: [1.85, 1.9] },
 }
 
 function shotFor(posture: PoseName) {
