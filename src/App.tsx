@@ -79,12 +79,12 @@ export function App() {
   const companionSpeaking = useCompanionSpeaking()
   const voice = useVoiceFollow({ enabled: voiceOn, mode: following ? 'lines' : 'full', ignoreCompanion: true, companionSpeaking })
   const voiceDriving = voiceOn && voice.status === 'listening'
-  // Every prayer starts in Listen mode (the click or key that begins it lets the mic start).
+  // Every prayer starts in Listen mode, with or without the camera (the click or key that begins it lets the mic start).
   const prevPhase = useRef(phase)
   useEffect(() => {
-    if (prevPhase.current === 'ready' && phase === 'praying' && !handsFree) setVoiceOn(true)
+    if (prevPhase.current === 'ready' && phase === 'praying') setVoiceOn(true)
     prevPhase.current = phase
-  }, [phase, handsFree])
+  }, [phase])
   // If listening cannot start (no mic, permission denied, model failed), guide by time instead.
   useEffect(() => {
     if (voiceOn && voice.status === 'error' && phase === 'praying') useSession.getState().setAutoplay(true)
