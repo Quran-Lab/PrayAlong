@@ -416,10 +416,47 @@ Reading it:
 Decode speed: the 4.4 minute fajr decodes in about 25 s on one thread when
 nothing else runs (real-time factor about 0.1 on a 14900KF).
 
+The table above is the first version (480 ms model, before the prayer-graph
+aligner). Later measurements, same harness:
+
+**Chunk size** (current code, 160 ms is the default since ca580e4). Line
+completion; latency medians over the standard runs; RTF on four E-cores:
+
+| | 480 ms | 320 ms | 160 ms |
+| --- | --- | --- | --- |
+| standard set, 491 lines | 99.4% | 99.0% | 98.8% |
+| real-like set, 516 lines | 94.6% | 92.2% | 91.1% |
+| real voices, 549 lines (adults) | 63.6% (76.2%) | 60.1% (73.0%) | 60.8% (73.4%) |
+| surah named right / wrong switches | 90/109, 0 | 90/109, 0 | 89/109, 0 |
+| word lag p50 | 0.52 s | 0.46 s | 0.38 s |
+| line-end lag p95 | 0.59 s | 0.45 s | 0.33 s |
+| WASM RTF | 0.131 | 0.166 | 0.225 |
+
+Real voices, paired per clip against 480 ms: 160 ms makes +0.40 skeleton
+errors per clip (95% CI [0.11, 0.68]), 320 ms +0.31 ([0.05, 0.59]); on short
+single-verse clips +0.18 and +0.20 (both CIs include 0). Isolated "Allahu
+akbar" (60 clips): 4.6 / 4.6 / 4.9% PER, the takbir completed in 60/60 for
+every model.
+
+**Amin** (`--amin`, premature moves before / after 6c04c5c): amin after a
+4-6 s pause 2 and 6 / 0 and 1 (the 1 is a quiet amin in rak'ah 3 whose timer
+runs out); amin left out and amin joined to the last verse 0 / 0.
+
+**Late start** (`--lateset`, seconds until the session caught up with the
+person, fajr / maghrib, before / after the resync work): model ready 10 s in
+8.4, 7.5 / 6.8, 6.0; 25 s in 8.1, 9.3 / 5.8, 5.8; 40 s in 35.3, 26.6 / 14.9,
+15.2.
+
+**Live App** (`voice-app.mjs`): see the 2026-10-05 evening batch below.
+
 ## Limits
 
-- Latency is mostly the model: the export decodes 480 ms chunks, so a word is
-  reported about 0.5 s after it ends (p50) and under 1 s (p95) in clean audio.
+- Latency is mostly the model: with 160 ms chunks a word is reported about
+  0.38 s after it ends (p50) and a line completes 0.2 to 0.35 s after its last
+  word in clean audio; noise roughly doubles the p95.
+- The 3D stage competes with the decoder for CPU. The decoder-lag guard draws
+  the stage at low power while decoding is more than 1.5 s behind; a machine
+  that is still too slow falls back to the timers.
 - The test voices are TTS renders of the same lines (clean, fluent, standard
   tajweed). Real worshippers mumble, rush and whisper more; the perturbation
   runs and the -20 dB runs are the closest proxies. Whispering is not voiced
