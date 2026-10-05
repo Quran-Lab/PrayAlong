@@ -258,7 +258,7 @@ export function App() {
 
             {/* Dock */}
             <footer className="relative z-10 shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6 short:pb-2">
-              <PostureDock following={following} listening={voiceDriving} onListen={setListen} />
+              <PostureDock following={following} listening={voiceOn && voice.status !== 'error'} listenLoading={voiceOn && voice.status === 'loading'} onListen={setListen} />
             </footer>
           </div>
 

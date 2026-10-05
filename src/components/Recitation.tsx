@@ -72,8 +72,19 @@ function Words({
         const colour = you ? 'var(--you)' : 'var(--accent)'
         // Partly said: fill the word from its start with a gradient clipped to the
         // text, which keeps Arabic letters joined (no per-letter spans).
-        if (lit && fill !== null && fill < 0.98 && range![0] === range![1]) {
-          const p = Math.round(Math.max(0.06, fill) * 100)
+        // Spread the progress across the pieces of the current word (rabbil- | 'ālamīn).
+        const span = range ? range[1] - range[0] + 1 : 1
+        const pos = fill === null ? null : fill * span
+        const piece = range ? k - range[0] : 0
+        if (lit && pos !== null && fill! < 0.98 && piece >= Math.floor(pos)) {
+          if (piece > Math.floor(pos)) {
+            return (
+              <span key={i} className="text-ink-muted transition-colors duration-200">
+                {w}
+              </span>
+            )
+          }
+          const p = Math.round(Math.max(0.06, pos - Math.floor(pos)) * 100)
           return (
             <span
               key={i}
@@ -233,7 +244,7 @@ export function Recitation({
               className={cn('leading-[1.12] font-semibold tracking-[-0.018em] text-balance text-ink', show.arabic && 'mt-2 text-ink-soft')}
               style={{ fontSize: `calc(${long ? 'var(--text-hero-long)' : 'var(--text-hero)'} * ${k * (show.arabic ? 0.72 : 1)})` }}
             >
-              <Words you={you} hyphens text={line.transliteration} range={litRange(word, al?.t, countTokens(line.transliteration, true), arabicWords)} />
+              <Words you={you} hyphens fill={you ? heardFill : null} text={line.transliteration} range={litRange(word, al?.t, countTokens(line.transliteration, true), arabicWords)} />
             </p>
           )}
           {show.translation && line.meaning && (

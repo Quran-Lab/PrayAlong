@@ -14,7 +14,19 @@ import { Tooltip } from './ui/primitives'
  * movements of this rak'ah as a track that fills as you go (each movement as
  * long as its recitation), and one clear control to lead or pause.
  */
-export function PostureDock({ following, listening = false, onListen }: { following: boolean; /** Listen mode is following the user's voice. */ listening?: boolean; onListen?: (on: boolean) => void }) {
+export function PostureDock({
+  following,
+  listening = false,
+  listenLoading = false,
+  onListen,
+}: {
+  following: boolean
+  /** Listen mode is on (following the user's voice). */
+  listening?: boolean
+  /** The voice model is still loading. */
+  listenLoading?: boolean
+  onListen?: (on: boolean) => void
+}) {
   const t = useT()
   const { sequence, index, phase, autoplay, handsFree, next, prev, goTo, setAutoplay } = useSession()
   const segments = useMemo(() => postureSegments(sequence.steps), [sequence])
@@ -152,7 +164,11 @@ export function PostureDock({ following, listening = false, onListen }: { follow
                   aria-label={t('dock.pauseListening')}
                   className="relative grid size-12 cursor-pointer place-items-center rounded-full bg-mint text-canvas shadow-[0_10px_30px_-10px_color-mix(in_oklab,var(--accent)_70%,transparent)] transition-transform duration-200 hover:brightness-110 active:scale-95 sm:size-14"
                 >
-                  <span className="absolute inset-0 animate-ping rounded-full bg-mint/30 [animation-duration:2.4s]" aria-hidden />
+                  {listenLoading ? (
+                    <span className="absolute inset-1 animate-spin rounded-full border-2 border-canvas/30 border-t-canvas" aria-hidden />
+                  ) : (
+                    <span className="absolute inset-0 animate-ping rounded-full bg-mint/30 [animation-duration:2.4s]" aria-hidden />
+                  )}
                   <Mic className="relative size-6" />
                 </button>
               </Tooltip>
