@@ -152,7 +152,7 @@ export function Recitation({
   speaking?: Speaking | null
   /** Listen mode: the last Arabic word the user was heard saying (-1 before the first). */
   heardWord?: number | null
-  /** Listen mode: which repetition the user is on (0-based). */
+  /** Listen mode: how many repetitions are finished. */
   heardRep?: number | null
   /** Listen mode: how far through the current word (0..1), from the phonemes heard. */
   heardFill?: number | null
@@ -184,8 +184,8 @@ export function Recitation({
   const count = (x: string) => x.split(/\s+/).filter(Boolean).length
   const arabicWords = count(line.arabic)
     // A repetition counts as said once its last word is complete.
-  const heardLastDone = heardWord !== null && heardWord >= arabicWords - 1 && (heardFill ?? 0) >= 0.99
-  const repSeen = live ? live.rep : (heardRep ?? 0) + (heardLastDone ? 1 : 0)
+  // heardRep is the number of repetitions already finished (from the recognizer).
+  const repSeen = live ? live.rep : (heardRep ?? 0)
   const repMax = useRef({ id: '', n: 0 })
   if (repMax.current.id !== step.id) repMax.current = { id: step.id, n: 0 }
   repMax.current.n = Math.max(repMax.current.n, repSeen)

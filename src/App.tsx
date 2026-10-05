@@ -110,6 +110,8 @@ export function App() {
     const s = useSession.getState()
     const step = s.sequence.steps[index]
     if (!step || voice.cursor.wordIndex < getLine(step.recitationId).arabic.split(/\s+/).filter(Boolean).length - 1) return
+    // Repeated lines: the voice driver waits for every repetition (or 6 s of silence).
+    if (voice.cursor.repsDone < step.repeat) return
     const at = index
     const id = setTimeout(() => {
       if (useSession.getState().index === at) {
@@ -297,7 +299,7 @@ export function App() {
                     <motion.div key="praying" className="w-full" exit={{ opacity: 0 }}>
                       <Recitation step={step} next={sequence.steps[index + 1]} timedMs={timedMs} distance={following} speaking={speaking}
                         heardWord={voiceDriving && voice.cursor?.step === index ? voice.cursor.wordIndex : null}
-                        heardRep={voiceDriving && voice.cursor?.step === index ? voice.cursor.rep : null}
+                        heardRep={voiceDriving && voice.cursor?.step === index ? voice.cursor.repsDone : null}
                         heardFill={voiceDriving && voice.cursor?.step === index ? voice.cursor.fill : null}
                         listening={voiceDriving}
                       />
