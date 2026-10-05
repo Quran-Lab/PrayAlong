@@ -20,7 +20,7 @@ const OUT = join(ROOT, 'test-results/voice', opt('out', 'realvoice'))
 const parallel = Number(opt('parallel', '3'))
 
 const only = opt('only', '')
-const items = JSON.parse(await readFile(join(SET, 'set.json'), 'utf8')).filter((x) => x.file.includes(only))
+const items = JSON.parse(await readFile(join(SET, 'set.json'), 'utf8')).filter((x) => !only || only.split(',').some((o) => x.file.includes(o)))
 const server = await createServer({
   root: ROOT,
   server: { port: 5201, strictPort: false, hmr: false, watch: null, headers: { 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'credentialless' } },
@@ -46,7 +46,8 @@ await Promise.all(
     await page.waitForFunction(() => !!window.__voiceRealBatch)
     const list = shard.map((x) => ({ url: `/realvoice/${x.file}`, surah: x.surah, ayahs: x.ayahs }))
     // --model voice/model-c8/ runs another model folder.
-    const res = await page.evaluate(([l, m]) => window.__voiceRealBatch(l, undefined, m ?? undefined), [list, opt('model', null)])
+    // --rate 48000 feeds at the microphone rate (the decoder resamples).
+    const res = await page.evaluate(([l, m, r]) => window.__voiceRealBatch(l, undefined, m ?? undefined, r), [list, opt('model', null), Number(opt('rate', '16000'))])
     res.forEach((r, i) => results.push({ ...shard[i], ...r }))
     console.log(`  shard ${k}: ${res.length} done`)
     await browser.close()

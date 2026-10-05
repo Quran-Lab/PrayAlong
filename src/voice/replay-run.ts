@@ -184,6 +184,8 @@ export interface RealResult {
   /** What the decoder emitted (phonetic script), and the follower state at the end. */
   heard?: string
   final?: string
+  /** Follower events and session moves in order: "d asr-1 quiet 3.42", "s asr 1.10", "g 14 timer 9.00". */
+  trace?: string[]
 }
 
 /**
@@ -193,7 +195,8 @@ export interface RealResult {
  * or on the verse itself for single-verse clips, so a different surah must be
  * recognised and followed.
  */
-export async function runRealBatch(items: RealItem[], onProgress?: (k: number) => void, modelBase?: string): Promise<RealResult[]> {
+/** `rate`: feed at this sample rate (48000 = what a microphone gives the worker; the decoder resamples). */
+export async function runRealBatch(items: RealItem[], onProgress?: (k: number) => void, modelBase?: string, rate = SR): Promise<RealResult[]> {
   const engine = new VoiceEngine()
   await engine.start({ mic: false, ...(modelBase ? { modelBase } : {}) })
   if (engine.status !== 'listening') throw new Error(`engine ${engine.status}: ${engine.error}`)
@@ -203,7 +206,7 @@ export async function runRealBatch(items: RealItem[], onProgress?: (k: number) =
   for (let k = 0; k < items.length; k++) {
     onProgress?.(k)
     const it = items[k]!
-    const ctx = new OfflineAudioContext(1, SR, SR)
+    const ctx = new OfflineAudioContext(1, rate, rate)
     const pcm = (await ctx.decodeAudioData(await (await fetch(it.url)).arrayBuffer())).getChannelData(0).slice()
     const rakah = it.surah === 'ikhlas' ? 2 : 1
     const steps = buildSequence('fajr').steps
@@ -238,19 +241,19 @@ export async function runRealBatch(items: RealItem[], onProgress?: (k: number) =
       else if (e.type === 'level') {
         if (t0 < 0) t0 = e.at - 0.1
         const at = e.at - t0
-        if (e.speech && at <= pcm.length / SR + 0.2) lastVoiced = at
+        if (e.speech && at <= pcm.length / rate + 0.2) lastVoiced = at
         core.level(e.speech, at, at * 1000)
         core.tick(at * 1000)
       }
     }
     core.sync(0)
-    const chunk = SR / 10
-    const silence = new Float32Array(SR * 2.5)
+    const chunk = rate / 10
+    const silence = new Float32Array(rate * 2.5)
     const all = new Float32Array(pcm.length + silence.length)
     all.set(pcm)
     const inflight: Promise<void>[] = []
     for (let off = 0; off < all.length; off += chunk) {
-      inflight.push(engine.feed(all.slice(off, off + chunk), SR))
+      inflight.push(engine.feed(all.slice(off, off + chunk), rate))
       if (inflight.length >= 16) await inflight.shift()
     }
     await Promise.all(inflight)
@@ -277,7 +280,14 @@ export async function runRealBatch(items: RealItem[], onProgress?: (k: number) =
       timerMoves,
       heard: heard.join(' '),
       final: JSON.stringify(core.follower.snapshot()),
-      audioSec: Math.round((pcm.length / SR) * 10) / 10,
+      trace: [
+        ...events.map(({ e, t }) =>
+          e.kind === 'lineDone' ? `d ${e.lineId} ${e.why ?? ''} ${t.toFixed(2)}`
+          : e.kind === 'word' ? `w ${e.lineId}:${e.wordIndex} ${t.toFixed(2)}`
+          : e.kind === 'surah' ? `s ${e.surah} ${t.toFixed(2)}`
+          : `${e.kind} ${t.toFixed(2)}`),
+      ],
+      audioSec: Math.round((pcm.length / rate) * 10) / 10,
     })
   }
   engine.stop()
