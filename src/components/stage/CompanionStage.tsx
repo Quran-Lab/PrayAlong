@@ -37,9 +37,11 @@ export function CompanionStage(props: StageProps) {
   const [quality, setQuality] = useState<'high' | 'low'>(coarse ? 'low' : 'high')
 
   const prayer = props.prayer ?? 'dhuhr'
+  // The room's window sits behind wherever the companion is drawn.
+  const [localAnchor, setLocalAnchor] = useState(50)
   return (
     <div className="absolute inset-0">
-      {props.scenery !== false && <Scenery prayer={prayer} />}
+      {props.scenery !== false && <Scenery prayer={prayer} windowX={localAnchor} />}
     <Canvas
       shadows
       dpr={quality === 'high' ? [1, 2] : [1, 1.5]}
@@ -50,6 +52,7 @@ export function CompanionStage(props: StageProps) {
       <PerformanceMonitor onDecline={() => setQuality('low')} />
       <CameraRig posture={props.posture} reducedMotion={props.reducedMotion} azimuth={props.azimuth} />
       {props.onAnchor && <Anchor onAnchor={props.onAnchor} />}
+      {props.scenery !== false && <Anchor inCanvas onAnchor={setLocalAnchor} />}
 
       <StageLights ambient={ambient} prayer={prayer} />
       <Environment resolution={128} frames={1}>
@@ -139,14 +142,14 @@ function applyClay(scene: THREE.Object3D) {
 // ————————————————————————————————————————————————————————— set dressing
 
 /** Reports where the companion's chest lands on the page, horizontally. */
-function Anchor({ onAnchor }: { onAnchor: (xPercent: number) => void }) {
+function Anchor({ onAnchor, inCanvas = false }: { onAnchor: (xPercent: number) => void; /** Report as a percent of the canvas instead of the page. */ inCanvas?: boolean }) {
   const { camera, gl } = useThree()
   const last = useRef(-1)
   const p = useMemo(() => new THREE.Vector3(), [])
   useFrame(() => {
     p.set(0, 0.95, 0.2).project(camera)
     const r = gl.domElement.getBoundingClientRect()
-    const x = ((r.left + ((p.x + 1) / 2) * r.width) / window.innerWidth) * 100
+    const x = inCanvas ? ((p.x + 1) / 2) * 100 : ((r.left + ((p.x + 1) / 2) * r.width) / window.innerWidth) * 100
     if (Math.abs(x - last.current) > 0.25) {
       last.current = x
       onAnchor(x)
