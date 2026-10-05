@@ -96,6 +96,8 @@ export interface FollowerOptions {
   idleLastWord: number
   /** Energy silence after a fully heard line that confirms it is over. */
   confirmSilenceSec: number
+  /** Entering a later tasbih repetition at its second or third word. */
+  lateEntryCost: number
   /** Hold a finished line at fill 1 this long before it completes (0: the UI shows the hold instead, without delaying the session). */
   holdSec: number
   /** Unexplained symbols (no word reported) before looking further ahead. */
@@ -127,6 +129,7 @@ export const DEFAULT_FOLLOWER: FollowerOptions = {
   idleSec: 1.0,
   idleLastWord: 0.6,
   confirmSilenceSec: 0.15,
+  lateEntryCost: 1.5,
   holdSec: 0,
   lostSymbols: 35,
   lostWindowSteps: 12,
@@ -619,6 +622,21 @@ export class Follower {
         }
       }
       if (u.kind === 'branch') continue
+      // A later repetition of a repeated line (tasbih) heard without its first
+      // word(s): the decoder often misses "subhana" between repetitions said
+      // back to back. Entering at a later word costs a fixed amount, so the
+      // rest ("rabbiyal azim") counts as the repetition, not as noise.
+      if (u.kind === 'line' && u.rep > 0 && (this.steps[u.step]?.repeat ?? 1) > 1) {
+        const v = D[base + u.start]! + this.opts.lateEntryCost
+        for (const w of u.words.slice(1)) {
+          if (v < D[base + w.start]!) {
+            D[base + w.start] = v
+            op[base + w.start] = OP_SKIP
+            src[base + w.start] = u.start
+            propagate(w.start, u.end)
+          }
+        }
+      }
       // A takbir node is optional (often whispered or unheard); lines cost more.
       const cost = u.kind === 'takbir' ? this.opts.takbirSkipCost : u.rep > 0 ? repSkipCost : this.lost ? this.opts.lostSkipCost : skipCost
       const v = D[base + u.start]! + cost
