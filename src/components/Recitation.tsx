@@ -181,14 +181,16 @@ export function Recitation({
   const you = spoken < 0 && heardWord !== null && heardWord >= 0
   // How many times a repeated line (tasbih ×3) has been said: from the companion
   // or from what was heard. It only ever goes up within a line.
-  const repSeen = live ? live.rep : (heardRep ?? 0)
+  const count = (x: string) => x.split(/\s+/).filter(Boolean).length
+  const arabicWords = count(line.arabic)
+    // A repetition counts as said once its last word is complete.
+  const heardLastDone = heardWord !== null && heardWord >= arabicWords - 1 && (heardFill ?? 0) >= 0.99
+  const repSeen = live ? live.rep : (heardRep ?? 0) + (heardLastDone ? 1 : 0)
   const repMax = useRef({ id: '', n: 0 })
   if (repMax.current.id !== step.id) repMax.current = { id: step.id, n: 0 }
   repMax.current.n = Math.max(repMax.current.n, repSeen)
   const repsDone = repMax.current.n
-  const count = (x: string) => x.split(/\s+/).filter(Boolean).length
-  const arabicWords = count(line.arabic)
-  const al = ALIGN[locale]?.[step.recitationId]
+const al = ALIGN[locale]?.[step.recitationId]
 
   return (
     <div className="relative mx-auto grid w-full max-w-[46rem] px-5 text-center" aria-live="polite">
