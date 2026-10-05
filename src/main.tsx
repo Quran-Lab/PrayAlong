@@ -17,8 +17,15 @@ const PoseLab = lazy(() => import('./lab/PoseLab').then((m) => ({ default: m.Pos
 const TuneLab = lazy(() => import('./lab/TuneLab').then((m) => ({ default: m.TuneLab })))
 const tune = new URLSearchParams(location.search).has('tune')
 const VoiceLab = lazy(() => import('./lab/VoiceLab').then((m) => ({ default: m.VoiceLab })))
+// Hands-free evaluation (docs/hands-free.md): /?lab&synth renders synthetic webcam
+// clips, /?lab&perceive runs the vision engines on them, /?lab&record records real ones.
+const SynthLab = lazy(() => import('./lab/SynthLab').then((m) => ({ default: m.SynthLab })))
+const PerceiveLab = lazy(() => import('./lab/PerceiveLab').then((m) => ({ default: m.PerceiveLab })))
+const RecordLab = lazy(() => import('./lab/RecordLab').then((m) => ({ default: m.RecordLab })))
 const query = new URLSearchParams(location.search)
-const lab = import.meta.env.DEV && query.has('lab')
+// Recording and replay (for the evaluation set) also work in production builds.
+const lab = query.has('lab') && (import.meta.env.DEV || query.has('record') || query.has('perceive'))
+const LabPage = query.has('voice') ? VoiceLab : query.has('synth') ? SynthLab : query.has('perceive') ? PerceiveLab : query.has('record') ? RecordLab : PoseLab
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -27,7 +34,9 @@ createRoot(document.getElementById('root')!).render(
         <TuneLab />
       </Suspense>
     ) : lab ? (
-      <Suspense>{query.has('voice') ? <VoiceLab /> : <PoseLab />}</Suspense>
+      <Suspense>
+        <LabPage />
+      </Suspense>
     ) : (
       <App />
     )}

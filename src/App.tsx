@@ -74,7 +74,16 @@ export function App() {
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user')
   const [demoAuto, setDemoAuto] = useState(false)
 
-  const hands = useHandsFree({ enabled: handsFree, demo, facingMode, onPose: session.onPose })
+  const hands = useHandsFree({
+    enabled: handsFree,
+    demo,
+    facingMode,
+    steps: sequence.steps,
+    phase,
+    index,
+    onPose: session.onPose,
+    onAdvance: session.followTo,
+  })
   const following = handsFree && isFollowing(hands.status)
 
   // [voice] begin: microphone engine (src/voice, docs/voice.md). Mic only: the
@@ -101,6 +110,8 @@ export function App() {
     onEvent: (e) => {
       if (e.kind === 'lineDone') setDoneStep(e.step)
     },
+    // [hands-free] heard movement phrases help the camera decide (lines stay with the voice driver).
+    onEvidence: (e) => (e.kind === 'takbir' || e.kind === 'tasmi' || e.kind === 'salam') && hands.addEvidence({ kind: e.kind, confidence: e.confidence, at: e.at }),
   })
   const voiceDriving = voiceOn && voice.status === 'listening'
   // Listen mode safety net: the last word of the line is done (fill 1) but the follower has
@@ -180,7 +191,10 @@ export function App() {
 
   useWakeLock(phase === 'praying')
   const { speaking, audioMs } = useCompanionAudio({ phase, step, next: sequence.steps[index + 1], prayer, voice: character.id, locale, settings, listen: voiceOn })
-  const appTimedMs = useStepTimer(following, audioMs, voiceDriving)
+  // [hands-free] The body decides when to change posture. If the camera has
+  // lost the person for 8 s, time takes over again, except in sujud (a head
+  // too close to the lens is normal there): hold.
+  const appTimedMs = useStepTimer(following && (!hands.lost || hands.hold), audioMs, voiceDriving)
   // In Listen mode you lead: no countdown on screen (the quiet timer fallback still runs underneath).
   const timedMs = voiceDriving ? null : appTimedMs
 
@@ -285,6 +299,9 @@ export function App() {
                         status={hands.status}
                         pose={hands.pose}
                         framing={hands.framing}
+                        expected={phase === 'complete' ? null : (hands.expectedPosture ?? null)}
+                        progress={hands.progress}
+                        blocker={hands.blocker}
                         onOpen={() => setSetupOpen(true)}
                         onRetry={hands.retry}
                         onDemo={() => session.setDemo(true)}
@@ -330,6 +347,10 @@ export function App() {
             status={hands.status}
             stream={hands.stream}
             framing={hands.framing}
+            blocker={hands.blocker}
+            calibrated={hands.calibrated}
+            check={hands.check}
+            onCheck={hands.startCheck}
             engineLabel={hands.engineLabel}
             facingMode={facingMode}
             onFlip={() => setFacingMode((m) => (m === 'user' ? 'environment' : 'user'))}
