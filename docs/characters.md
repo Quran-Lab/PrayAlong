@@ -8,7 +8,9 @@ applied to whichever character is loaded:
 - **Hands**: IK to landmarks on *that* character: its chest, knees, thighs,
   ears, the mat beside its head: with an explicit palm orientation.
 - **Grounding**: knees, feet and toes are kept on the mat and the toes stay
-  on one spot, as a real worshipper's do.
+  on one spot, as a real worshipper's do. Kneeling and in sujud each foot is
+  pitched (and the shin lowered, no further than the rug) until the toe tips
+  touch the rug top: the seventh point of contact.
 - **Sujud**: the torso pitches until the character's own forehead rests on
   the mat, whatever its proportions.
 - **Folded legs**: auto-rigs often put the knee joint in front of the hip.
@@ -81,21 +83,33 @@ point in tashahhud.
    `clean_robe_tex.py` (Maryam, Aisha) paints out dark marks Meshy left on
    the robe texture where its own hands touched the cloth (they read as
    slits), filling from the surrounding cloth only.
-10. Compress: `npx @gltf-transform/cli optimize in.glb public/avatars/x.glb
+10. The long robe below the waist is rebuilt and draped for the floor:
+   - `rebuild_skirt.py` (Blender, `blenv`) cuts the Meshy robe off just
+     below the hips and replaces it with a clean regular tube (96 columns,
+     about 1 cm rows) cast onto the old surface, so standing it keeps the
+     modelled silhouette. One plain cloth colour (blended into the torso at
+     the waist), a short band that laps over the cut like a waist seam,
+     weights blending from the hips into the thighs and shins. Leftover
+     robe bits below the hem go; bare feet and shoes stay.
+   - `pose-seq.test.ts` dumps the real Performer in jalsah, kneel and sujud
+     (run it with a vitest config whose `include` points at it; env
+     `POSE_GLB`, `POSES`, `POSE_OUT`, and `PRIM_MAT=skirt` for the tube).
+   - `drape_param.py` sculpts the drapes (see its header) and writes the
+     morph targets `drape_sit`, `drape_kneel`, `drape_sujud` and their
+     `*_tuck` partners.
+11. Compress: `npx @gltf-transform/cli optimize in.glb public/avatars/x.glb
    --compress meshopt --texture-compress webp --texture-size 2048
    --simplify false --join false --instance false --palette false`.
-11. `validate_glb.py` on the uncompressed file; `render_turn.py` for turntables.
+12. `validate_glb.py` on the uncompressed file; `render_turn.py` for turntables.
 
-`glbio.py` is the small GLB reader and writer these scripts share. Robe
-drapes for the floor postures (morph targets `drape_sit`, `drape_kneel`,
-`drape_sujud`, faded in by the performer, which also grounds on them) are
-in progress; the rig already supports them.
+`glbio.py` is the small GLB reader and writer these scripts share. The
+uncompressed results live in `prayalong-assets/final/<id>_drape.glb`.
 
 Credits: hands from Quaternius Universal Base Characters (CC0). Bodies
 generated with Meshy from PrayAlong's own concept art.
 
-Known rough edges: on the floor the long robes still fold as skinned
-cloth (the drapes above will replace that). The heads are large by design (soft chibi
+Known rough edges: the drapes are sculpted, not simulated, so the lap and
+knees are smooth soft shapes without small folds. The heads are large by design (soft chibi
 proportions), so the cap dominates the view from above in sujud.
 
 Portraits for the picker (`public/avatars/<id>.webp`) are cropped from
