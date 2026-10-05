@@ -118,6 +118,16 @@ describe('VoiceDriver', () => {
     expect(d.tick(view(i), 60_000 + stepMs(steps[i]!) + 10)).not.toBeNull()
   })
 
+  it('reports the timer fallback for the visible slider', () => {
+    const d = driver()
+    const i = idx('fatiha-2')
+    expect(d.timeoutMs(view(i))).toBe(stepMs(steps[i]!))
+    const last = idx('ruku') - 1
+    expect(d.timeoutMs(view(last))).toBe(stepMs(steps[last]!) + d.cfg.postureGraceMs)
+    expect(driver('lines').timeoutMs(view(last))).toBeNull()
+    expect(d.timeoutMs(view(0, 'ready'))).toBeNull()
+  })
+
   it("'lines' mode leaves postures to the camera; 'evidence' never moves", () => {
     const last = idx('ruku') - 1
     expect(at(driver('lines'), last, kw('takbir'), 6000)).toBeNull()

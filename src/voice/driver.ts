@@ -192,6 +192,20 @@ export class VoiceDriver {
     return announcedBy(s.steps, t) === kind ? t : -1
   }
 
+  /**
+   * How long the timer fallback gives the current step (from arriving on it,
+   * with nobody talking), for the visible progress slider. Null: no timer
+   * (the step waits for the camera, or the driver only reports evidence).
+   */
+  timeoutMs(s: SessionView): number | null {
+    if (this.cfg.mode === 'evidence' || s.phase !== 'praying') return null
+    const here = s.steps[s.index]!
+    const after = s.steps[s.index + 1]
+    const expected = this.cfg.stepMs(here)
+    if (!after || (after.pose === here.pose && (after.posture === here.posture || this.cfg.mode === 'full'))) return expected
+    return this.cfg.mode === 'full' ? expected + this.cfg.postureGraceMs : null
+  }
+
   /** Timer fallback; call a few times a second. */
   tick(s: SessionView, now: number): DriverAction | null {
     this.sync(s, now)

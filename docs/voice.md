@@ -196,6 +196,34 @@ line as confirming a pose the camera is unsure about.
 While voice is listening, the App's own step timer is off (the driver keeps
 speech-aware timers); if voice fails, the App timer is back automatically.
 
+## Wiring it as the primary "Listen" mode
+
+What `src/App.tsx` does on this branch (between `[voice]` markers), and what
+the main thread should change when the toggle UI lands:
+
+1. Replace the `?voice` flag with the Listen toggle state (persist it in the
+   session settings if wanted): `useVoiceFollow({ enabled: listen, mode:
+   following ? 'lines' : 'full', ignoreCompanion: true, companionSpeaking })`.
+   Enable it from the click so the AudioContext may start (the engine also
+   resumes it on the first interaction if it was started without one).
+2. `companionSpeaking`: the companion audio engine (`src/audio/engine.ts` on
+   the main branch) should expose a `speaking` boolean (true from the start of
+   a line's playback to its end) and pass it here. That both gates the
+   microphone and holds the timers, which is what makes repeat-after-me work.
+3. The visible progress slider: while voice is listening the App's own step
+   timer is off and `timedMs` comes from `voice.timerMs` (the driver's fallback
+   for that step: the line's time, plus 3 s before a posture change). It moves
+   on when nobody has spoken for 0.7 s and no word matched for 1.5 s, so the
+   prayer never stalls in quiet rak'ahs; as soon as speech is followed again,
+   the follower leads, catching up one step per event.
+4. Show `voice.status` / `voice.error` / `voice.progress` on the toggle (a first
+   start downloads about 80 MB), and optionally `voice.cursor` to underline the
+   word being said.
+5. Camera on as well: `mode: 'lines'` (camera leads postures, voice lines) or
+   keep `'full'` and feed camera poses through `session.onPose` as now; both
+   only move forward, so they cannot fight. `onEvidence` gives every voice
+   event for a fuser.
+
 ## The companion's own voice
 
 The app recites each line through the speakers, and the microphone hears it.
@@ -261,6 +289,7 @@ closed; `mic` = through `--use-file-for-fake-audio-capture`, in real time
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | fajr aisha | 4.42 | 1.00 | 0.56 | 0.91 | 49/49 | 0 | 11/11 | 0 | 0 | 0 | 0.37 / 1.69 | 0 | yes |
 | fajr aisha, fake mic, real time | 4.42 | 1.00 | 0.59 | 1.05 | 49/49 | 0 | 11/11 | 0 | 0 | 0 | 0.44 / 1.75 | 0 | yes |
+| fajr yusuf, SNR 10 dB, fake mic, real time | 4.46 | 1.00 | 0.55 | 1.13 | 49/49 | 0 | 11/11 | 0 | 0 | 0 | 0.33 / 2.03 | 0 | yes |
 | fajr yusuf | 4.46 | 0.98 | 0.53 | 0.94 | 48/49 | 0 | 11/11 | 0 | 0 | 0 | 0.34 / 1.69 | 1 | yes |
 | fajr ahmad | 4.52 | 1.00 | 0.56 | 0.94 | 49/49 | 0 | 11/11 | 0 | 0 | 0 | 0.30 / 1.70 | 0 | yes |
 | maghrib yusuf | 6.23 | 1.00 | 0.53 | 0.92 | 67/67 | 0 | 17/17 | 0 | 0 | 0 | 0.31 / 1.68 | 0 | yes |
@@ -287,7 +316,7 @@ Reading it:
   next phrase starts, often more than 3 s later) and one or two lines per noisy
   run. One early lineDone in 15 runs (perturbed isha).
 - **Takbir recall** 100% except 10/11 at SNR 5 dB; **zero false keyword
-  events** and **zero premature moves** in 14 of 15 runs (about 80 minutes of
+  events** and **zero premature moves** in 15 of 16 runs (about 85 minutes of
   prayer audio).
 - **Arrival** (session reaches the step the person is on) p50 0.27 to 0.55 s,
   p95 1.6 to 2.2 s; posture changes dominate the p95 because a move waits for

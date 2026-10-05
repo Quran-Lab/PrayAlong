@@ -32,6 +32,11 @@ export interface VoiceState {
   speaking: boolean
   /** Step and word the follower thinks the person is on. */
   cursor: { step: number; wordIndex: number } | null
+  /**
+   * The timer fallback for the current step (ms), for the visible progress
+   * slider while voice leads; null when the step has no timer.
+   */
+  timerMs: number | null
 }
 
 const COMPANION_TAIL_MS = 350
@@ -65,7 +70,7 @@ export function toEvidence(e: FollowerEvent, now: number): Evidence {
  * (depending on `mode`) moves it. Lazy: nothing is downloaded until enabled.
  */
 export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
-  const [state, setState] = useState<VoiceState>({ status: 'idle', progress: 0, speaking: false, cursor: null })
+  const [state, setState] = useState<VoiceState>({ status: 'idle', progress: 0, speaking: false, cursor: null, timerMs: null })
   const engineRef = useRef<VoiceEngine | null>(null)
   const coreRef = useRef<VoiceCore | null>(null)
   const optsRef = useRef(opts)
@@ -91,8 +96,13 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
       },
     )
     coreRef.current = core
-    const unsubSession = useSession.subscribe(() => core.sync(performance.now()))
-    core.sync(performance.now())
+    const onSession = () => {
+      core.sync(performance.now())
+      const timerMs = core.driver.timeoutMs(view())
+      setState((st) => (st.timerMs === timerMs ? st : { ...st, timerMs }))
+    }
+    const unsubSession = useSession.subscribe(onSession)
+    onSession()
     const cursor = () => {
       const snap = core.follower.snapshot()
       setState((st) => (st.cursor?.step === snap.step && st.cursor.wordIndex === snap.wordIndex ? st : { ...st, cursor: { step: snap.step, wordIndex: snap.wordIndex } }))
@@ -135,7 +145,7 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState {
       engine.stop()
       engineRef.current = null
       coreRef.current = null
-      setState({ status: 'idle', progress: 0, speaking: false, cursor: null })
+      setState({ status: 'idle', progress: 0, speaking: false, cursor: null, timerMs: null })
     }
   }, [opts.enabled])
 

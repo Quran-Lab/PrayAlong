@@ -58,7 +58,8 @@ export function App() {
   // voice leads lines and postures; with the camera following: lines only.
   // Off unless the URL has ?voice, until the toggle UI lands.
   const [voiceOn] = useState(() => new URLSearchParams(location.search).has('voice'))
-  const voice = useVoiceFollow({ enabled: voiceOn, mode: following ? 'lines' : 'full' })
+  // When the companion audio lands: companionSpeaking = its `speaking` flag.
+  const voice = useVoiceFollow({ enabled: voiceOn, mode: following ? 'lines' : 'full', ignoreCompanion: true })
   const voiceDriving = voiceOn && voice.status === 'listening'
   // [voice] end
 
@@ -88,7 +89,9 @@ export function App() {
   }, [prayer])
 
   useWakeLock(phase === 'praying')
-  const timedMs = useStepTimer(following, voiceDriving)
+  // [voice] while voice leads, the slider shows its timer fallback.
+  const appTimedMs = useStepTimer(following, voiceDriving)
+  const timedMs = voiceDriving ? voice.timerMs : appTimedMs
   useKeyboard(toggleHandsFree)
 
   // A soft chime when PrayAlong follows a movement, so nobody has to look up.
