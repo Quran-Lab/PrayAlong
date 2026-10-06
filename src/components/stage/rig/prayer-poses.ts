@@ -145,8 +145,10 @@ export const PRAYER_POSES: Record<PoseName, PrayerPose> = {
   },
   takbir: {
     fk: { ...straightLegs, neck: [2, 0, 0], head: [3, 0, 0] },
-    left: { anchor: 'ears', pole: [0.8, -1, -0.1], fingers: [0.05, 1, 0.05], palm: [0, 0, 1] },
-    right: { anchor: 'ears', pole: [-0.8, -1, -0.1], fingers: [-0.05, 1, 0.05], palm: [0, 0, 1] },
+    // Elbows down and close to the body (not winged out): natural, and the
+    // robe's chest and sides stay smooth instead of being pulled up and out.
+    left: { anchor: 'ears', offset: [-0.01, -0.02, 0.025], pole: [0.25, -1, 0.3], fingers: [0.05, 1, 0.05], palm: [0, 0, 1] },
+    right: { anchor: 'ears', offset: [0.01, -0.02, 0.025], pole: [-0.25, -1, 0.3], fingers: [-0.05, 1, 0.05], palm: [0, 0, 1] },
     eyesClosed: 0.85,
     contacts: ['feet', 'toes'],
   },
