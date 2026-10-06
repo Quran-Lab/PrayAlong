@@ -61,6 +61,7 @@ The fonts the app uses are bundled from the @fontsource packages listed above
 | Quran Lab zipformer2 CTC phoneme model v3.1 (int8) | Downloaded at run time from Quran Lab storage | Quran Lab, NPL-1.2 |
 | sherpa-onnx WASM runtime | `public/voice/runtime/` | Apache-2.0 (`public/voice/runtime/LICENSE.sherpa-onnx`) |
 | MediaPipe Pose Landmarker and Face Landmarker models | `public/models/*.task` | Apache-2.0 |
+| MediaPipe Face Detector (BlazeFace short range) model | `public/models/blaze_face_short_range.tflite` | Apache-2.0 |
 | DETRPose-N (github.com/SebastianJanampa/DETRPose), browser export | `public/models/detrpose.onnx` | Apache-2.0 (see `tools/detrpose/README.md`) |
 
 ## Religious text

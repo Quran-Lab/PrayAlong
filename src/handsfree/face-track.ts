@@ -1,3 +1,5 @@
+import { blend, cloneSig, SAME_FACE, similarity, type Signature } from './face-signature'
+
 /**
  * Lock on to one face and ignore everything else (lamps, posters, other
  * people). Pure: feed every frame's detections with a timestamp (ms).
@@ -21,6 +23,10 @@ export interface Box {
 export interface Detection {
   score: number
   box: Box
+  /** Appearance signature of this detection's crop (computed lazily, only when needed). */
+  sig?: () => Signature | null
+  /** Identity similarity to the remembered face, when it was checked this frame. */
+  sim?: number
 }
 
 export interface TrackFrame {
@@ -50,6 +56,14 @@ export const TRACK_DEFAULTS = {
   ema: 0.35,
   unlockMs: 4000,
   sujudReentryMs: 400,
+  /** Identity: the remembered face is built from this many confirmed crops. */
+  templateFrames: 10,
+  idThreshold: SAME_FACE,
+  /** Check identity on every n-th matched frame while locked (always when (re)acquiring). */
+  idEvery: 3,
+  /** Follow slow changes (light, pose) only on confident matches. */
+  idUpdateAbove: 0.85,
+  idAlpha: 0.05,
 }
 export type TrackOptions = typeof TRACK_DEFAULTS
 
@@ -89,6 +103,13 @@ export class FaceTracker {
    * face was tracked (a lamp, a poster): never used to lock or to come back.
    */
   private distractors: { box: Box; last: number }[] = []
+  /** The remembered face for this camera session (memory only). */
+  template: Signature | null = null
+  private samples: Signature[] = []
+  private matchedFrames = 0
+  private idBad = false
+  /** Last identity similarity of the locked face. */
+  lastSim: number | null = null
   /** Detections ignored this frame (for the debug overlay). */
   ignored: Detection[] = []
   matched: Detection | null = null
@@ -124,10 +145,23 @@ export class FaceTracker {
       if (!(near(tr, d.box, o) || (this.lastBox && near(this.lastBox, d.box, o)))) continue
       if (!best || d.score > best.score) best = d
     }
+    // Identity: every few frames (and whenever the last check failed).
+    if (best && this.template) {
+      if (this.idBad || this.matchedFrames % this.opts.idEvery === 0) {
+        const sim = this.idOf(best)
+        if (sim !== null) {
+          this.lastSim = sim
+          this.idBad = sim < this.opts.idThreshold
+        }
+      }
+      if (this.idBad) best = null
+    }
 
     // In sujud: the person may come back up anywhere; one strong face of the right size, held, will do.
     if (!best && sujud) {
       const strong = dets.filter((d) => d.score >= o.lockScore && d.box.h / tr.h >= o.sizeMin && d.box.h / tr.h <= o.sizeMax)
+      // Coming back up: only the remembered face (a different face or the lamp never counts).
+      if (strong.length === 1 && !this.isSame(strong[0]!)) strong.length = 0
       if (strong.length === 1) {
         const d = strong[0]!
         if (this.reentry && near(this.reentry.box, d.box, o)) {
@@ -138,6 +172,7 @@ export class FaceTracker {
         if (t - this.reentry.since >= o.sujudReentryMs && this.reentry.hits >= 3) {
           Object.assign(tr, d.box)
           best = d
+          this.idBad = false
         }
       } else if (this.reentry && ++this.reentry.misses > o.maxMisses) this.reentry = null
     } else if (best) this.reentry = null
@@ -154,6 +189,9 @@ export class FaceTracker {
     this.lastBox = best.box
     this.lastMatchAt = t
     this.matched = best
+    this.matchedFrames++
+    if (best.sim !== undefined) this.lastSim = best.sim
+    this.learn(best)
     // Anything else seen at the same time as the real face is a distractor.
     for (const d of all) if (d !== best && d.score >= o.minScore) this.remember(d.box, t)
     this.ignored = all.filter((d) => d !== best)
@@ -162,7 +200,8 @@ export class FaceTracker {
 
   private confirm(t: number, dets: readonly Detection[]) {
     const o = this.opts
-    const strong = dets.filter((d) => d.score >= o.lockScore && d.box.h >= o.lockMinH)
+    // With a remembered face, only that face can lock again.
+    const strong = dets.filter((d) => d.score >= o.lockScore && d.box.h >= o.lockMinH && this.isSame(d))
     // Continue the current candidate if it is still there, else start on the biggest strong face.
     let pick: Detection | undefined
     if (this.cand) pick = strong.find((d) => near(this.cand!.box, d.box, { ...o, sizeMin: 0.75, sizeMax: 1.33, matchDist: 0.35 }))
@@ -175,14 +214,53 @@ export class FaceTracker {
     } else {
       const big = [...strong].sort((p, q) => q.box.h * q.score - p.box.h * p.score)[0]
       this.cand = big ? { box: big.box, since: t, misses: 0, hits: 1 } : null
+      if (!this.template) this.samples = [] // learn only from the face that gets confirmed
       pick = big
     }
-    if (pick) this.matched = pick
+    if (pick) {
+      this.matched = pick
+      if (!this.template) this.learn(pick)
+    }
     if (this.cand && pick && t - this.cand.since >= o.lockMs && this.cand.hits >= o.minHits) {
       this.track = { ...pick.box, id: this.nextId++ }
       this.lastBox = pick.box
       this.lastMatchAt = t
       this.cand = null
+      this.idBad = false
+    }
+  }
+
+  /** Similarity to the remembered face, or null when there is none yet (or no crop). */
+  private idOf(d: Detection): number | null {
+    if (!this.template || !d.sig) return null
+    if (d.sim !== undefined) return d.sim
+    const s = d.sig()
+    if (!s) return null
+    d.sim = similarity(this.template, s)
+    return d.sim
+  }
+
+  private isSame(d: Detection) {
+    const sim = this.idOf(d)
+    return sim === null || sim >= this.opts.idThreshold
+  }
+
+  /** Learn the face from its first confirmed crops; then follow it slowly. */
+  private learn(d: Detection) {
+    if (!d.sig) return
+    if (!this.template) {
+      const s = d.sig()
+      if (!s) return
+      this.samples.push(s)
+      if (this.samples.length >= this.opts.templateFrames) {
+        const tpl = cloneSig(this.samples[0]!)
+        this.samples.slice(1).forEach((x, i) => blend(tpl, x, 1 / (i + 2)))
+        this.template = tpl
+        this.samples = []
+      }
+    } else if (d.sim !== undefined && d.sim >= this.opts.idUpdateAbove) {
+      const s = d.sig()
+      if (s) blend(this.template, s, this.opts.idAlpha)
     }
   }
 

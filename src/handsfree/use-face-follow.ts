@@ -13,6 +13,11 @@ export interface FaceDebug {
   lastMove: FaceMove | null
   /** ms until the camera may move again */
   waitMs: number
+  /** A face is remembered (identity template built). */
+  remembered: boolean
+  lastSim: number | null
+  /** ms per identity check */
+  idMs: number
 }
 
 /**
@@ -40,7 +45,7 @@ export function useFaceFollow({
   const [status, setStatus] = useState<FaceEngineStatus | 'off'>('off')
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [hint, setHint] = useState<'no-face' | null>(null)
-  const [dbg, setDbg] = useState<FaceDebug>({ reading: null, track: null, matched: null, ignored: [], state: 'unknown', lastMove: null, waitMs: 0 })
+  const [dbg, setDbg] = useState<FaceDebug>({ reading: null, track: null, matched: null, ignored: [], state: 'unknown', lastMove: null, waitMs: 0, remembered: false, lastSim: null, idMs: 0 })
   const [attempt, setAttempt] = useState(0)
   const engine = useRef<FaceEngine | null>(null)
   const follower = useRef(new FaceFollower())
@@ -75,7 +80,7 @@ export function useFaceFollow({
           console.log(`[face] ${move.reason} -> step ${move.index}`)
           onAdvanceRef.current(move.index, move.reason)
         }
-        if (debugRef.current) setDbg({ reading: r, track: tracker.track ? { ...tracker.track } : null, matched: tracker.matched, ignored: tracker.ignored, state: fl.state, lastMove: fl.lastMove, waitMs: fl.waitMs(r.t) })
+        if (debugRef.current) setDbg({ reading: r, track: tracker.track ? { ...tracker.track } : null, matched: tracker.matched, ignored: tracker.ignored, state: fl.state, lastMove: fl.lastMove, waitMs: fl.waitMs(r.t), remembered: !!tracker.template, lastSim: tracker.lastSim, idMs: e.idMs })
       },
     })
     engine.current = e

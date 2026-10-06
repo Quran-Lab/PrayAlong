@@ -95,17 +95,25 @@ export function FaceDebugOverlay({ stream, debug, status, mirror }: { stream: Me
       <div className={cn('relative aspect-[4/3] w-full', mirror && '-scale-x-100')}>
         {stream && <DebugVideo stream={stream} />}
         {debug.ignored.map((d, i) => (
-          <div key={i} className="absolute border border-white/50" style={pct(d.box)} />
+          <div key={i} className="absolute border border-white/50" style={pct(d.box)}>
+            {d.sim !== undefined && <IdLabel mirror={mirror} className="text-white/80">id {d.sim.toFixed(2)}</IdLabel>}
+          </div>
         ))}
         {debug.matched && !tr && <div className="absolute border-2 border-dashed border-sky-300" style={pct(debug.matched.box)} />}
-        {tr && <div className={cn('absolute border-2', debug.matched ? 'border-emerald-400' : 'border-emerald-400/40 border-dashed')} style={pct(tr)} />}
+        {tr && (
+          <div className={cn('absolute border-2', debug.matched ? 'border-emerald-400' : 'border-emerald-400/40 border-dashed')} style={pct(tr)}>
+            {debug.lastSim !== null && <IdLabel mirror={mirror} className="text-emerald-300">id match {debug.lastSim.toFixed(2)}</IdLabel>}
+          </div>
+        )}
       </div>
       <div className="space-y-0.5 p-2">
         <div>cam: {status}</div>
         <div>
           track: {tr ? <b className="text-emerald-300">#{tr.id} locked</b> : <span className="text-sky-300">confirming…</span>} {debug.matched ? `score ${debug.matched.score.toFixed(2)} h ${debug.matched.box.h.toFixed(2)}` : 'no match'}
         </div>
-        <div>ignored: {debug.ignored.length}</div>
+        <div>
+          ignored: {debug.ignored.length} · face {debug.remembered ? <b className="text-emerald-300">remembered</b> : 'learning…'} · id {debug.idMs.toFixed(2)} ms
+        </div>
         <div>
           state: <b className={debug.state === 'found' ? 'text-emerald-300' : debug.state === 'lost' ? 'text-amber-300' : ''}>{debug.state}</b> · wait {(debug.waitMs / 1000).toFixed(1)} s
         </div>
@@ -113,6 +121,10 @@ export function FaceDebugOverlay({ stream, debug, status, mirror }: { stream: Me
       </div>
     </div>
   )
+}
+
+function IdLabel({ children, mirror, className }: { children: React.ReactNode; mirror: boolean; className?: string }) {
+  return <span className={cn('absolute -top-4 left-0 whitespace-nowrap bg-black/60 px-0.5 text-[10px]', mirror && '-scale-x-100', className)}>{children}</span>
 }
 
 function DebugVideo({ stream }: { stream: MediaStream }) {

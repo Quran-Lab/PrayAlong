@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import fixtures from './face-fixtures.json'
+import { signature, type Signature } from './face-signature'
 import { FaceTracker, type Box, type Detection } from './face-track'
 
 const box = (cx: number, cy: number, h: number): Box => ({ x: cx - h * 0.4, y: cy - h / 2, w: h * 0.8, h })
@@ -109,5 +111,78 @@ describe('FaceTracker', () => {
     const tr = new FaceTracker()
     feed(tr, 0, 5000, (t) => (Math.round(t / 80) % 5 === 0 ? [FACE()] : []))
     expect(tr.locked).toBe(false)
+  })
+})
+
+describe('FaceTracker identity memory', () => {
+  const fx = fixtures as Record<string, Record<string, string>>
+  const crop = (who: string, v = 'base') => signature(Uint8Array.from(Buffer.from(fx[who]![v]!, 'base64')))
+  const lampCrop = () => {
+    const px = new Uint8Array(32 * 32 * 4)
+    for (let i = 0; i < 1024; i++) {
+      const d = Math.hypot((i % 32) - 16, Math.floor(i / 32) - 16) / 22
+      px.set([255, Math.max(0, 230 - 120 * d), Math.max(0, 150 - 150 * d), 255], i * 4)
+    }
+    return signature(px)
+  }
+  const as = (d: Detection, s: () => Signature): Detection => ({ ...d, sig: s })
+  const variants = ['base', 'shift', 'bigger', 'darker']
+  const ahmad = (t: number) => as(FACE(), () => crop('ahmad', variants[Math.round(t / 80) % 4]))
+
+  function learned() {
+    const tr = new FaceTracker()
+    feed(tr, 0, 2000, (t) => [ahmad(t)])
+    expect(tr.locked).toBe(true)
+    expect(tr.template).not.toBeNull()
+    return tr
+  }
+
+  it('remembers the face and re-acquires the same face after sujud', () => {
+    const tr = learned()
+    feed(tr, 2000, 10000, () => [], true)
+    // comes back up somewhere else, same person
+    const vis = feed(tr, 10000, 11500, (t) => [as(det(0.35, 0.5, 0.18), () => crop('ahmad', variants[Math.round(t / 80) % 4]))], true)
+    expect(vis.at(-1)).toBe(true)
+    expect(tr.lastSim!).toBeGreaterThanOrEqual(0.75)
+  })
+
+  it('a different face is rejected, even at the same position', () => {
+    const tr = learned()
+    const vis = feed(tr, 2000, 5000, () => [as(FACE(), () => crop('yusuf'))])
+    expect(vis.filter(Boolean).length).toBeLessThanOrEqual(2) // at most the frames before the next identity check
+    expect(vis.slice(3).every((v) => !v)).toBe(true)
+    // ...and after a long loss it never re-locks onto another person
+    const vis2 = feed(tr, 5000, 15000, () => [as(det(0.3, 0.4, 0.15), () => crop('aisha'))])
+    expect(vis2.every((v) => !v)).toBe(true)
+    expect(tr.locked).toBe(false)
+    // the right person does
+    feed(tr, 15000, 16500, (t) => [as(det(0.3, 0.4, 0.15), () => crop('ahmad', variants[Math.round(t / 80) % 4]))])
+    expect(tr.locked).toBe(true)
+  })
+
+  it('a different face coming up from sujud does not count', () => {
+    const tr = learned()
+    feed(tr, 2000, 6000, () => [], true)
+    const vis = feed(tr, 6000, 9000, () => [as(det(0.35, 0.5, 0.18), () => crop('yusuf'))], true)
+    expect(vis.every((v) => !v)).toBe(true)
+  })
+
+  it('a lamp is rejected by identity too (even a strong one, never seen next to the face)', () => {
+    const tr = learned()
+    feed(tr, 2000, 6000, () => [], true)
+    const vis = feed(tr, 6000, 9000, () => [as(det(0.8, 0.2, 0.14, 0.9), lampCrop)], true)
+    expect(vis.every((v) => !v)).toBe(true)
+    const vis2 = feed(tr, 9000, 20000, () => [as(det(0.8, 0.2, 0.14, 0.9), lampCrop)])
+    expect(vis2.every((v) => !v)).toBe(true)
+  })
+
+  it('identity is checked only every 3rd frame while locked', () => {
+    const tr = new FaceTracker()
+    let calls = 0
+    feed(tr, 0, 2000, (t) => [as(FACE(), () => (calls++, crop('ahmad', variants[Math.round(t / 80) % 4])))])
+    const before = calls
+    feed(tr, 2000, 4400, (t) => [as(FACE(), () => (calls++, crop('ahmad', variants[Math.round(t / 80) % 4])))])
+    // 30 frames: ~10 checks (+ a few slow template updates on confident matches)
+    expect(calls - before).toBeLessThanOrEqual(20)
   })
 })

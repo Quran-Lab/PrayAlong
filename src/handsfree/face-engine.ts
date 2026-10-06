@@ -1,4 +1,5 @@
 import { ResilientCamera, type CameraState } from './camera'
+import { SIG_SIZE, signature, type Signature } from './face-signature'
 import type { Detection } from './face-track'
 
 const base = import.meta.env.BASE_URL
@@ -24,6 +25,10 @@ export class FaceEngine {
   readonly video: HTMLVideoElement
   private canvas = document.createElement('canvas')
   private ctx = this.canvas.getContext('2d', { willReadFrequently: false })
+  private small = Object.assign(document.createElement('canvas'), { width: SIG_SIZE, height: SIG_SIZE })
+  private smallCtx = this.small.getContext('2d', { willReadFrequently: true })
+  /** Average ms per identity crop + signature (for the debug overlay). */
+  idMs = 0
   private camera: ResilientCamera
   private detector: Detector | null = null
   private timer = 0
@@ -117,12 +122,33 @@ export class FaceEngine {
       const res = this.detector.detectForVideo(this.canvas, this.lastTs)
       for (const d of res.detections) {
         const b = d.boundingBox
-        if (b) detections.push({ score: d.categories[0]?.score ?? 0, box: { x: b.originX / w, y: b.originY / h, w: b.width / w, h: b.height / h } })
+        if (!b) continue
+        const box = { x: b.originX / w, y: b.originY / h, w: b.width / w, h: b.height / h }
+        let memo: Signature | null | undefined
+        // Lazy: only computed when the tracker asks (this frame, while the canvas still holds it).
+        const sig = () => (memo !== undefined ? memo : (memo = this.signatureOf(b.originX, b.originY, b.width, b.height)))
+        detections.push({ score: d.categories[0]?.score ?? 0, box, sig })
       }
     } catch (err) {
       console.warn('[face] detect failed', err)
     }
     this.cb.onReading({ t: now, detections })
+  }
+
+  /** The central part of the face box (no hair, no background), 32x32. */
+  private signatureOf(x: number, y: number, w: number, h: number): Signature | null {
+    const c = this.smallCtx
+    if (!c) return null
+    const t0 = performance.now()
+    const sx = Math.max(0, x + w * 0.12)
+    const sy = Math.max(0, y + h * 0.08)
+    const sw = Math.min(this.canvas.width - sx, w * 0.76)
+    const sh = Math.min(this.canvas.height - sy, h * 0.84)
+    if (sw < 4 || sh < 4) return null
+    c.drawImage(this.canvas, sx, sy, sw, sh, 0, 0, SIG_SIZE, SIG_SIZE)
+    const s = signature(c.getImageData(0, 0, SIG_SIZE, SIG_SIZE).data)
+    this.idMs = this.idMs ? this.idMs * 0.9 + (performance.now() - t0) * 0.1 : performance.now() - t0
+    return s
   }
 
   retryCamera() {
