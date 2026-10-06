@@ -86,7 +86,7 @@ export const DEFAULT_DRIVER: Omit<DriverConfig, 'stepMs'> = {
   wordHoldMs: 1500,
   trackingSlack: 1.8,
   nextWordConfidence: 0.5,
-  postureAfterDoneMs: 3000,
+  postureAfterDoneMs: 1200,
   repeatSilenceMs: 6000,
 }
 

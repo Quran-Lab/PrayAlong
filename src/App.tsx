@@ -39,7 +39,7 @@ const CompanionStage = lazy(() => import('@/components/stage/CompanionStage').th
 /** How long hands-free waits for a movement it cannot see before moving on anyway. */
 const BODY_GRACE_MS = 6000
 /** Listen mode: after the line before a movement is done, how long to wait for its takbir. */
-const MOVE_GRACE_MS = 3000
+const MOVE_GRACE_MS = 1200
 /** Listen mode: no progress after the last word of a line for this long: move on. */
 const STUCK_MS = 7000
 /** Listen mode: how long a finished line stays on screen, fully lit, after the next starts. */

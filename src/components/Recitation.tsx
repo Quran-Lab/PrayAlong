@@ -187,7 +187,8 @@ export function Recitation({
   const count = (x: string) => x.split(/\s+/).filter(Boolean).length
   const arabicWords = count(line.arabic)
   // heardRep is the number of repetitions already finished (from the recognizer).
-  const repSeen = live ? live.rep : (heardRep ?? 0)
+  // The companion's clip stays "live" after it ends, so never let it hide what was heard.
+  const repSeen = Math.max(live ? live.rep : 0, heardRep ?? 0)
   const repMax = useRef({ id: '', n: 0 })
   if (repMax.current.id !== step.id) repMax.current = { id: step.id, n: 0 }
   repMax.current.n = Math.max(repMax.current.n, repSeen)

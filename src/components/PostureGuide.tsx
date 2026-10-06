@@ -38,13 +38,14 @@ const ease = [0.22, 1, 0.36, 1] as const
 export function PostureGuide({ posture, character, teach }: { posture: PoseName; character: string; teach: boolean }) {
   const t = useT()
   const shots = SHOTS[posture]
-  const [open, setOpen] = useState(teach)
+  // Open in both modes: it has to read from the mat, a metre from a laptop.
+  const [open, setOpen] = useState(true)
   const [tab, setTab] = useState(0)
 
   useEffect(() => preload(character), [character])
   // Each new movement starts open in Teach me, on its first picture.
   useEffect(() => {
-    setOpen(teach)
+    setOpen(true)
     setTab(0)
   }, [posture, teach])
 
@@ -58,11 +59,11 @@ export function PostureGuide({ posture, character, teach }: { posture: PoseName;
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           exit={{ opacity: 0, y: -6, filter: 'blur(3px)' }}
           transition={{ duration: 0.4, ease, delay: open ? 0.25 : 0 }}
-          className="mx-auto mt-[clamp(1rem,2.6vh,1.75rem)] flex w-full max-w-[31rem] justify-center"
+          className="mx-auto mt-[clamp(1rem,2.6vh,1.75rem)] flex w-full max-w-[38rem] justify-center"
         >
           {open ? (
-            <figure className="relative flex w-full items-stretch gap-3.5 rounded-[1.35rem] border border-line bg-white/[0.035] p-2 text-start sm:gap-4">
-              <div className="relative aspect-square w-[clamp(4.75rem,11vw,8.75rem)] shrink-0 overflow-hidden rounded-2xl bg-[#f7f5f2]">
+            <figure className="relative flex w-full items-stretch gap-3.5 rounded-[1.6rem] border border-mint/30 bg-white/[0.06] p-2.5 text-start sm:gap-4">
+              <div className="relative aspect-square w-[clamp(6.5rem,15vw,12rem)] shrink-0 overflow-hidden rounded-2xl bg-[#f7f5f2]">
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.img
                     key={shot}
@@ -87,7 +88,7 @@ export function PostureGuide({ posture, character, teach }: { posture: PoseName;
                         aria-selected={i === tab}
                         onClick={() => setTab(i)}
                         className={cn(
-                          'cursor-pointer rounded-full px-2.5 py-0.5 text-sm font-semibold transition-colors',
+                          'cursor-pointer rounded-full px-3 py-1 text-[length:var(--text-body)] font-semibold transition-colors',
                           i === tab ? 'bg-white/[0.12] text-ink' : 'text-ink-muted hover:text-ink-soft',
                         )}
                       >
@@ -96,7 +97,7 @@ export function PostureGuide({ posture, character, teach }: { posture: PoseName;
                     ))}
                   </div>
                 ) : (
-                  <span className="text-sm font-semibold text-mint">{t(TITLE[shot])}</span>
+                  <span className="text-[length:var(--text-body)] font-semibold text-mint">{t(TITLE[shot])}</span>
                 )}
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.p
@@ -105,7 +106,7 @@ export function PostureGuide({ posture, character, teach }: { posture: PoseName;
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="text-[length:var(--text-body)] leading-snug text-pretty text-ink"
+                    className="text-[length:var(--text-meaning)] leading-snug font-medium text-pretty text-ink"
                   >
                     {t(CAPTION[shot])}
                   </motion.p>
