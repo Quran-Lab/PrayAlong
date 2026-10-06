@@ -11,7 +11,7 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     // The voice model comes from R2 (see worker/index.ts).
-    "run_worker_first": ["/voice/model/*"]
+    "run_worker_first": ["/voice/model/*", "/media/*"]
   },
   "r2_buckets": [{ "binding": "MODELS", "bucket_name": "prayalong-models" }],
   "routes": [

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PrayAlong video</title>
+<meta name="description" content="PrayAlong: a teacher who prays with you. Two-minute introduction." />
+<meta property="og:title" content="PrayAlong: a teacher who prays with you" />
+<meta property="og:image" content="https://prayalong.me/video/poster.jpg" />
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; background: #0D0C1D; color: #F7F3EC; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; box-sizing: border-box; gap: 18px; }
+  video { width: min(1200px, 100%); aspect-ratio: 16 / 9; border-radius: 16px; background: #000; box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
+  h1 { font-size: clamp(20px, 3vw, 28px); font-weight: 600; margin: 0; text-align: center; }
+  p { margin: 0; color: #A9A4C4; font-size: 15px; text-align: center; }
+  a { color: #8BE3B4; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PrayAlong: a teacher who prays with you</h1>
+  <video src="/media/PrayAlong.mp4" poster="/video/poster.jpg" controls playsinline preload="metadata"></video>
+  <p>Arabic narration with English subtitles · <a href="/">Try PrayAlong</a> · <a href="https://github.com/Quran-Lab/PrayAlong">Source code</a></p>
+</main>
+</body>
+</html>
