@@ -1,19 +1,16 @@
 import { ResilientCamera, type CameraState } from './camera'
+import type { Detection } from './face-track'
 
 const base = import.meta.env.BASE_URL
 
-/** One analysed frame: the best face, if any (normalised 0..1, y down). */
+/** One analysed frame: every face-like detection (normalised 0..1, y down). */
 export interface FaceReading {
   t: number
-  visible: boolean
-  score: number
-  box: { x: number; y: number; w: number; h: number } | null
+  detections: Detection[]
 }
 
 export type FaceEngineStatus = 'starting' | 'loading' | 'watching' | 'reconnecting' | 'camera-lost' | 'denied' | 'no-camera' | 'no-model'
 
-export const MIN_SCORE = 0.5
-export const MIN_HEIGHT = 0.03
 const WIDTH = 320
 const INTERVAL_MS = 80 // ~12 fps
 
@@ -115,20 +112,17 @@ export class FaceEngine {
     this.ctx.drawImage(v, 0, 0, w, h)
     const now = performance.now()
     this.lastTs = Math.max(this.lastTs + 1, Math.round(now))
-    let best: FaceReading = { t: now, visible: false, score: 0, box: null }
+    const detections: Detection[] = []
     try {
       const res = this.detector.detectForVideo(this.canvas, this.lastTs)
       for (const d of res.detections) {
-        const score = d.categories[0]?.score ?? 0
         const b = d.boundingBox
-        if (!b || score <= best.score) continue
-        const box = { x: b.originX / w, y: b.originY / h, w: b.width / w, h: b.height / h }
-        best = { t: now, score, box, visible: score >= MIN_SCORE && box.h >= MIN_HEIGHT }
+        if (b) detections.push({ score: d.categories[0]?.score ?? 0, box: { x: b.originX / w, y: b.originY / h, w: b.width / w, h: b.height / h } })
       }
     } catch (err) {
       console.warn('[face] detect failed', err)
     }
-    this.cb.onReading(best)
+    this.cb.onReading({ t: now, detections })
   }
 
   retryCamera() {

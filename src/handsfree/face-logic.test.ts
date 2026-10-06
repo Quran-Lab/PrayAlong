@@ -61,9 +61,9 @@ describe('FaceFollower', () => {
     expect(moves).toHaveLength(1)
     expect(moves[0]!.index).toBe(SUJUD1)
     expect(moves[0]!.reason).toBe('sujud-down')
-    // lost after >= 600 ms of absence
-    expect(moves[0]!.at).toBeGreaterThanOrEqual(2600)
-    expect(moves[0]!.at).toBeLessThan(2800)
+    // lost after >= 800 ms of absence
+    expect(moves[0]!.at).toBeGreaterThanOrEqual(2800)
+    expect(moves[0]!.at).toBeLessThan(3000)
   })
 
   it('rises from sujud when the face comes back', () => {
@@ -71,8 +71,8 @@ describe('FaceFollower', () => {
     const { moves } = run(fl, ITIDAL, [...frames(0, 2000, face(0.2, 0.08)), ...frames(2000, 6000, none), ...frames(6000, 8000, face(0.55, 0.3))])
     expect(moves.map((m) => m.index)).toEqual([SUJUD1, JALSAH])
     expect(moves[1]!.reason).toBe('sujud-up')
-    expect(moves[1]!.at).toBeGreaterThanOrEqual(6350)
-    expect(moves[1]!.at).toBeLessThan(6500)
+    expect(moves[1]!.at).toBeGreaterThanOrEqual(6400)
+    expect(moves[1]!.at).toBeLessThan(6600)
   })
 
   it('does both sujuds and the rise to the next rak‘ah in order, one step at a time', () => {
@@ -151,11 +151,24 @@ describe('FaceFollower', () => {
     const r2 = run(fl2, SUJUD1, [...frames(0, 3000, none), ...frames(3000, 6000, face(0.5, 0.3))], [{ t: 2700, index: JALSAH }])
     expect(r2.moves).toHaveLength(0)
     expect(r2.index).toBe(JALSAH)
-    // Voice moves into sujud at 1000 while the face is already lost; it comes back at 1100: found at 1450, held until 2000.
+    // Voice moves into sujud at 1000; the face is lost at 1100 and back at 1400 (found 1800): held until 2500 (1.5 s in the posture).
     const fl3 = new FaceFollower()
-    const r3 = run(fl3, ITIDAL, [...frames(0, 300, face(0.2, 0.08)), ...frames(300, 1100, none), ...frames(1100, 4000, face(0.5, 0.3))], [{ t: 1000, index: SUJUD1 }])
+    const r3 = run(fl3, ITIDAL, [...frames(0, 300, face(0.2, 0.08)), ...frames(300, 1400, none), ...frames(1400, 4000, face(0.5, 0.3))], [{ t: 1000, index: SUJUD1 }])
     expect(r3.moves.map((m) => m.index)).toEqual([JALSAH])
-    expect(r3.moves[0]!.at).toBeGreaterThanOrEqual(2000)
+    expect(r3.moves[0]!.at).toBeGreaterThanOrEqual(2500)
+  })
+
+  it('never two camera moves within 2 s, and flickers never count', () => {
+    // Sujud entered by the camera at ~2800; the face flickers back for single frames, then really returns at 3200.
+    const fl = new FaceFollower()
+    const flicker = frames(2000, 3200, (t) => (t % 500 === 0 ? face(0.5, 0.3) : none))
+    const { moves } = run(fl, ITIDAL, [...frames(0, 2000, face(0.2, 0.08)), ...flicker, ...frames(3200, 7000, face(0.5, 0.3))])
+    expect(moves.length).toBeLessThanOrEqual(2)
+    if (moves.length === 2) expect(moves[1]!.at - moves[0]!.at).toBeGreaterThanOrEqual(2000)
+    // single-frame flickers in i'tidal never take it down
+    const fl2 = new FaceFollower()
+    const r2 = run(fl2, ITIDAL, frames(0, 8000, (t) => (t % 700 === 0 ? none : face(0.2, 0.08))))
+    expect(r2.moves).toHaveLength(0)
   })
 
   it('never moves outside the prayer', () => {

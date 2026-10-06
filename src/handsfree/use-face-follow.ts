@@ -2,11 +2,17 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Step } from '@/sequence/types'
 import { FaceEngine, type FaceEngineStatus, type FaceReading } from './face-engine'
 import { FaceFollower, type FaceMove } from './face-logic'
+import { FaceTracker, type Box, type Detection } from './face-track'
 
 export interface FaceDebug {
   reading: FaceReading | null
+  track: (Box & { id: number }) | null
+  matched: Detection | null
+  ignored: Detection[]
   state: string
   lastMove: FaceMove | null
+  /** ms until the camera may move again */
+  waitMs: number
 }
 
 /**
@@ -34,7 +40,7 @@ export function useFaceFollow({
   const [status, setStatus] = useState<FaceEngineStatus | 'off'>('off')
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [hint, setHint] = useState<'no-face' | null>(null)
-  const [dbg, setDbg] = useState<FaceDebug>({ reading: null, state: 'unknown', lastMove: null })
+  const [dbg, setDbg] = useState<FaceDebug>({ reading: null, track: null, matched: null, ignored: [], state: 'unknown', lastMove: null, waitMs: 0 })
   const [attempt, setAttempt] = useState(0)
   const engine = useRef<FaceEngine | null>(null)
   const follower = useRef(new FaceFollower())
@@ -53,6 +59,7 @@ export function useFaceFollow({
     }
     const fl = new FaceFollower()
     follower.current = fl
+    const tracker = new FaceTracker()
     fl.sync(where.current.phase, where.current.index, where.current.steps, performance.now())
     const e = new FaceEngine(facingMode, {
       onStatus: setStatus,
@@ -60,14 +67,15 @@ export function useFaceFollow({
       onReading: (r) => {
         const { phase: ph, index: i, steps: st } = where.current
         fl.sync(ph, i, st, r.t)
-        const box = r.box
-        const move = fl.push({ t: r.t, visible: r.visible, cy: box ? box.y + box.h / 2 : undefined, h: box?.h })
+        // Only the locked face counts; lamps, posters and other faces are ignored.
+        const frame = tracker.push(r.t, r.detections, { sujud: st[i]?.posture === 'sujud' })
+        const move = fl.push(frame)
         setHint(fl.hint)
         if (move) {
           console.log(`[face] ${move.reason} -> step ${move.index}`)
           onAdvanceRef.current(move.index, move.reason)
         }
-        if (debugRef.current) setDbg({ reading: r, state: fl.state, lastMove: fl.lastMove })
+        if (debugRef.current) setDbg({ reading: r, track: tracker.track ? { ...tracker.track } : null, matched: tracker.matched, ignored: tracker.ignored, state: fl.state, lastMove: fl.lastMove, waitMs: fl.waitMs(r.t) })
       },
     })
     engine.current = e

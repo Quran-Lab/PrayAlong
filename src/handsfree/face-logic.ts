@@ -36,13 +36,15 @@ export type FaceState = 'unknown' | 'found' | 'lost'
 
 export const FACE_DEFAULTS = {
   /** Absent this long, continuously: the face is lost. */
-  lostMs: 600,
+  lostMs: 800,
   /** Present this long, continuously: the face is found. */
-  foundMs: 350,
+  foundMs: 400,
   /** The face must have been there this long in the posture before it is lost (sujud entry). */
   dwellMs: 800,
-  /** No camera move within this long after any move. */
-  guardMs: 1000,
+  /** Minimum time in a posture (however it was entered) before the camera may move. */
+  guardMs: 1500,
+  /** Never two camera moves closer than this. */
+  camGapMs: 2000,
   /** Ruku: the face rose by this much of the frame height... */
   riseCy: 0.12,
   /** ...or shrank to this fraction of its ruku height... */
@@ -102,6 +104,7 @@ export class FaceFollower {
   private index = -1
   private enteredAt = -Infinity
   private lastMoveAt = -Infinity
+  private lastCamMoveAt = -Infinity
   // raw run tracking for hysteresis
   private presentSince: number | null = null
   private absentSince: number | null = null
@@ -194,7 +197,8 @@ export class FaceFollower {
     } else {
       fire = this.rukuRise(f)
     }
-    if (!fire || t - this.lastMoveAt < o.guardMs) return null
+    if (!fire || t - this.lastMoveAt < o.guardMs || t - this.lastCamMoveAt < o.camGapMs) return null
+    this.lastCamMoveAt = t
     const move: FaceMove = { index: rule.target, reason: rule.rule === 'a' ? 'sujud-down' : rule.rule === 'b' ? 'sujud-up' : 'ruku-rise', at: t }
     this.lastMove = move
     this.enter(rule.target, t)
@@ -229,6 +233,11 @@ export class FaceFollower {
   }
 
   /** For the debug overlay. */
+  /** ms until the camera may move again (0 = free). */
+  waitMs(t: number) {
+    return Math.max(0, this.opts.guardMs - (t - this.lastMoveAt), this.opts.camGapMs - (t - this.lastCamMoveAt))
+  }
+
   get debug() {
     return { state: this.state, index: this.index, enteredAt: this.enteredAt, lastMoveAt: this.lastMoveAt, lostAfterFound: this.lostAfterFound, foundAfterLost: this.foundAfterLost }
   }
