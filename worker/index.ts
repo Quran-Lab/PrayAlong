@@ -24,6 +24,17 @@ export default {
       headers.set('cache-control', media ? 'public, max-age=3600' : key.endsWith('manifest.json') ? 'public, max-age=300' : 'public, max-age=31536000, immutable')
       headers.set('cross-origin-resource-policy', media ? 'cross-origin' : 'same-origin')
       headers.set('accept-ranges', 'bytes')
+      // Ranged reads need Content-Range so video players can stream and seek.
+      const size = object.size
+      if (request.headers.has('range') && 'body' in object && object.range) {
+        const r = object.range as { offset?: number; length?: number; suffix?: number }
+        const start = r.suffix !== undefined ? size - r.suffix : (r.offset ?? 0)
+        const end = r.suffix !== undefined ? size - 1 : r.length !== undefined ? start + r.length - 1 : size - 1
+        headers.set('content-range', `bytes ${start}-${end}/${size}`)
+        headers.set('content-length', String(end - start + 1))
+      } else if ('body' in object) {
+        headers.set('content-length', String(size))
+      }
       const body = 'body' in object ? object.body : null
       const status = body ? (request.headers.has('range') ? 206 : 200) : 304
       return new Response(request.method === 'HEAD' ? null : body, { status, headers })
