@@ -128,8 +128,19 @@ export function App() {
   // Listen mode: when a line is finished and the next begins, keep the finished line on
   // screen fully green for a moment, so the last word is seen as said.
   const [shownIndex, setShownIndex] = useState(index)
+  // A line skipped by hand (arrow key, dock) was not said: do not hold it lit as if it was heard.
+  const lastInputAt = useRef(0)
   useEffect(() => {
-    if (voiceDriving && index === shownIndex + 1) {
+    const mark = () => (lastInputAt.current = performance.now())
+    window.addEventListener('keydown', mark, true)
+    window.addEventListener('pointerdown', mark, true)
+    return () => {
+      window.removeEventListener('keydown', mark, true)
+      window.removeEventListener('pointerdown', mark, true)
+    }
+  }, [])
+  useEffect(() => {
+    if (voiceDriving && index === shownIndex + 1 && performance.now() - lastInputAt.current > 400) {
       const id = setTimeout(() => setShownIndex(index), LINE_HOLD_MS)
       return () => clearTimeout(id)
     }
