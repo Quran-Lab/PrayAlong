@@ -39,8 +39,9 @@ def tts(voice_id, text, lang):
         r = requests.post(f'{API}/text-to-speech/{voice_id}/with-timestamps?output_format=mp3_44100_128', headers=H, json={
             'text': text, 'model_id': 'eleven_v4', 'language_code': lang, 'voice_settings': SETTINGS,
             'apply_text_normalization': 'off' if lang == 'ar' else 'auto'}, timeout=300)
-        if r.status_code == 429:
-            time.sleep(2 + attempt * 2)
+        # Rate limits and the occasional transient 401/5xx: back off and retry.
+        if r.status_code in (401, 429) or r.status_code >= 500:
+            time.sleep(2 + attempt * 3)
             continue
         r.raise_for_status()
         return r.json()
@@ -113,14 +114,20 @@ def main():
                     jobs.append((companion, vid, 'guide', key, text, LANG[locale], locale))
     with cf.ThreadPoolExecutor(2) as ex:
         futs = [ex.submit(job, *j) for j in jobs]
+        failed = 0
         for n, f in enumerate(cf.as_completed(futs)):
-            companion, kind, key, locale, clip = f.result()
+            try:
+                companion, kind, key, locale, clip = f.result()
+            except Exception as e:  # one failed clip must not lose the others
+                failed += 1
+                print('FAILED', e, flush=True)
+                continue
             v = manifest['voices'][companion]
             if kind == 'line': v['lines'][key] = clip
             else: v['guide'].setdefault(locale, {})[key] = clip
             if n % 20 == 0: print(f'{n + 1}/{len(jobs)}', flush=True)
     json.dump(manifest, open(man_path, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
-    print('wrote', man_path)
+    print('wrote', man_path, '| failed', failed)
 
 
 if __name__ == '__main__':
