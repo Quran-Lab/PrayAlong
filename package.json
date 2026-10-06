@@ -3,7 +3,8 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "PrayAlong — a calm, hands-free Salah companion.",
+  "description": "PrayAlong: a calm, hands-free Salah companion.",
+  "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/split-large-assets.mjs",
