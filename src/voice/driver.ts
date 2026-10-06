@@ -22,6 +22,8 @@ import type { FollowerEvent, KeywordKind } from './types'
 
 /** Listen mode: the least time an aloud line nobody has started waits before the timer moves on. */
 const UNSTARTED_MS = 8000
+/** Words decoded this recently mean the person is audible, even on quiet lines. */
+const AUDIBLE_RECENT_MS = 20_000
 /** A repeated line with its count heard: silence before the next line (same posture) or the movement. */
 export const REPS_DONE_SAME_MS = 1200
 export const REPS_DONE_MOVE_MS = 2000
@@ -366,7 +368,11 @@ export class VoiceDriver {
     // Nobody has started this aloud line: speech that began on an earlier line (its tail
     // running on) does not count, and the wait is at least UNSTARTED_MS (a pause before
     // "amin" is not silence).
-    const notStarted = here.voice === 'aloud' && this.speechOnsetAt < this.arrivedAt && this.wordsOnStep === 0
+    // A quiet line counts too while the person has been audible lately (words
+    // decoded in the last AUDIBLE_RECENT_MS): a silent rak'ah said under the
+    // breath must not move on past an amin nobody has said yet.
+    const audible = here.voice === 'aloud' || now - this.lastWordAt < AUDIBLE_RECENT_MS
+    const notStarted = audible && this.speechOnsetAt < this.arrivedAt && this.wordsOnStep === 0
     const base = this.cfg.stepMs(here) * (this.wordsOnStep > 0 && !this.lineDone ? this.cfg.trackingSlack : notStarted ? 2 : 1)
     const expected = notStarted ? Math.max(base, UNSTARTED_MS) : base
     if (!after) return elapsed >= expected || (this.lineDone && now - this.lineDoneAt >= this.cfg.postureAfterDoneMs) ? { type: 'finish', reason: 'timer' } : null

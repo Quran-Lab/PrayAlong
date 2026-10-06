@@ -582,3 +582,26 @@ describe('a tasbih whose count was heard', () => {
   })
 })
 
+describe('a quiet amin after a pause (a silent rakah said under the breath)', () => {
+  const maghrib = buildSequence('maghrib').steps
+  const i = maghrib.findIndex((s, k) => s.recitationId === 'amin' && s.voice === 'quiet' && k > 0)
+  const v = (index: number): SessionView => ({ phase: 'praying', index, steps: maghrib })
+
+  it('waits for amin while the person has been audible lately', () => {
+    const d = new VoiceDriver({ mode: 'full', stepMs })
+    d.onEvent({ kind: 'word', step: i - 1, lineId: maghrib[i - 1]!.recitationId, wordIndex: 0, rep: 0, confidence: 1, at: 0 }, v(i - 1), -1000)
+    d.sync(v(i), 0)
+    // At least 8 s for an unstarted line, plus the posture grace (ruku is next).
+    expect(d.tick(v(i), 6000)).toBeNull()
+    expect(d.tick(v(i), 8000 + d.cfg.postureGraceMs - 100)).toBeNull()
+    expect(d.tick(v(i), 8000 + d.cfg.postureGraceMs + 100)).toEqual({ type: 'goTo', index: i + 1, reason: 'timer' })
+  })
+
+  it('keeps the ordinary timer when nothing has been heard for a while', () => {
+    const d = new VoiceDriver({ mode: 'full', stepMs })
+    d.sync(v(i), 0)
+    const ms = stepMs(maghrib[i]!)
+    expect(d.tick(v(i), ms + d.cfg.postureGraceMs + 100)).not.toBeNull()
+  })
+})
+
