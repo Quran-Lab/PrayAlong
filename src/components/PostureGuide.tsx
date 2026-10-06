@@ -59,7 +59,7 @@ export function PostureGuide({ posture, character, teach }: { posture: PoseName;
           animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           exit={{ opacity: 0, y: -6, filter: 'blur(3px)' }}
           transition={{ duration: 0.4, ease, delay: open ? 0.25 : 0 }}
-          className="mx-auto mt-[clamp(1rem,2.6vh,1.75rem)] flex w-full max-w-[38rem] justify-center"
+          className="mx-auto mt-[clamp(1rem,2.6vh,1.75rem)] flex w-full max-w-[38rem] justify-center px-3 sm:px-0"
         >
           {open ? (
             <figure className="relative flex w-full items-stretch gap-3.5 rounded-[1.6rem] border border-mint/30 bg-white/[0.06] p-2.5 text-start sm:gap-4">
@@ -115,7 +115,7 @@ export function PostureGuide({ posture, character, teach }: { posture: PoseName;
               <button
                 onClick={() => setOpen(false)}
                 aria-label={t('guide.close')}
-                className="absolute end-2 top-2 grid size-8 cursor-pointer place-items-center rounded-full text-ink-faint transition-colors hover:bg-white/[0.06] hover:text-ink-soft"
+                className="absolute end-2 top-2 grid size-8 cursor-pointer place-items-center rounded-full text-ink-muted transition-colors hover:bg-white/[0.06] hover:text-ink-soft"
               >
                 <X className="size-4" />
               </button>
