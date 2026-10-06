@@ -34,8 +34,9 @@ export const GRIPS: Record<Grip, readonly (readonly [number, number, number])[]>
   flat: [[4, 4, 2], [2, 2, 1], [2, 2, 1], [2, 2, 1], [3, 3, 1]],
   // Holding the knees in ruku.
   grip: [[14, 12, 8], [28, 30, 18], [32, 34, 20], [34, 36, 22], [36, 38, 24]],
-  // Tashahhud: index finger straight, the others folded, thumb over the middle finger.
-  point: [[30, 26, 18], [0, 2, 2], [80, 95, 55], [85, 95, 55], [88, 95, 55]],
+  // Tashahhud: the hand rests on the thigh like the other one; the index finger is
+  // lifted from it to point towards the qibla, the others folded, thumb over the middle finger.
+  point: [[30, 26, 18], [-30, 0, 2], [80, 95, 55], [85, 95, 55], [88, 95, 55]],
 }
 
 export interface HandSpec {

@@ -880,8 +880,7 @@ export class Performer {
     // Tuned hand tilt, in the hand's own frame (fingers x, palm y), mirrored for the right hand.
     const tilt =
       t.handPitch || t.handRoll || t.handTurn
-        ? // The tashahhud finger points towards the qibla: no downward tilt for it.
-          q().setFromEuler(new THREE.Euler(s * t.handRoll * DEG, s * t.handTurn * DEG, (spec.grip === 'point' ? 0 : t.handPitch) * DEG, 'XYZ'))
+        ? q().setFromEuler(new THREE.Euler(s * t.handRoll * DEG, s * t.handTurn * DEG, t.handPitch * DEG, 'XYZ'))
         : null
     return {
       target: this.root.worldToLocal(target),
