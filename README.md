@@ -115,3 +115,19 @@ release; the full list, with each item's status, is in
 No account, no analytics. Microphone audio and camera frames are processed in
 the browser and never uploaded. Settings and location stay in the browser's
 local storage. Details in [docs/SOURCES.md](docs/SOURCES.md#privacy).
+
+## Team
+
+Built by Quran Lab.
+
+| Name | Role | Work | Contact |
+| --- | --- | --- | --- |
+| Mostafa Mahdi | Team lead | AI/ML engineer, speech and on-device inference | mostafa@quranlab.ai |
+| Raufa Zuhdi Aristyo | Team member | AI/ML engineer, computer vision and evaluation | raufa@quranlab.ai |
+
+## Licence
+
+PrayAlong is released under the Quran-Lab No-Profit License, Version 1.2
+(NPL-1.2); see [LICENSE](LICENSE). Third-party components, fonts, models and
+texts keep their own licences; they are listed in
+[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
