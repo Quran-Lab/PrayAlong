@@ -6,7 +6,8 @@ import type { PoseName } from './prayer-poses'
  * (/?lab&tune) and saved to tuning.json:
  *  - sink: lower the whole body into the rug (fractions of body height), so
  *    folded cloth goes under the rug instead of floating above it;
- *  - handUp / handFwd: move the hands up and forwards (fractions of body height);
+ *  - handUp / handFwd / handIn: move the hands up, forwards and inwards (fractions of body height);
+ *  - handPitch / handRoll / handTurn: tilt the hands (degrees; mirrored for the right hand);
  *  - thigh / shin / foot / spread: extra leg bend in degrees (both legs);
  *  - legDrop: push the legs down from the hips (fractions of body height),
  *    so folded legs go under the rug while the upper body stays where it is.
@@ -15,6 +16,10 @@ export interface Tune {
   sink: number
   handUp: number
   handFwd: number
+  handIn: number
+  handPitch: number
+  handRoll: number
+  handTurn: number
   thigh: number
   shin: number
   foot: number
@@ -27,7 +32,7 @@ export interface Tune {
 }
 export type Tuning = Record<string, Partial<Record<PoseName, Partial<Tune>>>>
 
-export const ZERO: Tune = { sink: 0, handUp: 0, handFwd: 0, thigh: 0, shin: 0, foot: 0, spread: 0, legDrop: 0, move: [0, 0, 0], bones: {} }
+export const ZERO: Tune = { sink: 0, handUp: 0, handFwd: 0, handIn: 0, handPitch: 0, handRoll: 0, handTurn: 0, thigh: 0, shin: 0, foot: 0, spread: 0, legDrop: 0, move: [0, 0, 0], bones: {} }
 export const TUNING = saved as Tuning
 export const LOCAL_KEY = 'prayalong:tuning'
 

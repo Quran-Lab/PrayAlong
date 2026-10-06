@@ -122,12 +122,12 @@ export function PostureGuide({ posture, character, teach }: { posture: PoseName;
           ) : (
             <button
               onClick={() => setOpen(true)}
-              className="group flex cursor-pointer items-center gap-2.5 rounded-full border border-line bg-white/[0.035] py-1 ps-1 pe-4 text-ink-soft transition-colors hover:border-white/20 hover:text-ink"
+              className="group flex cursor-pointer items-center gap-3.5 rounded-full border border-line bg-white/[0.035] py-1.5 ps-1.5 pe-6 text-ink-soft transition-colors hover:border-white/20 hover:text-ink"
             >
-              <span className="size-9 overflow-hidden rounded-full bg-[#f7f5f2]">
+              <span className="size-14 overflow-hidden rounded-full bg-[#f7f5f2] sm:size-16">
                 <img src={src(character, shot)} alt="" className="size-full object-cover" draggable={false} />
               </span>
-              <span className="text-sm font-semibold">
+              <span className="text-[length:var(--text-body)] font-semibold">
                 {t('guide.open')}
                 <span className="font-normal text-ink-muted"> · {t(TITLE[shot])}</span>
               </span>

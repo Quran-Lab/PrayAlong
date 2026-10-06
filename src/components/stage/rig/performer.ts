@@ -876,11 +876,16 @@ export class Performer {
     // Tuned hand lift for whichever posture this hand spec belongs to.
     const owner = PRAYER_POSES[this.pose][side] === spec ? this.pose : this.from
     const t = this.tune(owner)
-    if (t.handUp || t.handFwd) target.add(v().set(0, t.handUp * H, t.handFwd * H).applyQuaternion(this.root.getWorldQuaternion(q())))
+    if (t.handUp || t.handFwd || t.handIn) target.add(v().set(-s * t.handIn * H, t.handUp * H, t.handFwd * H).applyQuaternion(this.root.getWorldQuaternion(q())))
+    // Tuned hand tilt, in the hand's own frame (fingers x, palm y), mirrored for the right hand.
+    const tilt =
+      t.handPitch || t.handRoll || t.handTurn
+        ? q().setFromEuler(new THREE.Euler(s * t.handRoll * DEG, s * t.handTurn * DEG, t.handPitch * DEG, 'XYZ'))
+        : null
     return {
       target: this.root.worldToLocal(target),
       pole: vec(spec.pole).normalize(),
-      frame: frameQuat(vec(spec.fingers), vec(spec.palm)),
+      frame: tilt ? frameQuat(vec(spec.fingers), vec(spec.palm)).multiply(tilt) : frameQuat(vec(spec.fingers), vec(spec.palm)),
     }
   }
 
