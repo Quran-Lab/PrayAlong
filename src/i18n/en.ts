@@ -125,9 +125,9 @@ export const en = {
   'hf.status.watching': 'Following you',
   'hf.status.demo': 'Demo mode',
   'hf.status.fallback': 'Guiding by time',
-  'hf.msg.noCamera': 'Camera unavailable — moving on by time instead.',
-  'hf.msg.denied': 'Camera access was blocked — moving on by time instead.',
-  'hf.msg.noModel': 'Couldn’t start pose tracking — moving on by time instead.',
+  'hf.msg.noCamera': 'Camera unavailable: moving on by time instead.',
+  'hf.msg.denied': 'Camera access was blocked: moving on by time instead.',
+  'hf.msg.noModel': 'Couldn’t start pose tracking: moving on by time instead.',
   'hf.msg.noPerson': 'Step back so your whole body is in view',
   'hf.retry': 'Try again',
   'hf.useDemo': 'Use demo',
@@ -169,7 +169,7 @@ export const en = {
 
   // Demo
   'demo.title': 'Demo',
-  'demo.body': 'Act out a movement — PrayAlong reacts as if the camera saw you.',
+  'demo.body': 'Act out a movement: PrayAlong reacts as if the camera saw you.',
   'demo.auto': 'Play whole prayer',
   'demo.stop': 'Stop',
   'demo.keys': 'Keys 1–5 work too',
