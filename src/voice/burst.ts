@@ -145,7 +145,10 @@ export function useBurstFollow({ enabled, index, speaking, follower, followerDon
       // the follower agrees the line is complete (its lineDone, or its count of
       // the repetitions): a count by bursts alone cannot tell a fourth tasbih
       // from the takbir. Otherwise the driver's takbir and the posture timer move.
-      if ((doneRef.current || (s.done && s.confirmed)) && movesNext) {
+      // Never after a repeated line: people say a tasbih 4, 5 or 7 times, and the
+      // start of one more cannot be told from the takbir; the driver moves on
+      // the takbir itself once it is decoded, or after REPS_DONE_MOVE_MS of quiet.
+      if ((doneRef.current || (s.done && s.confirmed)) && movesNext && step.repeat <= 1) {
         s.onsetTimer = window.setTimeout(() => advance('takbir onset'), TAKBIR_ONSET_MS)
       }
       return
