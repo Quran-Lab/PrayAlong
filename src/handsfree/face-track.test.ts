@@ -99,6 +99,12 @@ describe('FaceTracker', () => {
     expect(tr.locked).toBe(false)
   })
 
+  it('still locks when the laptop is busy and frames come slowly (300 ms apart)', () => {
+    const tr = new FaceTracker()
+    for (let t = 0; t < 1500; t += 300) tr.push(t, [FACE()])
+    expect(tr.locked).toBe(true)
+  })
+
   it('single-frame flickers of a strong detection never lock', () => {
     const tr = new FaceTracker()
     feed(tr, 0, 5000, (t) => (Math.round(t / 80) % 5 === 0 ? [FACE()] : []))

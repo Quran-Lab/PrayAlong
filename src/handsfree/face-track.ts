@@ -35,8 +35,13 @@ export const TRACK_DEFAULTS = {
   lockScore: 0.8,
   lockMinH: 0.08,
   lockMs: 600,
-  /** A confirming candidate may miss this long (one or two frames) without restarting. */
-  gapMs: 250,
+  /**
+   * A confirming candidate may miss this many frames in a row without
+   * restarting (counted in frames, not ms, so a slow, busy laptop still locks).
+   */
+  maxMisses: 1,
+  /** ...and needs at least this many hits. */
+  minHits: 4,
   matchIoU: 0.3,
   matchDist: 0.6,
   sizeMin: 0.5,
@@ -77,8 +82,8 @@ export class FaceTracker {
   private lastBox: Box | null = null
   private lastMatchAt = -Infinity
   private nextId = 1
-  private cand: { box: Box; since: number; last: number } | null = null
-  private reentry: { box: Box; since: number; last: number } | null = null
+  private cand: { box: Box; since: number; misses: number; hits: number } | null = null
+  private reentry: { box: Box; since: number; misses: number; hits: number } | null = null
   /**
    * Things that look like faces but sat still somewhere else while the real
    * face was tracked (a lamp, a poster): never used to lock or to come back.
@@ -125,15 +130,16 @@ export class FaceTracker {
       const strong = dets.filter((d) => d.score >= o.lockScore && d.box.h / tr.h >= o.sizeMin && d.box.h / tr.h <= o.sizeMax)
       if (strong.length === 1) {
         const d = strong[0]!
-        if (this.reentry && t - this.reentry.last <= o.gapMs && near(this.reentry.box, d.box, o)) {
+        if (this.reentry && near(this.reentry.box, d.box, o)) {
           this.reentry.box = d.box
-          this.reentry.last = t
-        } else this.reentry = { box: d.box, since: t, last: t }
-        if (t - this.reentry.since >= o.sujudReentryMs) {
+          this.reentry.misses = 0
+          this.reentry.hits++
+        } else this.reentry = { box: d.box, since: t, misses: 0, hits: 1 }
+        if (t - this.reentry.since >= o.sujudReentryMs && this.reentry.hits >= 3) {
           Object.assign(tr, d.box)
           best = d
         }
-      } else this.reentry = null
+      } else if (this.reentry && ++this.reentry.misses > o.maxMisses) this.reentry = null
     } else if (best) this.reentry = null
 
     if (!best) {
@@ -159,19 +165,20 @@ export class FaceTracker {
     const strong = dets.filter((d) => d.score >= o.lockScore && d.box.h >= o.lockMinH)
     // Continue the current candidate if it is still there, else start on the biggest strong face.
     let pick: Detection | undefined
-    if (this.cand && t - this.cand.last <= o.gapMs) pick = strong.find((d) => near(this.cand!.box, d.box, { ...o, sizeMin: 0.75, sizeMax: 1.33, matchDist: 0.35 }))
+    if (this.cand) pick = strong.find((d) => near(this.cand!.box, d.box, { ...o, sizeMin: 0.75, sizeMax: 1.33, matchDist: 0.35 }))
     if (pick) {
       this.cand!.box = pick.box
-      this.cand!.last = t
-    } else if (this.cand && t - this.cand.last <= o.gapMs) {
-      // a brief miss: keep waiting
+      this.cand!.misses = 0
+      this.cand!.hits++
+    } else if (this.cand && ++this.cand.misses <= o.maxMisses) {
+      // one missed frame: keep waiting
     } else {
       const big = [...strong].sort((p, q) => q.box.h * q.score - p.box.h * p.score)[0]
-      this.cand = big ? { box: big.box, since: t, last: t } : null
+      this.cand = big ? { box: big.box, since: t, misses: 0, hits: 1 } : null
       pick = big
     }
     if (pick) this.matched = pick
-    if (this.cand && pick && t - this.cand.since >= o.lockMs) {
+    if (this.cand && pick && t - this.cand.since >= o.lockMs && this.cand.hits >= o.minHits) {
       this.track = { ...pick.box, id: this.nextId++ }
       this.lastBox = pick.box
       this.lastMatchAt = t
