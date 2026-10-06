@@ -10,7 +10,7 @@ type NumKey = 'sink' | 'handUp' | 'handFwd' | 'handIn' | 'handPitch' | 'handRoll
 const QUICK: { key: NumKey; label: string; min: number; max: number; step: number }[] = [
   { key: 'sink', label: 'Whole body down into the rug', min: -0.02, max: 0.15, step: 0.002 },
   { key: 'legDrop', label: 'Legs down from the hips', min: 0, max: 0.2, step: 0.002 },
-  { key: 'handUp', label: 'Hands up', min: -0.08, max: 0.15, step: 0.002 },
+  { key: 'handUp', label: 'Hands up', min: -0.15, max: 0.15, step: 0.002 },
   { key: 'handFwd', label: 'Hands forward', min: -0.1, max: 0.1, step: 0.002 },
   { key: 'handIn', label: 'Hands inward / outward', min: -0.08, max: 0.08, step: 0.002 },
   { key: 'handPitch', label: 'Hand tilt: fingers up / down (°)', min: -90, max: 90, step: 1 },

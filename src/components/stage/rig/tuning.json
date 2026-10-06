@@ -32,5 +32,39 @@
       "handRoll": -7,
       "handTurn": 0
     }
+  },
+  "maryam": {
+    "jalsah": {
+      "handUp": -0.08,
+      "handFwd": 0.044,
+      "handIn": -0.016,
+      "handPitch": 35,
+      "handRoll": -32,
+      "handTurn": -12
+    },
+    "tashahhud": {
+      "handUp": -0.08,
+      "handFwd": 0.044,
+      "handIn": -0.016,
+      "handPitch": 35,
+      "handRoll": -32,
+      "handTurn": -12
+    },
+    "salam-right": {
+      "handUp": -0.08,
+      "handFwd": 0.044,
+      "handIn": -0.016,
+      "handPitch": 35,
+      "handRoll": -32,
+      "handTurn": -12
+    },
+    "salam-left": {
+      "handUp": -0.08,
+      "handFwd": 0.044,
+      "handIn": -0.016,
+      "handPitch": 35,
+      "handRoll": -32,
+      "handTurn": -12
+    }
   }
 }
