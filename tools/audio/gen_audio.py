@@ -1,6 +1,7 @@
 """Generate PrayAlong's voice files into public/audio/.
 
     EL=<elevenlabs key> python tools/audio/gen_audio.py voices.json content.json [--only yusuf,ahmad]
+        [--lines asr-1,asr-2]  [--guide-keys voice.itidal,voice.takbir@de]
 
 voices.json maps each companion to a voice:
   {"yusuf": {"voice_id": "..."} | {"generated_voice_id": "...", "description": "..."}, ...}
@@ -91,13 +92,23 @@ def main():
             continue
         vid = save_voice(companion, spec)
         print(companion, 'voice', vid, flush=True)
-        guide_only = '--guide-only' in sys.argv or '--add-guide' in sys.argv
+        # --lines a,b: add or redo just those lines, keep everything else.
+        lines_only = sys.argv[sys.argv.index('--lines') + 1].split(',') if '--lines' in sys.argv else None
+        # --guide-keys voice.x,voice.y[@locale]: add or redo just those guidance clips.
+        guide_keys = sys.argv[sys.argv.index('--guide-keys') + 1].split(',') if '--guide-keys' in sys.argv else None
+        guide_only = '--guide-only' in sys.argv or '--add-guide' in sys.argv or bool(guide_keys)
         old = manifest['voices'].get(companion, {'lines': {}, 'guide': {}})
-        manifest['voices'][companion] = {'lines': old['lines'] if guide_only else {}, 'guide': old['guide'] if '--add-guide' in sys.argv else {}}
+        keep = lines_only is not None or guide_keys is not None
+        manifest['voices'][companion] = {'lines': old['lines'] if guide_only or keep else {}, 'guide': old['guide'] if '--add-guide' in sys.argv or keep else {}}
         for line in ([] if guide_only else content['lines']):
-            jobs.append((companion, vid, 'line', line['id'], line['arabic'], 'ar'))
+            if lines_only is None or line['id'] in lines_only:
+                jobs.append((companion, vid, 'line', line['id'], line['arabic'], 'ar'))
+        if lines_only is not None:
+            continue
         for locale, msgs in content['guide'].items():
             for key, text in msgs.items():
+                if guide_keys is not None and key not in guide_keys and f'{key}@{locale}' not in guide_keys:
+                    continue
                 if key.startswith('voice.'):
                     jobs.append((companion, vid, 'guide', key, text, LANG[locale], locale))
     with cf.ThreadPoolExecutor(2) as ex:

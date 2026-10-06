@@ -274,7 +274,7 @@ export function App() {
                     {wide && t('listen.save')}
                   </Button>
                 )}
-                <ListenButton on={voiceOn} status={voice.status} error={voice.error} progress={voice.progress} onToggle={() => setListen((v) => !v)} compact={!wide} />
+                {voiceOn && voice.status === 'error' && <ListenButton on={voiceOn} status={voice.status} error={voice.error} progress={voice.progress} onToggle={() => setListen((v) => !v)} compact={!wide} />}
                 <HandsFreeButton on={handsFree} status={hands.status} onToggle={toggleHandsFree} compact={!wide} />
               </div>
             </header>
@@ -354,7 +354,7 @@ export function App() {
 
             {/* Dock */}
             <footer className="relative z-10 shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6 short:pb-2">
-              <PostureDock following={following} listening={voiceOn && voice.status !== 'error'} listenLoading={voiceOn && voice.status === 'loading'} onListen={setListen} />
+              <PostureDock following={following} listening={voiceOn && voice.status !== 'error'} listenLoading={voiceOn && voice.status === 'loading'} hearing={voiceDriving && voice.speaking} micUsable={voice.status !== 'error' && !handsFree} onListen={setListen} />
             </footer>
           </div>
 
@@ -429,8 +429,6 @@ function useKeyboard(toggleHandsFree: () => void) {
       } else if (e.key === back) {
         e.preventDefault()
         s.prev()
-      } else if (e.key === 'p' || e.key === 'P') {
-        if (!s.handsFree) s.setAutoplay(!s.autoplay)
       } else if (e.key === 'h' || e.key === 'H') {
         toggleHandsFree()
       }

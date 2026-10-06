@@ -1,7 +1,7 @@
 """Word alignment for karaoke highlighting: for every line and language, which
 words of the transliteration and of the meaning go with each Arabic word.
 
-    QL_KEY=... python tools/audio/gen_align.py meanings.json  -> src/content/align.json
+    QL_KEY=... python tools/audio/gen_align.py meanings.json [--missing]  -> src/content/align.json
 
 Uses Gemini through the Quran Lab router; output is validated (ranges in
 bounds, monotonic) and missing lines fall back to proportional mapping in
@@ -48,10 +48,12 @@ def job(loc, lid, row):
             continue
     return loc, lid, None
 
-jobs = [(loc, lid, row) for loc, rows in data.items() for lid, row in rows.items()]
-out = {}
+# --missing: align only the lines align.json does not have yet, and keep the rest.
+ALIGN = os.path.join(ROOT, 'src', 'content', 'align.json')
+out = json.load(open(ALIGN, encoding='utf-8')) if '--missing' in sys.argv and os.path.exists(ALIGN) else {}
+jobs = [(loc, lid, row) for loc, rows in data.items() for lid, row in rows.items() if lid not in out.get(loc, {})]
 with cf.ThreadPoolExecutor(8) as ex:
     for loc, lid, res in ex.map(lambda a: job(*a), jobs):
         if res: out.setdefault(loc, {})[lid] = res
-print('aligned', sum(len(v) for v in out.values()), 'of', len(jobs))
-json.dump(out, open(os.path.join(ROOT, 'src', 'content', 'align.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+print('aligned', sum(len(v) for v in out.values()), 'lines in total;', len(jobs), 'asked')
+json.dump(out, open(ALIGN, 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))

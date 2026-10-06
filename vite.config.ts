@@ -9,7 +9,8 @@ export default defineConfig({
   base: './',
   // Agent worktrees and evaluation data live inside the repo folder: never watch them
   // (they made an idle dev server burn a core).
-  server: { watch: { ignored: ['**/.claude/**', '**/.eval/**', '**/shots/**', '**/screenshots/**'] } },
+  // Rooted at this checkout, so a dev server started inside a worktree still watches its own files.
+  server: { watch: { ignored: ['.claude', '.eval', 'shots', 'screenshots'].map((d) => fileURLToPath(new URL(`./${d}/**`, import.meta.url))) } },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },

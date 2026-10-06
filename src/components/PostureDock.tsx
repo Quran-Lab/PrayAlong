@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Mic, Pause, Play } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Mic, MicOff, Pause, Play } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo } from 'react'
 import { postureKey } from '@/content/postures'
@@ -18,6 +18,8 @@ export function PostureDock({
   following,
   listening = false,
   listenLoading = false,
+  hearing = false,
+  micUsable = true,
   onListen,
 }: {
   following: boolean
@@ -25,6 +27,10 @@ export function PostureDock({
   listening?: boolean
   /** The voice model is still loading. */
   listenLoading?: boolean
+  /** The microphone hears speech right now. */
+  hearing?: boolean
+  /** Listening can be turned (back) on: the mic and model are not in error. */
+  micUsable?: boolean
   onListen?: (on: boolean) => void
 }) {
   const t = useT()
@@ -167,9 +173,24 @@ export function PostureDock({
                   {listenLoading ? (
                     <span className="absolute inset-1 animate-spin rounded-full border-2 border-canvas/30 border-t-canvas" aria-hidden />
                   ) : (
-                    <span className="absolute inset-0 animate-ping rounded-full bg-mint/30 [animation-duration:2.4s]" aria-hidden />
+                    // A ring that answers your voice, readable from the mat.
+                    <span
+                      className={`absolute rounded-full transition-all duration-200 ${hearing ? '-inset-2 bg-mint/35 animate-ping [animation-duration:1s]' : 'inset-0 bg-mint/15'}`}
+                      aria-hidden
+                    />
                   )}
                   <Mic className="relative size-6" />
+                </button>
+              </Tooltip>
+            ) : micUsable && phase !== 'complete' ? (
+              // Listening is paused: the prayer waits. One tap to listen again.
+              <Tooltip content={t('dock.resumeListening')} side="top">
+                <button
+                  onClick={() => onListen?.(true)}
+                  aria-label={t('dock.resumeListening')}
+                  className="grid size-12 cursor-pointer place-items-center rounded-full border-2 border-mint/60 text-mint transition-transform duration-200 hover:bg-mint/10 active:scale-95 sm:size-14"
+                >
+                  <MicOff className="size-6" />
                 </button>
               </Tooltip>
             ) : leading ? (

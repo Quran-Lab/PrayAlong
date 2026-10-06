@@ -1,6 +1,7 @@
 import { Coordinates, Qibla } from 'adhan'
 import { Navigation, Play, RotateCcw } from 'lucide-react'
 import { motion } from 'motion/react'
+import { useState } from 'react'
 import { PRAYER_BY_ID } from '@/content/prayers'
 import { resolveLine } from '@/content/lines'
 import { useLocale, useT } from '@/i18n'
@@ -28,6 +29,47 @@ function QiblaChip({ clock }: { clock: PrayerClock }) {
   )
 }
 
+const SEEN_KEY = 'prayalong:howItWorks'
+
+/** Three lines for a first visit: where the laptop goes, that it waits, the close-ups. */
+function HowItWorks({ fallback }: { fallback: React.ReactNode }) {
+  const t = useT()
+  const [show, setShow] = useState(() => {
+    try {
+      return localStorage.getItem(SEEN_KEY) !== '1'
+    } catch {
+      return true
+    }
+  })
+  if (!show) return <>{fallback}</>
+  const done = () => {
+    try {
+      localStorage.setItem(SEEN_KEY, '1')
+    } catch {
+      /* no storage */
+    }
+    setShow(false)
+  }
+  return (
+    <div className="mt-3 w-full max-w-[30rem] rounded-2xl border border-line bg-white/[0.03] px-4 py-3 text-start">
+      <div className="mb-1.5 flex items-center justify-between gap-3">
+        <span className="text-[length:var(--text-meta)] font-semibold text-ink">{t('onboard.title')}</span>
+        <button onClick={done} className="cursor-pointer rounded-full bg-white/[0.08] px-3 py-1 text-sm font-semibold text-ink hover:bg-white/[0.12]">
+          {t('onboard.ok')}
+        </button>
+      </div>
+      <ol className="space-y-1 text-sm leading-snug text-ink-soft">
+        {(['onboard.floor', 'onboard.waits', 'onboard.show'] as const).map((k, i) => (
+          <li key={k} className="flex gap-2.5">
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-mint/15 text-xs font-semibold text-mint">{i + 1}</span>
+            <span>{t(k)}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
 export function ReadyPanel({ clock, handsFree }: { clock: PrayerClock; handsFree: boolean; onHandsFree?: () => void }) {
   const t = useT()
   const { prayer, begin } = useSession()
@@ -49,9 +91,11 @@ export function ReadyPanel({ clock, handsFree }: { clock: PrayerClock; handsFree
         <span className="tabular">{when}</span>
       </div>
       <h1 className="text-[length:var(--text-hero-long)] leading-tight font-semibold tracking-[-0.02em] text-ink">{t('ready.title')}</h1>
-      <p className="mt-3 max-w-md font-serif text-[length:var(--text-body)] leading-relaxed text-balance text-ink-soft">
-        {t('ready.body')} {handsFree ? t('ready.bodyHandsFree') : t('ready.bodyListen')}
-      </p>
+      <HowItWorks fallback={
+        <p className="mt-3 max-w-md font-serif text-[length:var(--text-body)] leading-relaxed text-balance text-ink-soft">
+          {t('ready.body')} {handsFree ? t('ready.bodyHandsFree') : t('ready.bodyListen')}
+        </p>
+      } />
       <div className="mt-6 w-full max-w-[30rem]">
         <ModePicker />
       </div>

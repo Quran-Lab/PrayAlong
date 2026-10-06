@@ -32,8 +32,10 @@ function plan(step: Step, voice: string, locale: Locale, settings: Settings, lis
   const teach = settings.mode === 'teach'
   if (teach && step.cue && step.groupIndex === 0) {
     // One instruction per movement (how to bow, sit on the left foot, ...); each salam gets its own side.
-    const key = step.posture === 'salam-right' ? 'salamRight' : step.posture === 'salam-left' ? 'salamLeft' : postureKey(step.posture)
-    const g = m.guide[locale]?.[`voice.${key}`]
+    const base = step.posture === 'salam-right' ? 'salamRight' : step.posture === 'salam-left' ? 'salamLeft' : postureKey(step.posture)
+    // Raising the hands at ruku (raf' al-yadayn) is said with the bow when it is on.
+    const key = base === 'ruku' && settings.raiseHands ? 'rukuRaise' : base
+    const g = m.guide[locale]?.[`voice.${key}`] ?? m.guide[locale]?.[`voice.${base}`]
     if (g) clips.push({ clip: g, gain: 1, isLine: false, rep: 0 })
   }
   // Listening (Teach me): the movement guidance, then the line once; you repeat it after.

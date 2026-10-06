@@ -23,7 +23,8 @@ def level(f):
     shutil.move(tmp, f)
     return f, round(gain, 1)
 
-files = [f for d in sys.argv[1:] for f in glob.glob(os.path.join(d, '**', '*.mp3'), recursive=True)]
+# Folders (every .mp3 inside) or single files.
+files = [f for d in sys.argv[1:] for f in ([d] if d.endswith('.mp3') else glob.glob(os.path.join(d, '**', '*.mp3'), recursive=True))]
 with cf.ThreadPoolExecutor(8) as ex:
     gains = [g for _, g in ex.map(level, files) if g is not None]
 print(len(files), 'clips; gain applied min', min(gains), 'max', max(gains))
