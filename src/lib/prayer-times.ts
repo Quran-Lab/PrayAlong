@@ -90,4 +90,5 @@ export function detectPrayer(place: Place, now = new Date(), zone?: string): Det
   return { id: 'isha', status: 'now', startsAt: today.isha, endsAt: tomorrow.fajr }
 }
 
-export const formatTime = (date: Date) => date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+/** A prayer time in the app's language (5:32 AM, 05:32, ٥:٣٢ ص ...), not the system's. */
+export const formatTime = (date: Date, locale?: string) => date.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })

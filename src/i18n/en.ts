@@ -192,6 +192,8 @@ export const en = {
   'settings.raiseHandsNote': 'Done in the Shafi‘i and Hanbali schools; not in the Hanafi and most Maliki practice. Follow what you were taught.',
   'settings.sound': 'Sound',
   'settings.record': 'Record my sessions on this device (to help fix problems)',
+  'setup.bodyPhone': 'Stand your phone on the floor at the front of your prayer rug, propped up against something. Your legs may be out of view; what matters is your head and shoulders. Your video stays on this device.',
+  'onboard.floorPhone': 'Prop your phone up on the floor at the front of your mat, screen facing you.',
   'dock.resumeListening': 'Listen again',
   'voice.rukuRaise': 'Raise your hands to your ears, then bow with a straight back, hands on your knees.',
   'onboard.title': 'How it works',

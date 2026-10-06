@@ -189,6 +189,8 @@ export const de: Messages = {
   'settings.raiseHandsNote': 'So in der schafiitischen und hanbalitischen Schule; nicht in der hanafitischen und meist nicht in der malikitischen. Folge dem, was du gelernt hast.',
   'settings.sound': 'Ton',
   'settings.record': 'Meine Sitzungen auf diesem Gerät aufnehmen (zur Fehlersuche)',
+  'setup.bodyPhone': 'Stell dein Handy vorne an deinem Gebetsteppich auf den Boden, an etwas angelehnt. Deine Beine dürfen außerhalb des Bildes sein; wichtig sind Kopf und Schultern. Dein Video bleibt auf diesem Gerät.',
+  'onboard.floorPhone': 'Stell dein Handy angelehnt vorne an deinen Gebetsteppich auf den Boden, den Bildschirm zu dir.',
   'dock.resumeListening': 'Wieder zuhören',
   'voice.rukuRaise': 'Heb die Hände bis zu den Ohren, dann beug dich mit geradem Rücken, die Hände auf den Knien.',
   'onboard.title': 'So funktioniert es',

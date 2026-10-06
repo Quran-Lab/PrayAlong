@@ -14,6 +14,9 @@ import { Button } from './ui/primitives'
  * the camera can't see and what to change), a standing calibration, a
  * ten-second "quick ruku and sit" check, and a way out (demo).
  */
+/** A phone held in the hand-sized way: small touch screen. */
+const isPhone = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse) and (max-width: 820px)').matches
+
 export function SetupSheet({
   open,
   onOpenChange,
@@ -79,7 +82,7 @@ export function SetupSheet({
         : null
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title={t('setup.title')} description={t('setup.body')}>
+    <Sheet open={open} onOpenChange={onOpenChange} title={t('setup.title')} description={t(isPhone() ? 'setup.bodyPhone' : 'setup.body')}>
       <div className="relative mt-2 overflow-hidden rounded-2xl border border-line bg-black/40">
         {stream ? (
           <CameraPreview stream={stream} mirror={facingMode === 'user'} className="aspect-[4/3] w-full" />

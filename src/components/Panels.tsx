@@ -34,6 +34,7 @@ const SEEN_KEY = 'prayalong:howItWorks'
 /** Three lines for a first visit: where the laptop goes, that it waits, the close-ups. */
 function HowItWorks({ fallback }: { fallback: React.ReactNode }) {
   const t = useT()
+  const phone = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse) and (max-width: 820px)').matches
   const [show, setShow] = useState(() => {
     try {
       return localStorage.getItem(SEEN_KEY) !== '1'
@@ -59,7 +60,7 @@ function HowItWorks({ fallback }: { fallback: React.ReactNode }) {
         </button>
       </div>
       <ol className="space-y-1 text-sm leading-snug text-ink-soft">
-        {(['onboard.floor', 'onboard.waits', 'onboard.show'] as const).map((k, i) => (
+        {([phone ? 'onboard.floorPhone' : 'onboard.floor', 'onboard.waits', 'onboard.show'] as const).map((k, i) => (
           <li key={k} className="flex gap-2.5">
             <span className="grid size-5 shrink-0 place-items-center rounded-full bg-mint/15 text-xs font-semibold text-mint">{i + 1}</span>
             <span>{t(k)}</span>
@@ -72,6 +73,7 @@ function HowItWorks({ fallback }: { fallback: React.ReactNode }) {
 
 export function ReadyPanel({ clock, handsFree }: { clock: PrayerClock; handsFree: boolean; onHandsFree?: () => void }) {
   const t = useT()
+  const locale = useLocale()
   const { prayer, begin } = useSession()
   const info = PRAYER_BY_ID[prayer]
   const name = t(`prayer.${prayer}`)
@@ -79,9 +81,9 @@ export function ReadyPanel({ clock, handsFree }: { clock: PrayerClock; handsFree
   const when =
     prayer === detected.id
       ? detected.status === 'now'
-        ? t('ready.until', { time: formatTime(detected.endsAt) })
-        : t('ready.from', { time: formatTime(detected.startsAt) })
-      : t('ready.at', { time: formatTime(clock.times[prayer]) })
+        ? t('ready.until', { time: formatTime(detected.endsAt, locale) })
+        : t('ready.from', { time: formatTime(detected.startsAt, locale) })
+      : t('ready.at', { time: formatTime(clock.times[prayer], locale) })
 
   return (
     <motion.div {...rise} className="mx-auto flex max-w-xl flex-col items-center px-5 text-center">
@@ -141,7 +143,7 @@ export function CompletePanel({ clock }: { clock: PrayerClock }) {
           {t('complete.again')}
         </Button>
       </div>
-      <p className="mt-3 text-[length:var(--text-meta)] text-ink-muted">{t('complete.next', { prayer: t(`prayer.${next}`), time: formatTime(clock.times[next]) })}</p>
+      <p className="mt-3 text-[length:var(--text-meta)] text-ink-muted">{t('complete.next', { prayer: t(`prayer.${next}`), time: formatTime(clock.times[next], locale) })}</p>
     </motion.div>
   )
 }

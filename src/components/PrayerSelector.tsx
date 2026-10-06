@@ -3,7 +3,7 @@ import { motion } from 'motion/react'
 import { Popover } from 'radix-ui'
 import { useState } from 'react'
 import { PRAYERS } from '@/content/prayers'
-import { useT, type T } from '@/i18n'
+import { useLocale, useT, type T } from '@/i18n'
 import { cn } from '@/lib/cn'
 import { formatTime } from '@/lib/prayer-times'
 import type { PrayerClock } from '@/lib/use-prayer-clock'
@@ -21,18 +21,19 @@ function useChoose(onRequestSwitch: (id: PrayerId) => void) {
   }
 }
 
-function sublabel(t: T, id: PrayerId, clock: PrayerClock, short = false) {
+function sublabel(t: T, id: PrayerId, clock: PrayerClock, short = false, locale?: string) {
   const { detected, times } = clock
   if (id === detected.id) {
-    if (detected.status === 'next') return t('prayer.next', { time: formatTime(detected.startsAt) })
+    if (detected.status === 'next') return t('prayer.next', { time: formatTime(detected.startsAt, locale) })
     return short ? t('prayer.now') : t('prayer.activeAuto')
   }
-  return formatTime(times[id])
+  return formatTime(times[id], locale)
 }
 
 /** Laptop: all five prayers as chips, the active one expanded. */
 export function PrayerChips({ clock, onRequestSwitch }: { clock: PrayerClock; onRequestSwitch: (id: PrayerId) => void }) {
   const t = useT()
+  const locale = useLocale()
   const selected = useSession((s) => s.prayer)
   const choose = useChoose(onRequestSwitch)
 
@@ -42,7 +43,7 @@ export function PrayerChips({ clock, onRequestSwitch }: { clock: PrayerClock; on
         const active = p.id === selected
         const isNow = p.id === clock.detected.id
         return (
-          <Tooltip key={p.id} content={`${t(`prayer.${p.id}`)} · ${formatTime(clock.times[p.id])}`}>
+          <Tooltip key={p.id} content={`${t(`prayer.${p.id}`)} · ${formatTime(clock.times[p.id], locale)}`}>
             <button
               onClick={() => choose(p.id)}
               aria-pressed={active}
@@ -67,7 +68,7 @@ export function PrayerChips({ clock, onRequestSwitch }: { clock: PrayerClock; on
                   animate={{ opacity: 1, x: 0 }}
                   className="relative text-sm whitespace-nowrap text-mint"
                 >
-                  {sublabel(t, p.id, clock)}
+                  {sublabel(t, p.id, clock, false, locale)}
                 </motion.span>
               )}
               {!active && isNow && <span className="relative size-1.5 rounded-full bg-mint" aria-label="now" />}
@@ -82,6 +83,7 @@ export function PrayerChips({ clock, onRequestSwitch }: { clock: PrayerClock; on
 /** Phone: one chip that opens the list. */
 export function PrayerMenu({ clock, onRequestSwitch }: { clock: PrayerClock; onRequestSwitch: (id: PrayerId) => void }) {
   const t = useT()
+  const locale = useLocale()
   const selected = useSession((s) => s.prayer)
   const choose = useChoose(onRequestSwitch)
   const [open, setOpen] = useState(false)
@@ -91,7 +93,7 @@ export function PrayerMenu({ clock, onRequestSwitch }: { clock: PrayerClock; onR
       <Popover.Trigger asChild>
         <button className="flex h-10 min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-mint/45 bg-mint/[0.08] pr-2.5 pl-3.5 text-sm shadow-[0_0_24px_-8px_color-mix(in_oklab,var(--accent)_60%,transparent)]">
           <span className="font-medium">{t(`prayer.${selected}`)}</span>
-          <span className="truncate text-sm text-mint">{sublabel(t, selected, clock, true)}</span>
+          <span className="truncate text-sm text-mint">{sublabel(t, selected, clock, true, locale)}</span>
           <ChevronDown className="size-4 shrink-0 text-ink-muted" />
         </button>
       </Popover.Trigger>
@@ -113,7 +115,7 @@ export function PrayerMenu({ clock, onRequestSwitch }: { clock: PrayerClock; onR
                 {t(`prayer.${p.id}`)}
                 {p.id === clock.detected.id && <span className="size-1.5 rounded-full bg-mint" />}
               </span>
-              <span className="tabular text-sm text-ink-muted">{formatTime(clock.times[p.id])}</span>
+              <span className="tabular text-sm text-ink-muted">{formatTime(clock.times[p.id], locale)}</span>
             </button>
           ))}
         </Popover.Content>
