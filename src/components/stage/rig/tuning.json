@@ -69,36 +69,36 @@
   },
   "ahmad": {
     "jalsah": {
-      "handUp": 0.022,
-      "handFwd": 0.022,
-      "handIn": 0.008,
-      "handPitch": 34,
-      "handRoll": -7,
-      "handTurn": 0
+      "handUp": 0.046,
+      "handFwd": -0.01,
+      "handIn": 0.02,
+      "handPitch": 26,
+      "handRoll": -13,
+      "handTurn": -24
     },
     "tashahhud": {
-      "handUp": 0.022,
-      "handFwd": 0.022,
-      "handIn": 0.008,
-      "handPitch": 34,
-      "handRoll": -7,
-      "handTurn": 0
+      "handUp": 0.046,
+      "handFwd": -0.01,
+      "handIn": 0.02,
+      "handPitch": 26,
+      "handRoll": -13,
+      "handTurn": -24
     },
     "salam-right": {
-      "handUp": 0.022,
-      "handFwd": 0.022,
-      "handIn": 0.008,
-      "handPitch": 34,
-      "handRoll": -7,
-      "handTurn": 0
+      "handUp": 0.046,
+      "handFwd": -0.01,
+      "handIn": 0.02,
+      "handPitch": 26,
+      "handRoll": -13,
+      "handTurn": -24
     },
     "salam-left": {
-      "handUp": 0.022,
-      "handFwd": 0.022,
-      "handIn": 0.008,
-      "handPitch": 34,
-      "handRoll": -7,
-      "handTurn": 0
+      "handUp": 0.046,
+      "handFwd": -0.01,
+      "handIn": 0.02,
+      "handPitch": 26,
+      "handRoll": -13,
+      "handTurn": -24
     }
   },
   "aisha": {
