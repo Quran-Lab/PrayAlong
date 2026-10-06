@@ -38,7 +38,7 @@ export function PrayerChips({ clock, onRequestSwitch }: { clock: PrayerClock; on
   const choose = useChoose(onRequestSwitch)
 
   return (
-    <nav aria-label={t('prayer.label')} className="flex items-center gap-1.5">
+    <nav aria-label={t('prayer.label')} className="flex shrink-0 items-center gap-1.5">
       {PRAYERS.map((p) => {
         const active = p.id === selected
         const isNow = p.id === clock.detected.id
@@ -48,7 +48,7 @@ export function PrayerChips({ clock, onRequestSwitch }: { clock: PrayerClock; on
               onClick={() => choose(p.id)}
               aria-pressed={active}
               className={cn(
-                'relative flex h-9 cursor-pointer items-center gap-2 rounded-xl px-3.5 text-sm transition-colors duration-200',
+                'relative flex h-9 cursor-pointer items-center gap-2 rounded-xl px-3 text-sm xl:px-3.5 transition-colors duration-200',
                 active ? 'text-ink' : 'text-ink-muted hover:text-ink-soft',
               )}
             >
@@ -68,7 +68,9 @@ export function PrayerChips({ clock, onRequestSwitch }: { clock: PrayerClock; on
                   animate={{ opacity: 1, x: 0 }}
                   className="relative text-sm whitespace-nowrap text-mint"
                 >
-                  {sublabel(t, p.id, clock, false, locale)}
+                  {/* The long "Now · Auto-detected" only where the header has room for it. */}
+                  <span className="xl:hidden">{sublabel(t, p.id, clock, true, locale)}</span>
+                  <span className="hidden xl:inline">{sublabel(t, p.id, clock, false, locale)}</span>
                 </motion.span>
               )}
               {!active && isNow && <span className="relative size-1.5 rounded-full bg-mint" aria-label="now" />}

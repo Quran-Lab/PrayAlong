@@ -63,7 +63,7 @@ export function PostureGuide({ posture, character, teach }: { posture: PoseName;
         >
           {open ? (
             <figure className="relative flex w-full items-stretch gap-3.5 rounded-[1.6rem] border border-mint/30 bg-white/[0.06] p-2.5 text-start sm:gap-4">
-              <div className="relative aspect-square w-[clamp(6.5rem,15vw,12rem)] shrink-0 overflow-hidden rounded-2xl bg-[#f7f5f2]">
+              <div className="relative aspect-square w-[clamp(5.5rem,min(15vw,19vh),12rem)] shrink-0 overflow-hidden rounded-2xl bg-[#f7f5f2]">
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.img
                     key={shot}
@@ -88,7 +88,7 @@ export function PostureGuide({ posture, character, teach }: { posture: PoseName;
                         aria-selected={i === tab}
                         onClick={() => setTab(i)}
                         className={cn(
-                          'cursor-pointer rounded-full px-3 py-1 text-[length:var(--text-body)] font-semibold transition-colors',
+                          'cursor-pointer rounded-full px-3 py-1 text-[length:var(--text-body)] font-semibold whitespace-nowrap transition-colors low:px-2.5 low:text-[0.95rem]',
                           i === tab ? 'bg-white/[0.12] text-ink' : 'text-ink-muted hover:text-ink-soft',
                         )}
                       >

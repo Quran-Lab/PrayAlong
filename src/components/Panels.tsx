@@ -52,14 +52,14 @@ function HowItWorks({ fallback }: { fallback: React.ReactNode }) {
     setShow(false)
   }
   return (
-    <div className="mt-3 w-full max-w-[30rem] rounded-2xl border border-line bg-white/[0.03] px-4 py-3 text-start">
-      <div className="mb-1.5 flex items-center justify-between gap-3">
+    <div className="mt-3 w-full max-w-[30rem] rounded-2xl border border-line bg-white/[0.03] px-4 py-3 text-start low:mt-2.5 low:py-2.5 short:mt-2 short:py-2">
+      <div className="mb-1.5 flex items-center justify-between gap-3 low:mb-1">
         <span className="text-[length:var(--text-meta)] font-semibold text-ink">{t('onboard.title')}</span>
         <button onClick={done} className="cursor-pointer rounded-full bg-white/[0.08] px-3 py-1 text-sm font-semibold text-ink hover:bg-white/[0.12]">
           {t('onboard.ok')}
         </button>
       </div>
-      <ol className="space-y-1 text-sm leading-snug text-ink-soft">
+      <ol className="space-y-1 text-sm leading-snug text-ink-soft low:space-y-0.5">
         {([phone ? 'onboard.floorPhone' : 'onboard.floor', 'onboard.waits', 'onboard.show'] as const).map((k, i) => (
           <li key={k} className="flex gap-2.5">
             <span className="grid size-5 shrink-0 place-items-center rounded-full bg-mint/15 text-xs font-semibold text-mint">{i + 1}</span>
@@ -87,31 +87,35 @@ export function ReadyPanel({ clock, handsFree }: { clock: PrayerClock; handsFree
 
   return (
     <motion.div {...rise} className="mx-auto flex max-w-xl flex-col items-center px-5 text-center">
-      <div className="mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[length:var(--text-meta)] text-ink-muted">
+      <div className="mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[length:var(--text-meta)] text-ink-muted low:mb-1.5 short:mb-1">
         <span className="font-semibold text-mint">{name}</span>
         <span>{t('ready.rakahs', { n: info.rakahs })}</span>
         <span className="tabular">{when}</span>
       </div>
-      <h1 className="text-[length:var(--text-hero-long)] leading-tight font-semibold tracking-[-0.02em] text-ink">{t('ready.title')}</h1>
+      <h1 className="text-[length:var(--text-hero-long)] leading-tight font-semibold tracking-[-0.02em] text-ink low:text-[length:var(--text-hero-low)] short:text-[1.5rem]">{t('ready.title')}</h1>
       <HowItWorks fallback={
-        <p className="mt-3 max-w-md font-serif text-[length:var(--text-body)] leading-relaxed text-balance text-ink-soft">
+        <p className="mt-3 max-w-md font-serif low:mt-2 text-[length:var(--text-body)] leading-relaxed text-balance text-ink-soft">
           {t('ready.body')} {handsFree ? t('ready.bodyHandsFree') : t('ready.bodyListen')}
         </p>
       } />
-      <div className="mt-6 w-full max-w-[30rem]">
+      <div className="mt-6 w-full max-w-[30rem] low:mt-4 short:mt-2.5">
         <ModePicker />
       </div>
-      <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
-        <Button variant="primary" size="lg" onClick={begin}>
-          <Play className="size-4 fill-current" />
-          {t('ready.begin', { prayer: name })}
-        </Button>
-      </div>
-      <div className="mt-3.5 flex items-center gap-3">
-        <QiblaChip clock={clock} />
-        <span className="hidden items-center gap-1.5 text-sm text-ink-faint md:flex">
-          {t('ready.orPress')} <Kbd>{t('key.space')}</Kbd>
-        </span>
+      {/* On short windows, Begin and the qibla share one row. */}
+      <div className="flex flex-col items-center low:mt-4 low:flex-row low:gap-3 short:mt-2.5">
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 low:mt-0">
+          <Button variant="primary" size="lg" onClick={begin}>
+            <Play className="size-4 fill-current" />
+            {t('ready.begin', { prayer: name })}
+          </Button>
+        </div>
+        <div className="mt-3.5 flex items-center gap-3 low:mt-0">
+          <QiblaChip clock={clock} />
+          {/* Only where the window is tall enough that it can't crowd the dock. */}
+          <span className="hidden items-center gap-1.5 text-sm text-ink-faint md:flex low:hidden">
+            {t('ready.orPress')} <Kbd>{t('key.space')}</Kbd>
+          </span>
+        </div>
       </div>
     </motion.div>
   )

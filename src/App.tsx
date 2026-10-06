@@ -56,7 +56,7 @@ export function App() {
   const { phase, prayer, settings, handsFree, demo, index, sequence } = session
   const step = currentStep(session)
   const wide = useMedia('(min-width: 1024px)')
-  const wideLayout = useMedia('(min-width: 1100px) and (min-aspect-ratio: 5/4)')
+  const wideLayout = useMedia('(min-width: 900px) and (min-aspect-ratio: 1/1)')
   const short = useMedia('(orientation: landscape) and (max-height: 540px)')
   const reducedMotion = useReducedMotion()
   const character = CHARACTERS.find((c) => c.id === settings.characterId) ?? DEFAULT_CHARACTER
@@ -344,7 +344,7 @@ export function App() {
                 </div>
               </div>
 
-              <section className="relative z-10 flex min-h-[34%] shrink-0 items-start justify-center pb-3 short:min-h-0 short:w-[52%] short:items-center short:overflow-y-auto short:py-3 wide:min-h-0 wide:flex-1 wide:items-center wide:pe-[3vw] wide:ps-[1vw] wide:pb-0">
+              <section className="relative z-10 flex min-h-[34%] shrink-0 items-start justify-center pb-3 short:min-h-0 short:w-[52%] short:items-center-safe short:overflow-y-auto short:py-2 wide:min-h-0 wide:flex-1 wide:items-center-safe wide:overflow-y-auto wide:pe-[3vw] wide:ps-[1vw] wide:py-3">
                 <AnimatePresence mode="wait">
                   {phase === 'ready' && <ReadyPanel key="ready" clock={clock} handsFree={handsFree} onHandsFree={toggleHandsFree} />}
                   {phase === 'praying' && (

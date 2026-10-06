@@ -18,7 +18,7 @@ export function ModePicker({ compact = false }: { compact?: boolean }) {
   const mode = useSession((s) => s.settings.mode)
   const update = useSession((s) => s.updateSettings)
   return (
-    <div role="radiogroup" aria-label={t('settings.mode')} className={cn('grid w-full grid-cols-2', compact ? 'gap-1.5' : 'gap-2.5')}>
+    <div role="radiogroup" aria-label={t('settings.mode')} className={cn('grid w-full grid-cols-2', compact ? 'gap-1.5' : 'gap-2.5 short:gap-2')}>
       {MODES.map(({ id, icon: Icon }) => {
         const on = mode === id
         return (
@@ -30,7 +30,7 @@ export function ModePicker({ compact = false }: { compact?: boolean }) {
             className={cn(
               'group relative flex cursor-pointer flex-col items-start rounded-2xl border text-start transition-colors duration-200',
               'focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2',
-              compact ? 'gap-1 p-3' : 'gap-1.5 p-4',
+              compact ? 'gap-1 p-3' : 'gap-1.5 p-4 low:gap-1 low:px-3.5 low:py-3',
               on ? 'border-mint/50 text-ink' : 'border-line text-ink-soft hover:border-white/20 hover:bg-white/[0.03]',
             )}
           >
@@ -47,7 +47,7 @@ export function ModePicker({ compact = false }: { compact?: boolean }) {
               </span>
               <span className="text-[length:var(--text-body)] leading-tight font-semibold">{t(`mode.${id}`)}</span>
             </span>
-            <span className={cn('relative leading-snug text-pretty', compact ? 'text-sm text-ink-muted' : 'text-[0.95rem] text-ink-muted')}>
+            <span className={cn('relative leading-snug text-pretty', compact ? 'text-sm text-ink-muted' : 'text-[0.95rem] text-ink-muted low:text-sm short:hidden')}>
               {t(`mode.${id}Hint`)}
             </span>
           </button>

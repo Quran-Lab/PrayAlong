@@ -218,7 +218,7 @@ export function Recitation({
           className="col-start-1 row-start-1 flex w-full flex-col items-center"
         >
           {/* Where we are, in plain words. */}
-          <div className="mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[length:var(--text-meta)] text-ink-muted">
+          <div className="mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[length:var(--text-meta)] text-ink-muted low:mb-2">
             <span className="font-medium text-ink-soft">{t(`group.${step.group}`)}</span>
             {step.groupSize > 1 && <span className="tabular">{t('line.of', { i: step.groupIndex + 1, n: step.groupSize })}</span>}
             {line.ref && <span className="tabular text-ink-faint">{t('line.quran', { ref: line.ref })}</span>}
@@ -250,7 +250,7 @@ export function Recitation({
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.1, ...calm }}
-              className="mb-4 inline-flex items-center gap-2 rounded-full border border-mint/30 bg-mint/[0.09] px-4 py-1.5 text-[length:var(--text-body)] font-medium text-mint"
+              className="mb-4 inline-flex items-center gap-2 rounded-full border low:mb-3 border-mint/30 bg-mint/[0.09] px-4 py-1.5 text-[length:var(--text-body)] font-medium text-mint"
             >
               <CueIcon cue={step.cue} />
               {t(`cue.${step.cue}`, { n: step.rakah })}
@@ -277,7 +277,7 @@ export function Recitation({
             </p>
           )}
           {show.translation && line.meaning && (
-            <p className="mt-4 max-w-[38ch] font-serif leading-[1.45] text-balance text-ink-soft" style={{ fontSize: `calc(var(--text-meaning) * ${k})` }}>
+            <p className="mt-4 max-w-[38ch] font-serif leading-[1.45] low:mt-2.5 text-balance text-ink-soft" style={{ fontSize: `calc(var(--text-meaning) * ${k})` }}>
               <Words you={you} text={line.meaning} range={litRange(word, al?.m, count(line.meaning), arabicWords)} />
             </p>
           )}
@@ -296,7 +296,7 @@ export function Recitation({
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="mt-6 inline-block max-w-full rounded-2xl text-balance border border-[var(--you)]/40 bg-[color-mix(in_oklab,var(--you)_10%,transparent)] px-4 py-1.5 text-[length:var(--text-body)] font-medium text-[var(--you)]"
+              className="mt-6 inline-block max-w-full rounded-2xl text-balance low:mt-4 border border-[var(--you)]/40 bg-[color-mix(in_oklab,var(--you)_10%,transparent)] px-4 py-1.5 text-[length:var(--text-body)] font-medium text-[var(--you)]"
             >
               {/* One line of text with the mic inside it, so a phrase that wraps on a phone breaks evenly and the icon stays with the words. */}
               <span>

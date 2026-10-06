@@ -28,7 +28,7 @@ export function ListenButton({ on, status, error, progress, onToggle, compact }:
         onClick={onToggle}
         aria-pressed={on}
         className={cn(
-          'relative flex h-10 cursor-pointer items-center gap-2 overflow-hidden rounded-full border px-3.5 text-sm font-medium transition-colors',
+          'relative flex h-10 shrink-0 cursor-pointer items-center gap-2 overflow-hidden rounded-full border px-3.5 text-sm font-medium transition-colors',
           on && !failed ? 'border-mint/50 bg-mint/[0.1] text-ink' : 'border-line text-ink-soft hover:text-ink',
           failed && 'border-red-400/40 text-red-200',
         )}
@@ -36,7 +36,8 @@ export function ListenButton({ on, status, error, progress, onToggle, compact }:
         {loading && <span className="absolute inset-y-0 start-0 bg-mint/15" style={{ width: `${progress * 100}%` }} />}
         {on && status === 'listening' && <span className="relative size-2 animate-breathe rounded-full bg-mint" />}
         {on ? <Mic className="relative size-[18px] text-mint" /> : <MicOff className="relative size-[18px]" />}
-        {!compact && <span className="relative">{label}</span>}
+        {/* Long error text never wraps into the header: one line, and only where there is room. */}
+        {!compact && <span className="relative hidden max-w-[15rem] truncate whitespace-nowrap xl:inline">{label}</span>}
       </button>
     </Tooltip>
   )

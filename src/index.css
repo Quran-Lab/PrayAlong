@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Laptops with a short window (13-14" screens, browser chrome included): tighter
+   spacing. Declared before short so short: wins where both apply. */
+@custom-variant low (@media (min-width: 768px) and (max-height: 860px));
 /* Phones on their side: stage and words sit side by side. */
 @custom-variant short (@media (orientation: landscape) and (max-height: 540px));
 
@@ -32,14 +35,17 @@
   --color-mint-deep: var(--accent-deep);
 
   /* Fluid type: comfortable on a phone, readable from 1.5 m on a laptop
-     sitting on the floor. */
+     sitting on the floor. The vh terms keep the longest lines (tashahhud,
+     salawat) inside short laptop windows. */
   --text-meta: clamp(0.92rem, 0.82rem + 0.25vw, 1.08rem);
   --text-body: clamp(1rem, 0.9rem + 0.35vw, 1.2rem);
-  --text-meaning: clamp(1.05rem, 0.86rem + 0.62vw, 1.5rem);
-  --text-hero: clamp(1.9rem, 1.1rem + 2.5vw, 3.7rem);
-  --text-hero-long: clamp(1.55rem, 0.95rem + 1.9vw, 2.9rem);
-  --text-arabic: clamp(2.2rem, 1.2rem + 3vw, 4.4rem);
-  --text-arabic-sub: clamp(1.6rem, 1rem + 1.8vw, 2.8rem);
+  --text-meaning: clamp(1.05rem, min(0.86rem + 0.62vw, 0.7rem + 1.5vh), 1.5rem);
+  --text-hero: clamp(1.9rem, min(1.1rem + 2.5vw, 0.8rem + 5vh), 3.7rem);
+  --text-hero-long: clamp(1.55rem, min(0.95rem + 1.9vw, 0.6rem + 3.6vh), 2.9rem);
+  /* The ready heading on short laptop windows. */
+  --text-hero-low: clamp(1.45rem, 0.9rem + 1.5vw, 2.25rem);
+  --text-arabic: clamp(2.2rem, min(1.2rem + 3vw, 0.6rem + 6.4vh), 4.4rem);
+  --text-arabic-sub: clamp(1.6rem, min(1rem + 1.8vw, 0.4rem + 4.2vh), 2.8rem);
 
   --ease-calm: cubic-bezier(0.22, 1, 0.36, 1);
   --shadow-glow: 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent), 0 0 24px -4px color-mix(in oklab, var(--accent) 45%, transparent);
@@ -60,8 +66,20 @@
   }
 }
 
-/* Laptops and desktops in landscape: stage and words side by side. */
-@custom-variant wide (@media (min-width: 1100px) and (min-aspect-ratio: 5/4));
+/* Laptops and desktops (900 px and up, not portrait): stage and words side by side. */
+@custom-variant wide (@media (min-width: 900px) and (min-aspect-ratio: 1/1));
+
+/* Narrow side-by-side windows: the words get under half the width, so the type
+   steps down with it (the stage keeps its place on the left). */
+@media (min-width: 900px) and (max-width: 1199px) and (min-aspect-ratio: 1/1) {
+  :root {
+    --text-meaning: clamp(0.95rem, min(0.6rem + 0.9vw, 0.5rem + 1.5vh), 1.5rem);
+    --text-hero: clamp(1.6rem, min(0.4rem + 2.8vw, 0.4rem + 4.6vh), 3.7rem);
+    --text-hero-long: clamp(1.3rem, min(0.2rem + 2.3vw, 0.2rem + 3.6vh), 2.9rem);
+    --text-arabic: clamp(1.9rem, min(0.6rem + 3.6vw, 0.4rem + 6vh), 4.4rem);
+    --text-arabic-sub: clamp(1.4rem, min(0.4rem + 2.3vw, 0.2rem + 4vh), 2.8rem);
+  }
+}
 
 /* Palettes, one per prayer. sky-* fill the window; room-* the wall. */
 :root,
