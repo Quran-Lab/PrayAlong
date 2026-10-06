@@ -47,7 +47,7 @@ export function ModePicker({ compact = false }: { compact?: boolean }) {
               </span>
               <span className="text-[length:var(--text-body)] leading-tight font-semibold">{t(`mode.${id}`)}</span>
             </span>
-            <span className={cn('relative leading-snug text-pretty', compact ? 'text-sm text-ink-muted' : 'text-[0.95rem] text-ink-muted low:text-sm short:hidden')}>
+            <span className={cn('relative leading-snug text-pretty', compact ? 'text-sm text-ink-muted' : 'text-[0.95rem] text-ink-muted low:text-sm short:hidden [@media(min-width:900px)_and_(max-width:1199px)_and_(max-height:700px)]:hidden')}>
               {t(`mode.${id}Hint`)}
             </span>
           </button>
