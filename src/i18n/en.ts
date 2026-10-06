@@ -99,6 +99,7 @@ export const en = {
   'ready.bodyListen': 'PrayAlong listens and follows your recitation. No need to touch anything.',
   'ready.begin': 'Begin {prayer}',
   'ready.orPress': 'or press',
+  'key.space': 'Space',
   'ready.qibla': 'Qibla {deg}° from north',
   'complete.done': '{prayer} complete',
   'complete.again': 'Pray again',

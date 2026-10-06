@@ -96,6 +96,7 @@ export const de: Messages = {
   'ready.bodyListen': 'PrayAlong hört zu und folgt deiner Rezitation. Du musst nichts berühren.',
   'ready.begin': '{prayer} beginnen',
   'ready.orPress': 'oder drücke',
+  'key.space': 'Leertaste',
   'ready.qibla': 'Qibla {deg}° von Norden',
   'complete.done': '{prayer} verrichtet',
   'complete.again': 'Noch einmal beten',

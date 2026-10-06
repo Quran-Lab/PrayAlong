@@ -108,7 +108,7 @@ export function ReadyPanel({ clock, handsFree }: { clock: PrayerClock; handsFree
       <div className="mt-3.5 flex items-center gap-3">
         <QiblaChip clock={clock} />
         <span className="hidden items-center gap-1.5 text-sm text-ink-faint md:flex">
-          {t('ready.orPress')} <Kbd>Space</Kbd>
+          {t('ready.orPress')} <Kbd>{t('key.space')}</Kbd>
         </span>
       </div>
     </motion.div>
