@@ -1,4 +1,4 @@
-import { ArrowDownRight, Mic, Volume1, VolumeX } from 'lucide-react'
+import { ArrowDownRight, ArrowLeft, ArrowRight, ArrowUp, ArrowUpRight, Mic, Volume1, VolumeX } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useRef } from 'react'
 import { resolveLine } from '@/content/lines'
@@ -119,9 +119,19 @@ const SCALE: Record<TextSize, number> = { m: 0.86, l: 1, xl: 1.16 }
 const LARGER: Record<TextSize, TextSize> = { m: 'l', l: 'xl', xl: 'xl' }
 
 /** The words that move the prayer on to `next`: its own opening line when that is what is said (tasmi', salam), otherwise the takbir. */
-function movePhrase(next: Step) {
-  if (next.recitationId === 'tasmi' || next.recitationId === 'salam') return getLine(next.recitationId).transliteration
-  return getLine('takbir').transliteration
+function movePhrase(next: Step, arabic: boolean) {
+  const line = getLine(next.recitationId === 'tasmi' || next.recitationId === 'salam' ? next.recitationId : 'takbir')
+  // Readers shown only the Arabic script get the phrase in Arabic too.
+  return arabic ? line.arabic : line.transliteration
+}
+
+/** The cue's arrow points the way the body moves (turning the head is a physical side, never mirrored). */
+function CueIcon({ cue }: { cue: NonNullable<Step['cue']> }) {
+  if (cue === 'right') return <ArrowRight className="size-4" />
+  if (cue === 'left') return <ArrowLeft className="size-4" />
+  if (cue === 'begin') return <ArrowUp className="size-4" />
+  if (cue === 'rise' || cue === 'rising' || cue === 'sitUp') return <ArrowUpRight className="size-4 rtl:-scale-x-100" />
+  return <ArrowDownRight className="size-4 rtl:-scale-x-100" />
 }
 
 const enter = { opacity: 0, y: 14, filter: 'blur(6px)' }
@@ -202,8 +212,9 @@ export function Recitation({
           key={step.id}
           initial={enter}
           animate={shown}
-          exit={{ ...leave, transition: { duration: 0.22 } }}
-          transition={calm}
+          exit={{ ...leave, transition: { duration: 0.14 } }}
+          // Start after most of the old line has gone, so two lines never sit on top of each other.
+          transition={{ ...calm, delay: 0.08 }}
           className="col-start-1 row-start-1 flex w-full flex-col items-center"
         >
           {/* Where we are, in plain words. */}
@@ -241,7 +252,7 @@ export function Recitation({
               transition={{ delay: 0.1, ...calm }}
               className="mb-4 inline-flex items-center gap-2 rounded-full border border-mint/30 bg-mint/[0.09] px-4 py-1.5 text-[length:var(--text-body)] font-medium text-mint"
             >
-              <ArrowDownRight className="size-4 rtl:-scale-x-100" />
+              <CueIcon cue={step.cue} />
               {t(`cue.${step.cue}`, { n: step.rakah })}
             </motion.div>
           )}
@@ -278,7 +289,8 @@ export function Recitation({
           )}
 
           {/* Listen mode: before a movement, say exactly what moves the prayer on (e.g. "Allāhu Akbar, bow"). */}
-          {listening && next?.cue && next.posture !== step.posture ? (
+          {/* Folding the hands after the opening takbir needs no words of its own: the takbir is this very line. */}
+          {listening && next?.cue && next.cue !== 'fold' && next.posture !== step.posture ? (
             <motion.p
               key="move"
               initial={{ opacity: 0, y: 4 }}
@@ -287,11 +299,11 @@ export function Recitation({
               className="mt-6 inline-flex items-center gap-2 rounded-full border border-[var(--you)]/40 bg-[color-mix(in_oklab,var(--you)_10%,transparent)] px-4 py-1.5 text-[length:var(--text-body)] font-medium text-[var(--you)]"
             >
               <Mic className="size-4" />
-              {t('line.thenSay')} {movePhrase(next)}
+              {t('line.thenSay')} <span lang={arabicHero ? 'ar' : 'ar-Latn'} className={arabicHero ? 'arabic' : undefined}>{movePhrase(next, arabicHero)}</span>
             </motion.p>
           ) : upcoming && (
-            <p className="mt-6 max-w-[40ch] truncate text-[length:var(--text-meta)] text-ink-faint max-sm:hidden short:hidden">
-              <span className="me-2 text-ink-muted">{t('line.next')}</span>
+            <p className="mt-6 max-w-full truncate text-[length:var(--text-meta)] text-ink-muted max-sm:hidden short:hidden">
+              <span className="me-2 text-ink-soft">{t('line.next')}</span>
               {show.transliteration ? upcoming.transliteration : upcoming.arabic}
             </p>
           )}
