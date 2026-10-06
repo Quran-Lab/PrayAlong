@@ -22,8 +22,9 @@
   --color-line-strong: rgb(255 255 255 / 0.16);
   --color-ink: #f4f1ec;
   --color-ink-soft: rgb(244 241 236 / 0.76);
-  --color-ink-muted: rgb(244 241 236 / 0.54);
-  --color-ink-faint: rgb(244 241 236 / 0.32);
+  /* Quiet text is still read from the mat (about 1 m): keep it above ~4:1 on the darkest room. */
+  --color-ink-muted: rgb(244 241 236 / 0.6);
+  --color-ink-faint: rgb(244 241 236 / 0.44);
   /* The accent follows the prayer (kept under the old name so every
      component picks it up). */
   --color-mint: var(--accent);

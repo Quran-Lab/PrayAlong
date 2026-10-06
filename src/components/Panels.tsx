@@ -141,7 +141,7 @@ export function CompletePanel({ clock }: { clock: PrayerClock }) {
           {t('complete.again')}
         </Button>
       </div>
-      <p className="mt-3 text-sm text-ink-faint">{t('complete.next', { prayer: t(`prayer.${next}`), time: formatTime(clock.times[next]) })}</p>
+      <p className="mt-3 text-[length:var(--text-meta)] text-ink-muted">{t('complete.next', { prayer: t(`prayer.${next}`), time: formatTime(clock.times[next]) })}</p>
     </motion.div>
   )
 }

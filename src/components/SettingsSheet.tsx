@@ -172,7 +172,7 @@ export function SettingsSheet({ open, onOpenChange, clock }: { open: boolean; on
 
         <div className="hidden flex-wrap gap-x-3 gap-y-1.5 border-t border-line pt-4 text-sm text-ink-muted md:flex">
           <span className="flex items-center gap-1.5"><Kbd>Space</Kbd> {t('settings.keys.next')}</span>
-          <span className="flex items-center gap-1.5"><Kbd>←</Kbd> {t('settings.keys.back')}</span>
+          <span className="flex items-center gap-1.5"><Kbd>{LOCALES[locale].dir === 'rtl' ? '→' : '←'}</Kbd> {t('settings.keys.back')}</span>
           <span className="flex items-center gap-1.5"><Kbd>P</Kbd> {t('settings.keys.auto')}</span>
           <span className="flex items-center gap-1.5"><Kbd>H</Kbd> {t('settings.keys.hf')}</span>
         </div>
