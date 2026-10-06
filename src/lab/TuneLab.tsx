@@ -90,7 +90,12 @@ export function TuneLab() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(LOCAL_KEY, JSON.stringify(tuning))
+      // Keep only the poses that differ from the saved defaults, so new defaults show up.
+      const edits: Tuning = {}
+      for (const [c, poses] of Object.entries(tuning))
+        for (const [pose, tune] of Object.entries(poses ?? {}))
+          if (JSON.stringify(tuneFor(tuning, c, pose as PoseName)) !== JSON.stringify(tuneFor(TUNING, c, pose as PoseName))) (edits[c] ??= {})[pose as PoseName] = tune
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(edits))
     } catch {
       /* no storage */
     }

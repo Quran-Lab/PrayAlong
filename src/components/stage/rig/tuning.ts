@@ -40,7 +40,12 @@ export const LOCAL_KEY = 'prayalong:tuning'
 export function currentTuning(): Tuning {
   try {
     const local = JSON.parse(localStorage.getItem(LOCAL_KEY) ?? 'null') as Tuning | null
-    if (local) return local
+    // Edits on this device win, pose by pose; everything else comes from the saved defaults.
+    if (local) {
+      const merged: Tuning = { ...TUNING }
+      for (const [c, poses] of Object.entries(local)) merged[c] = { ...TUNING[c], ...poses }
+      return merged
+    }
   } catch {
     /* no storage */
   }
