@@ -114,6 +114,16 @@ export const de: Messages = {
 
   // Hands-free
   'hf.button': 'Freihändig',
+  'media.mic': "Mikrofon",
+  'media.mic.on': "Ich höre zu. Tippen, um das Mikrofon auszuschalten",
+  'media.mic.off': "Mikrofon einschalten, damit ich deiner Rezitation folge",
+  'media.mic.blocked': "Mikrofon blockiert",
+  'media.mic.needed': "Zum Zuhören braucht es das Mikrofon. Bis dahin geht es nach Zeit weiter.",
+  'media.cam': "Kamera",
+  'media.cam.on': "Kamera an: folgt dem Niederwerfen und Aufrichten. Tippen zum Ausschalten",
+  'media.cam.off': "Kamera (optional): folgt der Niederwerfung und dem Aufrichten aus der Verbeugung",
+  'media.cam.blocked': "Kamera blockiert. PrayAlong funktioniert auch ohne sie.",
+  'media.cam.noFace': "Ich sehe dein Gesicht nicht. Neig den Bildschirm etwas nach oben.",
   'hf.tipOn': '„Freihändig“ ausschalten',
   'hf.tipOff': 'Die Kamera folgt deinen Bewegungen.',
   'hf.private': 'Das Video verlässt nie dieses Gerät.',

@@ -2,8 +2,8 @@ import { Settings2 } from 'lucide-react'
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { AlertDialog, Direction, Tooltip as RadixTooltip } from 'radix-ui'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { CameraBubble, DemoBar, HandsFreeButton } from '@/components/HandsFree'
-import { ListenButton } from '@/components/ListenButton'
+import { DemoBar } from '@/components/HandsFree'
+import { CameraToggle, FaceDebugOverlay, MediaNote, MicToggle } from '@/components/MediaToggles'
 import { Logo } from '@/components/Logo'
 import { useCompanionSpeaking } from '@/audio/engine'
 import { useCompanionAudio } from '@/audio/use-companion-audio'
@@ -13,14 +13,15 @@ import { PostureGuide } from '@/components/PostureGuide'
 import { PrayerChips, PrayerMenu } from '@/components/PrayerSelector'
 import { Recitation } from '@/components/Recitation'
 import { SettingsSheet } from '@/components/SettingsSheet'
-import { SetupSheet } from '@/components/SetupSheet'
 import { CHARACTERS, DEFAULT_CHARACTER } from '@/components/stage/characters'
 import { Scenery } from '@/components/stage/Scenery'
 import type { PoseName } from '@/components/stage/rig/prayer-poses'
 import { Button } from '@/components/ui/primitives'
 import { PRAYER_BY_ID } from '@/content/prayers'
 import { getLine } from '@/content/recitations'
+import { cameraRule } from '@/handsfree/face-logic'
 import { isFollowing } from '@/handsfree/types'
+import { useFaceFollow } from '@/handsfree/use-face-follow'
 import { useHandsFree } from '@/handsfree/use-hands-free'
 import { LOCALES, useLocale, useT } from '@/i18n'
 import { chime } from '@/lib/chime'
@@ -65,12 +66,15 @@ export function App() {
   const [anchorX, setAnchorX] = useState<number | null>(null)
   const [pendingSwitch, setPendingSwitch] = useState<PrayerId | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [setupOpen, setSetupOpen] = useState(false)
-  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user')
+  const [facingMode] = useState<'user' | 'environment'>('user')
   const [demoAuto, setDemoAuto] = useState(false)
+  const [faceDebug] = useState(() => new URLSearchParams(location.search).has('facedebug'))
 
+  // [hands-free] Demo mode keeps the old pose engine's on-screen buttons; the
+  // camera itself is the face-presence follower (src/handsfree/face-logic.ts).
+  // The DETRPose/body engine is kept in the repo but no longer started.
   const hands = useHandsFree({
-    enabled: handsFree,
+    enabled: handsFree && demo,
     demo,
     facingMode,
     steps: sequence.steps,
@@ -79,7 +83,16 @@ export function App() {
     onPose: session.onPose,
     onAdvance: session.followTo,
   })
-  const following = handsFree && isFollowing(hands.status)
+  const face = useFaceFollow({
+    enabled: handsFree && !demo,
+    facingMode,
+    steps: sequence.steps,
+    phase,
+    index,
+    onAdvance: session.followTo,
+    debug: faceDebug,
+  })
+  const following = handsFree && (demo ? isFollowing(hands.status) : face.status === 'watching')
 
   // [voice] begin: microphone engine (src/voice, docs/voice.md). Mic only: the
   // voice leads lines and postures; with the camera following: lines only.
@@ -98,7 +111,8 @@ export function App() {
   const [doneStep, setDoneStep] = useState(-1)
   const voice = useVoiceFollow({
     enabled: voiceOn,
-    mode: following ? 'lines' : 'full',
+    // The face camera only follows sujud and rising; the voice keeps every other movement.
+    mode: demo && following ? 'lines' : 'full',
     ignoreCompanion: true,
     companionSpeaking,
     record: settings.recordSessions,
@@ -200,12 +214,34 @@ export function App() {
   }, [voiceOn, voice.status, phase])
   // [voice] end
 
+  // The camera toggle: on asks for the camera and starts; no setup, no calibration.
   const toggleHandsFree = useCallback(() => {
     const s = useSession.getState()
-    if (s.handsFree) return s.setHandsFree(false)
-    s.setHandsFree(true)
-    if (!s.demo) setSetupOpen(true)
+    const wasTimed = s.autoplay
+    s.setHandsFree(!s.handsFree)
+    if (wasTimed) s.setAutoplay(true)
   }, [])
+  // The camera is optional: refused or missing just turns it off, with a short note.
+  const [camNote, setCamNote] = useState(false)
+  useEffect(() => {
+    if (!handsFree || demo || !(face.status === 'denied' || face.status === 'no-camera' || face.status === 'no-model')) return
+    const s = useSession.getState()
+    const wasTimed = s.autoplay
+    s.setHandsFree(false)
+    if (wasTimed) s.setAutoplay(true)
+    setCamNote(true)
+    const id = setTimeout(() => setCamNote(false), 6000)
+    return () => clearTimeout(id)
+  }, [face.status, handsFree, demo])
+  // The microphone toggle; tapping it after an error tries again.
+  const toggleMic = useCallback(() => {
+    if (voiceOn && voice.status === 'error') {
+      setVoiceOn(false)
+      setTimeout(() => setVoiceOn(true), 50)
+    } else setListen((v) => !v)
+  }, [voiceOn, voice.status, setListen])
+  const micNote = voiceOn && voice.status === 'error' ? (voice.error === 'mic-denied' || voice.error === 'mic-missing' || !voice.error ? t('media.mic.needed') : `${t(voice.error === 'unsupported' ? 'listen.unsupported' : 'listen.model')}. ${t('hf.status.fallback')}.`) : null
+  const note = micNote ?? (camNote ? t('media.cam.blocked') : handsFree && !demo && face.hint === 'no-face' ? t('media.cam.noFace') : null)
 
   // Deep link: /?prayer=maghrib opens that prayer.
   useEffect(() => {
@@ -230,7 +266,7 @@ export function App() {
   // [hands-free] The body decides when to change posture. If the camera has
   // lost the person for 8 s, time takes over again, except in sujud (a head
   // too close to the lens is normal there): hold.
-  const appTimedMs = useStepTimer(following && (!hands.lost || hands.hold), audioMs, voiceDriving)
+  const appTimedMs = useStepTimer(demo ? following && (!hands.lost || hands.hold) : following && phase === 'praying' && cameraRule(sequence.steps, index) !== null, audioMs, voiceDriving)
   // In Listen mode you lead: no countdown on screen (the quiet timer fallback still runs underneath).
   const timedMs = voiceDriving ? null : appTimedMs
 
@@ -287,8 +323,8 @@ export function App() {
                     {wide && t('listen.save')}
                   </Button>
                 )}
-                {voiceOn && voice.status === 'error' && <ListenButton on={voiceOn} status={voice.status} error={voice.error} progress={voice.progress} onToggle={() => setListen((v) => !v)} compact={!wide} />}
-                <HandsFreeButton on={handsFree} status={hands.status} onToggle={toggleHandsFree} compact={!wide} />
+                <MicToggle on={voiceOn} status={voice.status} error={voice.error} progress={voice.progress} onToggle={toggleMic} />
+                <CameraToggle on={handsFree && !demo} status={face.status} noFace={face.hint === 'no-face'} onToggle={toggleHandsFree} />
               </div>
             </header>
 
@@ -321,20 +357,7 @@ export function App() {
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-canvas to-transparent wide:hidden" />
                 <div className="absolute end-3 top-3 z-10 sm:end-5 sm:top-4">
                   <AnimatePresence>
-                    {handsFree && !setupOpen && (
-                      <CameraBubble
-                        stream={hands.stream}
-                        status={hands.status}
-                        pose={hands.pose}
-                        framing={hands.framing}
-                        expected={phase === 'complete' ? null : (hands.expectedPosture ?? null)}
-                        progress={hands.progress}
-                        blocker={hands.blocker}
-                        onOpen={() => setSetupOpen(true)}
-                        onRetry={hands.retry}
-                        onDemo={() => session.setDemo(true)}
-                      />
-                    )}
+                    {note && <MediaNote key={note} text={note} />}
                   </AnimatePresence>
                 </div>
                 <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center px-3">
@@ -367,30 +390,12 @@ export function App() {
 
             {/* Dock */}
             <footer className="relative z-10 shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6 short:pb-2">
-              <PostureDock following={following} listening={voiceOn && voice.status !== 'error'} listenLoading={voiceOn && voice.status === 'loading'} hearing={voiceDriving && voice.speaking} micUsable={voice.status !== 'error' && !handsFree} onListen={setListen} />
+              <PostureDock following={following} listening={voiceOn && voice.status !== 'error'} listenLoading={voiceOn && voice.status === 'loading'} hearing={voiceDriving && voice.speaking} micUsable={voice.status !== 'error'} onListen={setListen} />
             </footer>
           </div>
 
           <SettingsSheet open={settingsOpen} onOpenChange={setSettingsOpen} clock={clock} />
-          <SetupSheet
-            open={setupOpen && handsFree && !demo}
-            onOpenChange={setSetupOpen}
-            status={hands.status}
-            stream={hands.stream}
-            framing={hands.framing}
-            blocker={hands.blocker}
-            calibrated={hands.calibrated}
-            check={hands.check}
-            onCheck={hands.startCheck}
-            engineLabel={hands.engineLabel}
-            facingMode={facingMode}
-            onFlip={() => setFacingMode((m) => (m === 'user' ? 'environment' : 'user'))}
-            onRetry={hands.retry}
-            onDemo={() => {
-              setSetupOpen(false)
-              session.setDemo(true)
-            }}
-          />
+          {faceDebug && handsFree && !demo && <FaceDebugOverlay stream={face.stream} debug={face.debug} status={face.status} mirror={facingMode === 'user'} />}
           <SwitchPrayerDialog pending={pendingSwitch} onClose={() => setPendingSwitch(null)} />
         </RadixTooltip.Provider>
       </MotionConfig>

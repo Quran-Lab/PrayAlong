@@ -117,6 +117,16 @@ export const en = {
 
   // Hands-free
   'hf.button': 'Hands-Free',
+  'media.mic': "Microphone",
+  'media.mic.on': "Listening. Tap to turn the microphone off",
+  'media.mic.off': "Turn on the microphone to follow your recitation",
+  'media.mic.blocked': "Microphone blocked",
+  'media.mic.needed': "Listening needs the microphone. Guiding by time for now.",
+  'media.cam': "Camera",
+  'media.cam.on': "Camera on: follows going down to sujood and rising. Tap to turn off",
+  'media.cam.off': "Camera (optional): follows sujood and rising from ruku",
+  'media.cam.blocked': "Camera blocked. PrayAlong works fine without it.",
+  'media.cam.noFace': "Can’t see your face. Tilt the screen up a little.",
   'hf.tipOn': 'Turn off hands-free',
   'hf.tipOff': 'Follow your movements with the camera.',
   'hf.private': 'Video never leaves this device.',
