@@ -2,6 +2,29 @@ import type { Messages } from './en'
 
 // French uses a no-break space ( ) before ? : and inside « », per French typography.
 export const fr: Messages = {
+  // Filled in for strings added after the first translation pass.
+  'group.asr': 'Al-‘Asr',
+  'group.kafirun': 'Al-Kâfirûn',
+  'group.nasr': 'An-Nasr',
+  'group.masad': 'Al-Masad',
+  'group.falaq': 'Al-Falaq',
+  'group.nas': 'An-Nâs',
+  'hf.status.reconnecting': 'Reconnexion de la caméra…',
+  'hf.msg.cameraLost': 'La caméra s’est arrêtée. Le guidage avance selon le temps jusqu’à son retour.',
+  'hf.next': 'Ensuite : {posture}',
+  'hf.block.no-person': 'Placez-vous sur le tapis, devant l’ordinateur',
+  'hf.block.too-dark': 'Trop sombre pour la caméra. Allumez une lumière',
+  'hf.block.head-cut': 'Inclinez l’écran vers l’arrière pour que votre tête soit visible',
+  'hf.block.too-close': 'Éloignez un peu l’ordinateur',
+  'hf.block.too-far': 'Rapprochez un peu l’ordinateur',
+  'hf.block.off-centre': 'Tournez l’ordinateur vers vous',
+  'setup.standStill': 'Tenez-vous sur le tapis et regardez l’écran',
+  'setup.check.intro': 'Vérification rapide : faites un rukû‘, puis asseyez-vous',
+  'setup.check.start': 'Vérifier',
+  'setup.check.bow': 'Inclinez-vous en rukû‘…',
+  'setup.check.sit': 'Asseyez-vous maintenant…',
+  'setup.check.ok': 'Tout est bon. Je peux vous suivre d’ici',
+  'setup.check.missed': 'Je n’ai pas vu : {what}. Inclinez l’écran ou déplacez l’ordinateur, puis réessayez',
   // Prayers
   'prayer.fajr': 'Fajr',
   'prayer.dhuhr': 'Dhohr',
@@ -117,9 +140,9 @@ export const fr: Messages = {
   'hf.status.watching': 'Je vous suis',
   'hf.status.demo': 'Mode démo',
   'hf.status.fallback': 'Guidage automatique',
-  'hf.msg.noCamera': 'Caméra indisponible — le guidage continue automatiquement.',
-  'hf.msg.denied': 'L’accès à la caméra a été bloqué — le guidage continue automatiquement.',
-  'hf.msg.noModel': 'Impossible de lancer le suivi des mouvements — le guidage continue automatiquement.',
+  'hf.msg.noCamera': 'Caméra indisponible: le guidage continue automatiquement.',
+  'hf.msg.denied': 'L’accès à la caméra a été bloqué: le guidage continue automatiquement.',
+  'hf.msg.noModel': 'Impossible de lancer le suivi des mouvements: le guidage continue automatiquement.',
   'hf.msg.noPerson': 'Reculez pour que tout votre corps soit visible',
   'hf.retry': 'Réessayer',
   'hf.useDemo': 'Utiliser la démo',
@@ -133,10 +156,10 @@ export const fr: Messages = {
 
   // Setup sheet
   'setup.title': 'Prier en mains libres',
-  'setup.body': 'Posez votre téléphone ou votre ordinateur portable au sol ou sur une étagère basse, à 2–3 mètres, pour qu’il vous voie de la tête aux pieds. Votre vidéo reste sur cet appareil.',
-  'setup.step1': 'Calez-le face à votre tapis',
-  'setup.step2': 'Reculez jusqu’à être entièrement visible',
-  'setup.step3': 'Levez les mains pour commencer',
+  'setup.body': 'Posez votre ordinateur portable au sol, devant votre tapis de prière. Vos jambes peuvent sortir du cadre ; ce qui compte, ce sont votre tête et vos épaules. Votre vidéo reste sur cet appareil.',
+  'setup.step1': 'Posez-le au sol au bord avant du tapis, légèrement tourné vers vous (un petit angle fonctionne le mieux)',
+  'setup.step2': 'Inclinez l’écran vers l’arrière jusqu’à ce que votre tête soit visible quand vous êtes debout',
+  'setup.step3': 'Tenez-vous sur le tapis et regardez l’écran un instant',
   'setup.seeYou': 'Je vous vois',
   'setup.lookingForYou': 'Je vous cherche…',
   'setup.start': 'Démarrer la caméra',
@@ -145,7 +168,7 @@ export const fr: Messages = {
 
   // Demo
   'demo.title': 'Démo',
-  'demo.body': 'Mimez un mouvement — PrayAlong réagit comme si la caméra vous voyait.',
+  'demo.body': 'Mimez un mouvement: PrayAlong réagit comme si la caméra vous voyait.',
   'demo.auto': 'Lire toute la prière',
   'demo.stop': 'Arrêter',
   'demo.keys': 'Les touches 1 à 5 marchent aussi',
@@ -224,6 +247,29 @@ export const fr: Messages = {
 }
 
 export const es: Messages = {
+  // Filled in for strings added after the first translation pass.
+  'group.asr': 'Al-Asr',
+  'group.kafirun': 'Al-Kafirún',
+  'group.nasr': 'An-Nasr',
+  'group.masad': 'Al-Masad',
+  'group.falaq': 'Al-Falaq',
+  'group.nas': 'An-Nas',
+  'hf.status.reconnecting': 'Reconectando la cámara…',
+  'hf.msg.cameraLost': 'La cámara se detuvo. Avanzamos por tiempo hasta que vuelva.',
+  'hf.next': 'Siguiente: {posture}',
+  'hf.block.no-person': 'Ponte sobre la alfombra, delante del portátil',
+  'hf.block.too-dark': 'Hay poca luz para la cámara. Enciende una luz',
+  'hf.block.head-cut': 'Inclina la pantalla hacia atrás para que se vea tu cabeza',
+  'hf.block.too-close': 'Aleja un poco el portátil',
+  'hf.block.too-far': 'Acerca un poco el portátil',
+  'hf.block.off-centre': 'Gira el portátil hacia ti',
+  'setup.standStill': 'Ponte sobre la alfombra y mira la pantalla',
+  'setup.check.intro': 'Prueba rápida: haz un rukú y luego siéntate',
+  'setup.check.start': 'Probar',
+  'setup.check.bow': 'Ahora inclínate en rukú…',
+  'setup.check.sit': 'Ahora siéntate…',
+  'setup.check.ok': 'Todo bien. Puedo seguirte desde aquí',
+  'setup.check.missed': 'No vi: {what}. Inclina la pantalla o mueve el portátil y vuelve a intentarlo',
   // Prayers
   'prayer.fajr': 'Fajr',
   'prayer.dhuhr': 'Dhuhr',
@@ -355,10 +401,10 @@ export const es: Messages = {
 
   // Setup sheet
   'setup.title': 'Reza con manos libres',
-  'setup.body': 'Coloca tu teléfono o portátil en el suelo o en un estante bajo, a 2–3 metros, para que te vea de pies a cabeza. Tu video se queda en este dispositivo.',
-  'setup.step1': 'Apóyalo mirando hacia tu alfombra',
-  'setup.step2': 'Retrocede hasta que se vea todo tu cuerpo',
-  'setup.step3': 'Levanta las manos para empezar',
+  'setup.body': 'Pon tu portátil en el suelo, delante de tu alfombra de oración. Tus piernas pueden quedar fuera de la imagen; lo que importa es la cabeza y los hombros. Tu video se queda en este dispositivo.',
+  'setup.step1': 'Ponlo en el suelo, en el borde delantero de la alfombra, un poco girado hacia ti (un ángulo pequeño funciona mejor)',
+  'setup.step2': 'Inclina la pantalla hacia atrás hasta que se vea tu cabeza cuando estés de pie',
+  'setup.step3': 'Ponte sobre la alfombra y mira la pantalla un momento',
   'setup.seeYou': 'Te veo',
   'setup.lookingForYou': 'Buscándote…',
   'setup.start': 'Iniciar cámara',
@@ -446,6 +492,23 @@ export const es: Messages = {
 }
 
 export const tr: Messages = {
+  // Filled in for strings added after the first translation pass.
+  'hf.status.reconnecting': 'Kamera yeniden bağlanıyor…',
+  'hf.msg.cameraLost': 'Kamera durdu. Geri gelene kadar süreye göre ilerleniyor.',
+  'hf.next': 'Sıradaki: {posture}',
+  'hf.block.no-person': 'Dizüstü bilgisayarın önündeki seccadeye geçin',
+  'hf.block.too-dark': 'Kamera için çok karanlık. Bir ışık açın',
+  'hf.block.head-cut': 'Başınız görünecek şekilde ekranı geriye yatırın',
+  'hf.block.too-close': 'Bilgisayarı biraz geri çekin',
+  'hf.block.too-far': 'Bilgisayarı biraz yaklaştırın',
+  'hf.block.off-centre': 'Bilgisayarı kendinize doğru çevirin',
+  'setup.standStill': 'Seccadede durun ve ekrana bakın',
+  'setup.check.intro': 'Kısa kontrol: rükûya eğilin, sonra oturun',
+  'setup.check.start': 'Kontrol et',
+  'setup.check.bow': 'Şimdi rükûya eğilin…',
+  'setup.check.sit': 'Şimdi oturun…',
+  'setup.check.ok': 'Her şey yolunda. Sizi buradan takip edebilirim',
+  'setup.check.missed': 'Göremediğim: {what}. Ekranı yatırın ya da bilgisayarı oynatın, sonra tekrar deneyin',
   // Prayers
   'prayer.fajr': 'Sabah',
   'prayer.dhuhr': 'Öğle',
@@ -567,9 +630,9 @@ export const tr: Messages = {
   'hf.status.watching': 'Sizi takip ediyor',
   'hf.status.demo': 'Demo modu',
   'hf.status.fallback': 'Otomatik ilerliyor',
-  'hf.msg.noCamera': 'Kamera kullanılamıyor — süreye göre otomatik ilerleniyor.',
-  'hf.msg.denied': 'Kamera erişimi engellendi — süreye göre otomatik ilerleniyor.',
-  'hf.msg.noModel': 'Hareket takibi başlatılamadı — süreye göre otomatik ilerleniyor.',
+  'hf.msg.noCamera': 'Kamera kullanılamıyor: süreye göre otomatik ilerleniyor.',
+  'hf.msg.denied': 'Kamera erişimi engellendi: süreye göre otomatik ilerleniyor.',
+  'hf.msg.noModel': 'Hareket takibi başlatılamadı: süreye göre otomatik ilerleniyor.',
   'hf.msg.noPerson': 'Tüm vücudunuz görünecek şekilde biraz geri çekilin',
   'hf.retry': 'Tekrar dene',
   'hf.useDemo': 'Demoyu kullan',
@@ -583,10 +646,10 @@ export const tr: Messages = {
 
   // Setup sheet
   'setup.title': 'Eller serbest namaz kılın',
-  'setup.body': 'Telefonunuzu veya dizüstü bilgisayarınızı 2–3 metre uzağa, yere ya da alçak bir rafa koyun; sizi baştan ayağa görebilsin. Görüntünüz bu cihazda kalır.',
-  'setup.step1': 'Seccadenize bakacak şekilde yerleştirin',
-  'setup.step2': 'Tüm vücudunuz görünene kadar geri çekilin',
-  'setup.step3': 'Başlamak için ellerinizi kaldırın',
+  'setup.body': 'Dizüstü bilgisayarınızı seccadenizin önüne, yere koyun. Bacaklarınızın görünmemesi sorun değil; önemli olan başınız ve omuzlarınız. Görüntünüz bu cihazda kalır.',
+  'setup.step1': 'Seccadenin ön kenarına, yere koyun ve biraz kendinize doğru çevirin (küçük bir açı en iyisidir)',
+  'setup.step2': 'Ayaktayken başınız görünene kadar ekranı geriye yatırın',
+  'setup.step3': 'Seccadede durun ve bir an ekrana bakın',
   'setup.seeYou': 'Sizi görüyorum',
   'setup.lookingForYou': 'Sizi arıyorum…',
   'setup.start': 'Kamerayı aç',
@@ -595,7 +658,7 @@ export const tr: Messages = {
 
   // Demo
   'demo.title': 'Demo',
-  'demo.body': 'Bir hareketi canlandırın — PrayAlong, kamera sizi görmüş gibi tepki verir.',
+  'demo.body': 'Bir hareketi canlandırın: PrayAlong, kamera sizi görmüş gibi tepki verir.',
   'demo.auto': 'Tüm namazı oynat',
   'demo.stop': 'Durdur',
   'demo.keys': '1–5 tuşları da çalışır',
@@ -674,6 +737,29 @@ export const tr: Messages = {
 }
 
 export const id: Messages = {
+  // Filled in for strings added after the first translation pass.
+  'group.asr': 'Al-‘Asr',
+  'group.kafirun': 'Al-Kafirun',
+  'group.nasr': 'An-Nasr',
+  'group.masad': 'Al-Lahab',
+  'group.falaq': 'Al-Falaq',
+  'group.nas': 'An-Nas',
+  'hf.status.reconnecting': 'Menghubungkan ulang kamera…',
+  'hf.msg.cameraLost': 'Kamera berhenti. Panduan berlanjut sesuai waktu sampai kamera kembali.',
+  'hf.next': 'Berikutnya: {posture}',
+  'hf.block.no-person': 'Berdirilah di atas sajadah di depan laptop',
+  'hf.block.too-dark': 'Terlalu gelap untuk kamera. Nyalakan lampu',
+  'hf.block.head-cut': 'Miringkan layar ke belakang agar kepala Anda terlihat',
+  'hf.block.too-close': 'Mundurkan laptop sedikit',
+  'hf.block.too-far': 'Dekatkan laptop sedikit',
+  'hf.block.off-centre': 'Hadapkan laptop ke arah Anda',
+  'setup.standStill': 'Berdirilah di atas sajadah dan lihat ke layar',
+  'setup.check.intro': 'Cek singkat: lakukan rukuk, lalu duduk',
+  'setup.check.start': 'Cek',
+  'setup.check.bow': 'Sekarang rukuk…',
+  'setup.check.sit': 'Sekarang duduk…',
+  'setup.check.ok': 'Semua baik. Saya bisa mengikuti Anda dari sini',
+  'setup.check.missed': 'Terlewat: {what}. Miringkan layar atau geser laptop, lalu coba lagi',
   // Prayers
   'prayer.fajr': 'Subuh',
   'prayer.dhuhr': 'Zuhur',
@@ -789,9 +875,9 @@ export const id: Messages = {
   'hf.status.watching': 'Mengikuti Anda',
   'hf.status.demo': 'Mode demo',
   'hf.status.fallback': 'Panduan otomatis',
-  'hf.msg.noCamera': 'Kamera tidak tersedia — panduan berlanjut otomatis.',
-  'hf.msg.denied': 'Akses kamera diblokir — panduan berlanjut otomatis.',
-  'hf.msg.noModel': 'Pelacakan gerakan gagal dimulai — panduan berlanjut otomatis.',
+  'hf.msg.noCamera': 'Kamera tidak tersedia: panduan berlanjut otomatis.',
+  'hf.msg.denied': 'Akses kamera diblokir: panduan berlanjut otomatis.',
+  'hf.msg.noModel': 'Pelacakan gerakan gagal dimulai: panduan berlanjut otomatis.',
   'hf.msg.noPerson': 'Mundurlah agar seluruh tubuh Anda terlihat',
   'hf.retry': 'Coba lagi',
   'hf.useDemo': 'Pakai demo',
@@ -805,10 +891,10 @@ export const id: Messages = {
 
   // Setup sheet
   'setup.title': 'Salat tanpa sentuh',
-  'setup.body': 'Letakkan ponsel atau laptop di lantai atau rak rendah, 2–3 meter dari Anda, agar Anda terlihat dari kepala hingga kaki. Video Anda tetap di perangkat ini.',
-  'setup.step1': 'Sandarkan menghadap sajadah',
-  'setup.step2': 'Mundur hingga seluruh tubuh terlihat',
-  'setup.step3': 'Angkat tangan untuk memulai',
+  'setup.body': 'Letakkan laptop Anda di lantai, di depan sajadah. Kaki Anda boleh tidak terlihat; yang penting kepala dan bahu Anda. Video Anda tetap di perangkat ini.',
+  'setup.step1': 'Letakkan di lantai di tepi depan sajadah, sedikit menghadap ke arah Anda (sudut kecil paling baik)',
+  'setup.step2': 'Miringkan layar ke belakang sampai kepala Anda terlihat saat berdiri',
+  'setup.step3': 'Berdirilah di atas sajadah dan lihat ke layar sejenak',
   'setup.seeYou': 'Anda sudah terlihat',
   'setup.lookingForYou': 'Mencari Anda…',
   'setup.start': 'Nyalakan kamera',
@@ -817,7 +903,7 @@ export const id: Messages = {
 
   // Demo
   'demo.title': 'Demo',
-  'demo.body': 'Peragakan sebuah gerakan — PrayAlong merespons seolah-olah kamera melihat Anda.',
+  'demo.body': 'Peragakan sebuah gerakan: PrayAlong merespons seolah-olah kamera melihat Anda.',
   'demo.auto': 'Putar seluruh salat',
   'demo.stop': 'Berhenti',
   'demo.keys': 'Tombol 1–5 juga bisa',
@@ -896,6 +982,29 @@ export const id: Messages = {
 }
 
 export const nl: Messages = {
+  // Filled in for strings added after the first translation pass.
+  'group.asr': 'Al-Asr',
+  'group.kafirun': 'Al-Kafirun',
+  'group.nasr': 'An-Nasr',
+  'group.masad': 'Al-Masad',
+  'group.falaq': 'Al-Falaq',
+  'group.nas': 'An-Nas',
+  'hf.status.reconnecting': 'Camera opnieuw verbinden…',
+  'hf.msg.cameraLost': 'De camera is gestopt. We gaan op tijd verder tot hij terug is.',
+  'hf.next': 'Hierna: {posture}',
+  'hf.block.no-person': 'Ga op het kleed voor de laptop staan',
+  'hf.block.too-dark': 'Te donker voor de camera. Doe een lamp aan',
+  'hf.block.head-cut': 'Kantel het scherm naar achteren zodat je hoofd in beeld is',
+  'hf.block.too-close': 'Zet de laptop iets verder weg',
+  'hf.block.too-far': 'Zet de laptop iets dichterbij',
+  'hf.block.off-centre': 'Draai de laptop naar je toe',
+  'setup.standStill': 'Ga op het kleed staan en kijk naar het scherm',
+  'setup.check.intro': 'Snelle controle: maak een roekoe en ga dan zitten',
+  'setup.check.start': 'Controleren',
+  'setup.check.bow': 'Buig nu in roekoe…',
+  'setup.check.sit': 'Ga nu zitten…',
+  'setup.check.ok': 'Alles goed. Ik kan je vanaf hier volgen',
+  'setup.check.missed': 'Ik miste: {what}. Kantel het scherm of verplaats de laptop en probeer het opnieuw',
   // Prayers
   'prayer.fajr': 'Fajr',
   'prayer.dhuhr': 'Dhuhr',
@@ -1011,9 +1120,9 @@ export const nl: Messages = {
   'hf.status.watching': 'Volgt je',
   'hf.status.demo': 'Demomodus',
   'hf.status.fallback': 'Automatische begeleiding',
-  'hf.msg.noCamera': 'Camera niet beschikbaar — we gaan automatisch verder.',
-  'hf.msg.denied': 'Cameratoegang is geblokkeerd — we gaan automatisch verder.',
-  'hf.msg.noModel': 'Bewegingsherkenning kon niet starten — we gaan automatisch verder.',
+  'hf.msg.noCamera': 'Camera niet beschikbaar: we gaan automatisch verder.',
+  'hf.msg.denied': 'Cameratoegang is geblokkeerd: we gaan automatisch verder.',
+  'hf.msg.noModel': 'Bewegingsherkenning kon niet starten: we gaan automatisch verder.',
   'hf.msg.noPerson': 'Stap achteruit zodat je hele lichaam in beeld is',
   'hf.retry': 'Opnieuw proberen',
   'hf.useDemo': 'Demo gebruiken',
@@ -1027,10 +1136,10 @@ export const nl: Messages = {
 
   // Setup sheet
   'setup.title': 'Handsfree bidden',
-  'setup.body': 'Zet je telefoon of laptop op de grond of op een lage plank, 2–3 meter van je af, zodat hij je van top tot teen ziet. Je video blijft op dit apparaat.',
-  'setup.step1': 'Zet hem rechtop, gericht op je gebedskleed',
-  'setup.step2': 'Stap achteruit tot je helemaal in beeld bent',
-  'setup.step3': 'Hef je handen om te beginnen',
+  'setup.body': 'Zet je laptop op de grond, aan de voorkant van je gebedskleed. Je benen mogen buiten beeld zijn; het gaat om je hoofd en schouders. Je video blijft op dit apparaat.',
+  'setup.step1': 'Zet hem op de grond aan de voorrand van het kleed, iets naar je toe gedraaid (een kleine hoek werkt het best)',
+  'setup.step2': 'Kantel het scherm naar achteren tot je hoofd in beeld is als je staat',
+  'setup.step3': 'Ga op het kleed staan en kijk even naar het scherm',
   'setup.seeYou': 'Ik zie je',
   'setup.lookingForYou': 'Ik zoek je…',
   'setup.start': 'Camera starten',
@@ -1039,7 +1148,7 @@ export const nl: Messages = {
 
   // Demo
   'demo.title': 'Demo',
-  'demo.body': 'Doe een beweging voor — PrayAlong reageert alsof de camera je zag.',
+  'demo.body': 'Doe een beweging voor: PrayAlong reageert alsof de camera je zag.',
   'demo.auto': 'Heel gebed afspelen',
   'demo.stop': 'Stoppen',
   'demo.keys': 'Toetsen 1–5 werken ook',
@@ -1118,6 +1227,23 @@ export const nl: Messages = {
 }
 
 export const ur: Messages = {
+  // Filled in for strings added after the first translation pass.
+  'hf.status.reconnecting': 'کیمرا دوبارہ جوڑا جا رہا ہے…',
+  'hf.msg.cameraLost': 'کیمرا رک گیا۔ اس کے واپس آنے تک وقت کے مطابق آگے بڑھیں گے۔',
+  'hf.next': 'اگلا: {posture}',
+  'hf.block.no-person': 'لیپ ٹاپ کے سامنے جائے نماز پر کھڑے ہو جائیں',
+  'hf.block.too-dark': 'کیمرے کے لیے بہت اندھیرا ہے۔ روشنی جلائیں',
+  'hf.block.head-cut': 'اسکرین کو پیچھے جھکائیں تاکہ آپ کا سر نظر آئے',
+  'hf.block.too-close': 'لیپ ٹاپ کو تھوڑا پیچھے کریں',
+  'hf.block.too-far': 'لیپ ٹاپ کو تھوڑا قریب لائیں',
+  'hf.block.off-centre': 'لیپ ٹاپ کا رخ اپنی طرف کریں',
+  'setup.standStill': 'جائے نماز پر کھڑے ہو کر اسکرین کی طرف دیکھیں',
+  'setup.check.intro': 'فوری جانچ: رکوع کریں، پھر بیٹھ جائیں',
+  'setup.check.start': 'جانچیں',
+  'setup.check.bow': 'اب رکوع میں جھکیں…',
+  'setup.check.sit': 'اب بیٹھ جائیں…',
+  'setup.check.ok': 'سب ٹھیک ہے۔ میں یہاں سے آپ کے ساتھ چل سکتا ہوں',
+  'setup.check.missed': 'یہ نظر نہیں آیا: {what}۔ اسکرین جھکائیں یا لیپ ٹاپ ہلائیں، پھر دوبارہ کوشش کریں',
   // Prayers
   'prayer.fajr': 'فجر',
   'prayer.dhuhr': 'ظہر',
@@ -1239,9 +1365,9 @@ export const ur: Messages = {
   'hf.status.watching': 'آپ کے ساتھ',
   'hf.status.demo': 'ڈیمو موڈ',
   'hf.status.fallback': 'وقت کے مطابق رہنمائی',
-  'hf.msg.noCamera': 'کیمرا دستیاب نہیں — اب وقت کے مطابق آگے بڑھیں گے۔',
-  'hf.msg.denied': 'کیمرے تک رسائی روک دی گئی — اب وقت کے مطابق آگے بڑھیں گے۔',
-  'hf.msg.noModel': 'حرکت کی پہچان شروع نہ ہو سکی — اب وقت کے مطابق آگے بڑھیں گے۔',
+  'hf.msg.noCamera': 'کیمرا دستیاب نہیں: اب وقت کے مطابق آگے بڑھیں گے۔',
+  'hf.msg.denied': 'کیمرے تک رسائی روک دی گئی: اب وقت کے مطابق آگے بڑھیں گے۔',
+  'hf.msg.noModel': 'حرکت کی پہچان شروع نہ ہو سکی: اب وقت کے مطابق آگے بڑھیں گے۔',
   'hf.msg.noPerson': 'تھوڑا پیچھے ہٹیں تاکہ پورا جسم نظر آئے',
   'hf.retry': 'دوبارہ کوشش کریں',
   'hf.useDemo': 'ڈیمو استعمال کریں',
@@ -1255,10 +1381,10 @@ export const ur: Messages = {
 
   // Setup sheet
   'setup.title': 'ہینڈز فری نماز',
-  'setup.body': 'اپنا فون یا لیپ ٹاپ 2–3 میٹر دور فرش یا کسی نیچی شیلف پر رکھیں تاکہ وہ آپ کو سر سے پاؤں تک دیکھ سکے۔ آپ کی ویڈیو اسی ڈیوائس پر رہتی ہے۔',
-  'setup.step1': 'اسے جائے نماز کی طرف رخ کر کے ٹکا دیں',
-  'setup.step2': 'پیچھے ہٹیں یہاں تک کہ پورا جسم نظر آئے',
-  'setup.step3': 'شروع کرنے کے لیے ہاتھ اٹھائیں',
+  'setup.body': 'اپنا لیپ ٹاپ جائے نماز کے سامنے فرش پر رکھیں۔ آپ کی ٹانگیں نظر نہ آئیں تو کوئی بات نہیں؛ اصل چیز آپ کا سر اور کندھے ہیں۔ آپ کی ویڈیو اسی ڈیوائس پر رہتی ہے۔',
+  'setup.step1': 'اسے جائے نماز کے اگلے کنارے پر فرش پر رکھیں، تھوڑا سا اپنی طرف موڑ کر (ہلکا سا زاویہ بہترین ہے)',
+  'setup.step2': 'اسکرین کو پیچھے جھکائیں یہاں تک کہ کھڑے ہونے پر آپ کا سر نظر آئے',
+  'setup.step3': 'جائے نماز پر کھڑے ہو کر ایک لمحے کے لیے اسکرین کی طرف دیکھیں',
   'setup.seeYou': 'آپ نظر آ رہے ہیں',
   'setup.lookingForYou': 'آپ کو تلاش کر رہے ہیں…',
   'setup.start': 'کیمرا آن کریں',
@@ -1267,7 +1393,7 @@ export const ur: Messages = {
 
   // Demo
   'demo.title': 'ڈیمو',
-  'demo.body': 'کوئی حرکت کر کے دیکھیں — PrayAlong ایسے ردِعمل دے گا جیسے کیمرے نے آپ کو دیکھا ہو۔',
+  'demo.body': 'کوئی حرکت کر کے دیکھیں: PrayAlong ایسے ردِعمل دے گا جیسے کیمرے نے آپ کو دیکھا ہو۔',
   'demo.auto': 'پوری نماز چلائیں',
   'demo.stop': 'روکیں',
   'demo.keys': 'کیز 1–5 بھی کام کرتی ہیں',
@@ -1346,6 +1472,23 @@ export const ur: Messages = {
 }
 
 export const ar: Messages = {
+  // Filled in for strings added after the first translation pass.
+  'hf.status.reconnecting': 'جارٍ إعادة توصيل الكاميرا…',
+  'hf.msg.cameraLost': 'توقفت الكاميرا. سيستمر الإرشاد حسب الوقت حتى تعود.',
+  'hf.next': 'التالي: {posture}',
+  'hf.block.no-person': 'قف على السجادة أمام الحاسوب',
+  'hf.block.too-dark': 'الإضاءة ضعيفة للكاميرا. أشعل ضوءًا',
+  'hf.block.head-cut': 'أمِل الشاشة إلى الخلف ليظهر رأسك',
+  'hf.block.too-close': 'أبعِد الحاسوب قليلًا',
+  'hf.block.too-far': 'قرِّب الحاسوب قليلًا',
+  'hf.block.off-centre': 'وجِّه الحاسوب نحوك',
+  'setup.standStill': 'قف على السجادة وانظر إلى الشاشة',
+  'setup.check.intro': 'فحص سريع: اركع، ثم اجلس',
+  'setup.check.start': 'افحص',
+  'setup.check.bow': 'اركع الآن…',
+  'setup.check.sit': 'اجلس الآن…',
+  'setup.check.ok': 'كل شيء جيد. أستطيع متابعتك من هنا',
+  'setup.check.missed': 'لم أرَ: {what}. أمِل الشاشة أو حرّك الحاسوب، ثم حاول مجددًا',
   // Prayers
   'prayer.fajr': 'الفجر',
   'prayer.dhuhr': 'الظهر',
@@ -1467,9 +1610,9 @@ export const ar: Messages = {
   'hf.status.watching': 'يتابعك',
   'hf.status.demo': 'الوضع التجريبي',
   'hf.status.fallback': 'إرشاد تلقائي',
-  'hf.msg.noCamera': 'الكاميرا غير متاحة — سيستمر الإرشاد تلقائيًا.',
-  'hf.msg.denied': 'تم حظر الوصول إلى الكاميرا — سيستمر الإرشاد تلقائيًا.',
-  'hf.msg.noModel': 'تعذّر بدء تتبع الحركة — سيستمر الإرشاد تلقائيًا.',
+  'hf.msg.noCamera': 'الكاميرا غير متاحة: سيستمر الإرشاد تلقائيًا.',
+  'hf.msg.denied': 'تم حظر الوصول إلى الكاميرا: سيستمر الإرشاد تلقائيًا.',
+  'hf.msg.noModel': 'تعذّر بدء تتبع الحركة: سيستمر الإرشاد تلقائيًا.',
   'hf.msg.noPerson': 'تراجع قليلًا حتى يظهر جسمك كله',
   'hf.retry': 'حاول مجددًا',
   'hf.useDemo': 'استخدم العرض التجريبي',
@@ -1483,10 +1626,10 @@ export const ar: Messages = {
 
   // Setup sheet
   'setup.title': 'صلِّ دون لمس الجهاز',
-  'setup.body': 'ضع هاتفك أو حاسوبك المحمول على الأرض أو على رف منخفض، على بُعد 2–3 أمتار، ليراك من رأسك إلى قدميك. يبقى الفيديو على هذا الجهاز.',
-  'setup.step1': 'أسنده بحيث يواجه سجادتك',
-  'setup.step2': 'تراجع حتى يظهر جسمك كله',
-  'setup.step3': 'ارفع يديك لتبدأ',
+  'setup.body': 'ضع حاسوبك المحمول على الأرض أمام سجادة الصلاة. لا بأس إن لم تظهر ساقاك؛ المهم رأسك وكتفاك. يبقى الفيديو على هذا الجهاز.',
+  'setup.step1': 'ضعه على الأرض عند الحافة الأمامية للسجادة، مائلًا قليلًا نحوك (الزاوية الصغيرة أفضل)',
+  'setup.step2': 'أمِل الشاشة إلى الخلف حتى يظهر رأسك وأنت واقف',
+  'setup.step3': 'قف على السجادة وانظر إلى الشاشة لحظة',
   'setup.seeYou': 'أراك الآن',
   'setup.lookingForYou': 'أبحث عنك…',
   'setup.start': 'تشغيل الكاميرا',
@@ -1495,7 +1638,7 @@ export const ar: Messages = {
 
   // Demo
   'demo.title': 'عرض تجريبي',
-  'demo.body': 'أدِّ حركة — وسيتفاعل PrayAlong كأن الكاميرا رأتك.',
+  'demo.body': 'أدِّ حركة، وسيتفاعل PrayAlong كأن الكاميرا رأتك.',
   'demo.auto': 'تشغيل الصلاة كاملة',
   'demo.stop': 'إيقاف',
   'demo.keys': 'المفاتيح 1–5 تعمل أيضًا',
