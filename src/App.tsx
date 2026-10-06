@@ -190,6 +190,8 @@ export function App() {
   const prevPhase = useRef(phase)
   useEffect(() => {
     if (prevPhase.current === 'ready' && phase === 'praying') setVoiceOn(true)
+    // The prayer is over: stop listening (the microphone light goes off too).
+    if (phase !== prevPhase.current && (phase === 'complete' || phase === 'ready')) setVoiceOn(false)
     prevPhase.current = phase
   }, [phase])
   // If listening cannot start (no mic, permission denied, model failed), guide by time instead.
