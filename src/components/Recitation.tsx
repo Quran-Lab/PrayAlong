@@ -296,11 +296,11 @@ export function Recitation({
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="mt-6 inline-flex items-center gap-2 rounded-2xl border border-[var(--you)]/40 bg-[color-mix(in_oklab,var(--you)_10%,transparent)] px-4 py-1.5 text-[length:var(--text-body)] font-medium text-[var(--you)]"
+              className="mt-6 inline-block max-w-full rounded-2xl text-balance border border-[var(--you)]/40 bg-[color-mix(in_oklab,var(--you)_10%,transparent)] px-4 py-1.5 text-[length:var(--text-body)] font-medium text-[var(--you)]"
             >
-              <Mic className="size-4 shrink-0" />
-              {/* One text box, so a phrase that wraps on a phone breaks evenly instead of leaving "Then say:" alone. */}
-              <span className="text-balance">
+              {/* One line of text with the mic inside it, so a phrase that wraps on a phone breaks evenly and the icon stays with the words. */}
+              <span>
+                <Mic className="me-2 inline size-4 align-[-0.15em]" />
                 {t('line.thenSay')} <span lang={arabicHero ? 'ar' : 'ar-Latn'} className={arabicHero ? 'arabic' : undefined}>{movePhrase(next, arabicHero)}</span>
               </span>
             </motion.p>
