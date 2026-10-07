@@ -37,7 +37,17 @@ interface StageProps {
    * Set while the speech decoder is falling behind the microphone (CPU starved).
    */
   lowPower?: boolean
+  /** Pixels of the canvas covered by the floating bars: the companion is framed in what is left between them. */
+  inset?: { top: number; bottom: number }
 }
+
+/** When the stage last had something moving (performance.now() ms): it draws every frame until then. */
+interface Pace {
+  busyUntil: number
+}
+/** Standing still, only the breath and a slow camera drift move: a lower frame rate saves the CPU and battery for the microphone and camera. */
+const IDLE_FPS = { fine: 30, coarse: 24 } as const
+const BUSY_MS = 300
 
 export function CompanionStage(props: StageProps) {
   const ambient = useMemo(() => oklchToHex(props.ambient), [props.ambient])
@@ -47,20 +57,22 @@ export function CompanionStage(props: StageProps) {
   const prayer = props.prayer ?? 'dhuhr'
   // The room's window sits behind wherever the companion is drawn.
   const [localAnchor, setLocalAnchor] = useState(50)
+  const pace = useRef<Pace>({ busyUntil: 0 }).current
+  const inset = props.inset ?? NO_INSET
   return (
     <div className="absolute inset-0">
       {props.scenery !== false && <Scenery prayer={prayer} windowX={localAnchor} />}
     <Canvas
       shadows={!props.lowPower}
-      frameloop={props.lowPower ? 'demand' : 'always'}
+      frameloop="demand"
       dpr={props.lowPower ? 1 : quality === 'high' ? [1, 2] : [1, 1.5]}
       gl={{ antialias: true, alpha: true, toneMapping: THREE.NeutralToneMapping, powerPreference: 'high-performance' }}
       camera={{ fov: 24, near: 0.1, far: 60, position: [1.6, 1.3, 5] }}
       aria-hidden
     >
       <PerformanceMonitor onDecline={() => setQuality('low')} />
-      {props.lowPower && <FrameCap fps={20} />}
-      <CameraRig posture={props.posture} reducedMotion={props.reducedMotion} azimuth={props.azimuth} />
+      <FramePacer pace={pace} fps={props.lowPower ? 20 : null} idleFps={coarse ? IDLE_FPS.coarse : IDLE_FPS.fine} />
+      <CameraRig posture={props.posture} reducedMotion={props.reducedMotion} azimuth={props.azimuth} inset={inset} pace={pace} />
       {props.onAnchor && <Anchor onAnchor={props.onAnchor} />}
       {props.scenery !== false && <Anchor inCanvas onAnchor={setLocalAnchor} />}
 
@@ -71,26 +83,43 @@ export function CompanionStage(props: StageProps) {
         <Lightformer form="ring" intensity={1.4} position={[3, 2, -4]} scale={2} color={ambient} />
       </Environment>
       <PrayerRug />
-      <Companion {...props} />
+      <Companion {...props} pace={pace} />
       {!props.lowPower && <ContactShadows position={[0, RUG.top + 0.001, RUG.center]} scale={[RUG.width + 0.4, RUG.length + 0.4]} blur={2.4} far={1.4} opacity={0.55} resolution={512} color="#0b3328" />}
     </Canvas>
     </div>
   )
 }
 
-/** With frameloop 'demand': draw a frame `fps` times a second (animation keeps going, slower). */
-function FrameCap({ fps }: { fps: number }) {
+const NO_INSET = { top: 0, bottom: 0 }
+
+/**
+ * Draws on demand: every display frame while something moves (a change of posture, the
+ * camera settling), `idleFps` while the companion only breathes, and never more than `fps`
+ * when that is set (low power).
+ */
+function FramePacer({ pace, idleFps, fps }: { pace: Pace; idleFps: number; fps: number | null }) {
   const invalidate = useThree((s) => s.invalidate)
   useEffect(() => {
-    const id = window.setInterval(() => invalidate(), 1000 / fps)
-    return () => window.clearInterval(id)
-  }, [fps, invalidate])
+    let raf = 0
+    let last = 0
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick)
+      const rate = fps ?? (now < pace.busyUntil ? 0 : idleFps)
+      // A couple of ms of slack so a 60 Hz display does not skip every other target frame.
+      if (!rate || now - last >= 1000 / rate - 2) {
+        last = now
+        invalidate()
+      }
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [pace, idleFps, fps, invalidate])
   return null
 }
 
 // ————————————————————————————————————————————————————————— character
 
-function Companion({ posture, character, reducedMotion, raiseHands, tuning, onLoaded, onError }: StageProps) {
+function Companion({ posture, character, reducedMotion, raiseHands, tuning, onLoaded, onError, pace }: StageProps & { pace: Pace }) {
   const [performer, setPerformer] = useState<Performer | null>(null)
   const fade = useRef(0)
 
@@ -122,11 +151,13 @@ function Companion({ posture, character, reducedMotion, raiseHands, tuning, onLo
     performer.tune = (pose) => tuneFor(tuning ?? currentTuning(), character.id, pose)
     if (reducedMotion) performer.jumpTo(posture)
     else performer.setPosture(posture)
-  }, [performer, posture, reducedMotion, raiseHands, tuning])
+    pace.busyUntil = performance.now() + BUSY_MS
+  }, [performer, posture, reducedMotion, raiseHands, tuning, pace])
 
   useFrame((_, dt) => {
     if (!performer) return
     performer.update(dt)
+    if (performer.moving || fade.current < 1) pace.busyUntil = performance.now() + BUSY_MS
     // Fade the character in once on load.
     if (fade.current < 1) {
       fade.current = Math.min(1, fade.current + dt * 1.8)
@@ -231,15 +262,27 @@ function shotFor(posture: PoseName) {
   return SHOTS.standing
 }
 
-function CameraRig({ posture, reducedMotion, azimuth }: { posture: PoseName; reducedMotion?: boolean; azimuth?: number }) {
+function CameraRig({ posture, reducedMotion, azimuth, inset, pace }: { posture: PoseName; reducedMotion?: boolean; azimuth?: number; inset: { top: number; bottom: number }; pace: Pace }) {
   const { camera, size } = useThree()
+  const offsetKey = useRef('')
   const state = useRef({ azimuth: 0.34, elevation: 0.12, distance: 5, target: new THREE.Vector3(0, 0.86, 0.12), first: true })
 
   useFrame(({ clock }, dt) => {
     const shot = shotFor(posture)
     const cam = camera as THREE.PerspectiveCamera
-    const tanHalf = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2))
-    const aspect = size.width / Math.max(1, size.height)
+    // Frame the companion in the part of the canvas the bars leave open, and centre it there.
+    const top = Math.min(inset.top, size.height * 0.35)
+    const bottom = Math.min(inset.bottom, size.height * 0.35)
+    const open = Math.max(1, size.height - top - bottom)
+    const tanHalf = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) * (open / Math.max(1, size.height))
+    const aspect = size.width / open
+    const shift = Math.round((top - bottom) / 2)
+    const key = `${size.width}x${size.height}:${shift}`
+    if (key !== offsetKey.current) {
+      offsetKey.current = key
+      if (shift) cam.setViewOffset(size.width, size.height, 0, -shift, size.width, size.height)
+      else cam.clearViewOffset()
+    }
     const [fitH, fitW] = shot.fit
     const distance = Math.max(fitH / 2 / tanHalf, fitW / 2 / (tanHalf * aspect)) * (STAGE_HEIGHT / 1.65)
     const s = state.current
@@ -251,6 +294,8 @@ function CameraRig({ posture, reducedMotion, azimuth }: { posture: PoseName; red
     s.target.x = THREE.MathUtils.damp(s.target.x, shot.target[0], lambda, dt)
     s.target.y = THREE.MathUtils.damp(s.target.y, shot.target[1], lambda, dt)
     s.target.z = THREE.MathUtils.damp(s.target.z, shot.target[2], lambda, dt)
+    if (Math.abs(s.distance - distance) > 0.002 || Math.abs(s.azimuth - (azimuth ?? shot.azimuth)) > 0.001 || Math.abs(s.target.y - shot.target[1]) > 0.001)
+      pace.busyUntil = performance.now() + BUSY_MS
     // A barely-there drift keeps the frame alive.
     const drift = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.12) * 0.03
     const az = s.azimuth + drift

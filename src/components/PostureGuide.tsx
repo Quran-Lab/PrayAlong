@@ -61,7 +61,7 @@ export function PostureGuide({ posture, character, teach }: { posture: PoseName;
           className="mx-auto mt-[clamp(1rem,2.6vh,1.75rem)] flex w-full max-w-[31rem] justify-center"
         >
           {open ? (
-            <figure className="relative flex w-full items-stretch gap-3.5 rounded-[1.35rem] border border-line bg-white/[0.035] p-2 text-start sm:gap-4">
+            <figure className="glass-panel relative flex w-full items-stretch gap-3.5 rounded-[1.35rem] p-2 text-start sm:gap-4">
               <div className="relative aspect-square w-[clamp(4.75rem,11vw,8.75rem)] shrink-0 overflow-hidden rounded-2xl bg-[#f7f5f2]">
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.img
@@ -122,7 +122,7 @@ export function PostureGuide({ posture, character, teach }: { posture: PoseName;
           ) : (
             <button
               onClick={() => setOpen(true)}
-              className="group flex cursor-pointer items-center gap-2.5 rounded-full border border-line bg-white/[0.035] py-1 ps-1 pe-4 text-ink-soft transition-colors hover:border-white/20 hover:text-ink"
+              className="glass-chip group flex cursor-pointer items-center gap-2.5 rounded-full py-1 ps-1 pe-4 text-ink-soft transition-[color,background-color,scale] duration-150 ease-out hover:text-ink active:scale-[0.97]"
             >
               <span className="size-9 overflow-hidden rounded-full bg-[#f7f5f2]">
                 <img src={src(character, shot)} alt="" className="size-full object-cover" draggable={false} />

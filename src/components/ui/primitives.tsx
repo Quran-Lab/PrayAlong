@@ -1,5 +1,5 @@
 import { Switch as RadixSwitch, Tooltip as RadixTooltip } from 'radix-ui'
-import { motion } from 'motion/react'
+import { LiquidPill } from './LiquidGlass'
 import type { ComponentProps, ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 
@@ -11,7 +11,7 @@ export function Tooltip({ content, children, side = 'bottom' }: { content: React
         <RadixTooltip.Content
           side={side}
           sideOffset={8}
-          className="z-50 rounded-lg border border-line bg-raised/95 px-2.5 py-1.5 text-xs text-ink-soft shadow-xl shadow-black/40 backdrop-blur-md animate-pop"
+          className="glass-panel glass-sheet z-50 rounded-xl px-2.5 py-1.5 text-xs text-ink-soft animate-pop"
         >
           {content}
         </RadixTooltip.Content>
@@ -22,7 +22,7 @@ export function Tooltip({ content, children, side = 'bottom' }: { content: React
 
 export function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-line-strong bg-white/[0.04] px-1.5 font-sans text-xs font-medium text-ink-muted">
+    <kbd className="glass-chip inline-flex h-5 min-w-5 items-center justify-center rounded-md px-1.5 font-sans text-xs font-medium text-ink-muted">
       {children}
     </kbd>
   )
@@ -35,13 +35,12 @@ export function Button({ variant = 'ghost', size = 'md', className, ...props }: 
     <button
       {...props}
       className={cn(
-        'inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full font-medium transition-[background,box-shadow,color,transform] duration-200 ease-(--ease-calm) active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40',
+        'inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full font-medium transition-[background-color,color,scale,filter] duration-150 ease-out active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40',
         size === 'md' && 'h-10 px-4 text-sm',
         size === 'lg' && 'h-12 px-6 text-base',
-        size === 'icon' && 'size-10',
-        variant === 'primary' &&
-          'bg-mint text-canvas shadow-[0_8px_30px_-8px_color-mix(in_oklab,var(--accent)_60%,transparent)] hover:brightness-110',
-        variant === 'ghost' && 'glass text-ink hover:bg-white/[0.08]',
+        size === 'icon' && 'size-11 sm:size-10',
+        variant === 'primary' && 'glass-solid text-canvas hover:brightness-110',
+        variant === 'ghost' && 'glass-chip text-ink',
         variant === 'quiet' && 'text-ink-muted hover:bg-white/[0.06] hover:text-ink',
         className,
       )}
@@ -56,9 +55,9 @@ export function Switch({ checked, onCheckedChange, label }: { checked: boolean; 
       <RadixSwitch.Root
         checked={checked}
         onCheckedChange={onCheckedChange}
-        className="relative h-6 w-10 shrink-0 cursor-pointer rounded-full bg-white/10 transition-colors data-[state=checked]:bg-mint-strong"
+        className="glass-chip h-6 w-10 shrink-0 cursor-pointer rounded-full transition-colors data-[state=checked]:bg-mint-strong/70"
       >
-        <RadixSwitch.Thumb className="block size-5 translate-x-0.5 rounded-full bg-white shadow transition-transform duration-200 data-[state=checked]:translate-x-[18px]" />
+        <RadixSwitch.Thumb className="block size-5 translate-x-0.5 rounded-full bg-[linear-gradient(180deg,#fff,#e9e4dc)] shadow-[0_2px_6px_rgb(0_0_0/0.35),inset_0_-1px_0_rgb(0_0_0/0.08)] transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] data-[state=checked]:translate-x-[18px]" />
       </RadixSwitch.Root>
     </label>
   )
@@ -77,7 +76,7 @@ export function Segmented<T extends string>({
   id: string
 }) {
   return (
-    <div role="radiogroup" className="grid auto-cols-fr grid-flow-col rounded-xl border border-line bg-white/[0.03] p-1">
+    <div role="radiogroup" className="glass-chip grid auto-cols-fr grid-flow-col rounded-xl p-1">
       {options.map((o) => (
         <button
           key={o.value}
@@ -91,7 +90,7 @@ export function Segmented<T extends string>({
           )}
         >
           {o.value === value && (
-            <motion.span layoutId={`seg-${id}`} className="absolute inset-0 rounded-lg bg-white/[0.09]" transition={{ type: 'spring', bounce: 0.15, duration: 0.4 }} />
+            <LiquidPill layoutId={`seg-${id}`} className="rounded-lg" />
           )}
           <span className="relative">{o.label}</span>
         </button>

@@ -34,6 +34,23 @@ export function Scenery({ prayer, windowX = 50 }: { prayer: PrayerId; /** Window
         }}
       />
 
+      {/* The window's light thrown onto the far wall, mullions and all: what the glass
+          panels in front of it catch and frost. Brighter by day, faint at night. */}
+      {Math.abs(windowX - 50) > 12 && <div
+        className="absolute top-[7%] h-[74%] -translate-x-1/2 rounded-t-full blur-[6px] transition-[left,background] duration-700"
+        style={{
+          left: `${windowX < 50 ? windowX + 46 : windowX - 46}%`,
+          aspectRatio: '0.62',
+          transform: `skewY(${windowX < 50 ? -7 : 7}deg) scaleX(1.45)`,
+          opacity: 'calc(0.55 - 0.3 * var(--stars))',
+          background: [
+            'linear-gradient(90deg, transparent 48%, rgb(0 0 0 / 0.42) 48% 52%, transparent 52%)',
+            'linear-gradient(180deg, transparent 56%, rgb(0 0 0 / 0.42) 56% 59%, transparent 59%)',
+            'linear-gradient(180deg, color-mix(in oklab, var(--sun) 70%, var(--sun-glow)), color-mix(in oklab, var(--sky-low) 45%, transparent) 75%, transparent)',
+          ].join(', '),
+        }}
+      />}
+
       {/* The arched window. Height-led so it stays behind the companion on any screen. */}
       <div className="absolute top-[7%] h-[64%] -translate-x-1/2 transition-[left] duration-700" style={{ aspectRatio: '0.6', left: `${windowX}%` }}>
         {/* Light spilling from the window onto the wall. */}

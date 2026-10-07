@@ -24,6 +24,8 @@ import { isFollowing } from '@/handsfree/types'
 import { useHandsFree } from '@/handsfree/use-hands-free'
 import { LOCALES, useLocale, useT } from '@/i18n'
 import { chime } from '@/lib/chime'
+import { cn } from '@/lib/cn'
+import { LITE_DEVICE, useBoxHeight } from '@/lib/use-box-height'
 import { useMedia, useReducedMotion } from '@/lib/use-media'
 import { usePrayerClock } from '@/lib/use-prayer-clock'
 import { useWakeLock } from '@/lib/use-wake-lock'
@@ -68,6 +70,9 @@ export function App() {
   const [setupOpen, setSetupOpen] = useState(false)
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user')
   const [demoAuto, setDemoAuto] = useState(false)
+  // The header and the dock float over the stage; the companion is framed between them.
+  const [headerRef, headerH] = useBoxHeight<HTMLElement>()
+  const [dockRef, dockH] = useBoxHeight<HTMLElement>()
 
   const hands = useHandsFree({
     enabled: handsFree,
@@ -112,6 +117,11 @@ export function App() {
   // [voice] Load the speech model while the page is idle (and again after listening
   // stops), so Listen is ready at once and nothing said after Begin is lost to loading.
   useEffect(() => (voiceOn ? undefined : prefetchVoiceModelWhenIdle()), [voiceOn])
+  // While the decoder falls behind (or on a small device), the bars give up their blur.
+  const lite = LITE_DEVICE || (voiceDriving && voice.decoderBehind)
+  useEffect(() => {
+    document.documentElement.toggleAttribute('data-lite', lite)
+  }, [lite])
   // Speech-burst follow: counts lines and repetitions from when you speak, for the
   // moments the phoneme follower loses you (short lines, garbled takbirs, tasbih x3).
   const onStep = voiceDriving && voice.cursor?.step === index ? voice.cursor : null
@@ -251,20 +261,33 @@ export function App() {
     <Direction.Provider dir={dir}>
       <MotionConfig reducedMotion="user">
         <RadixTooltip.Provider>
-          <div className="relative flex h-full flex-col overflow-hidden bg-canvas">
-            {/* Header */}
-            <header className="relative z-20 flex h-16 shrink-0 items-center gap-3 px-4 sm:h-[4.5rem] sm:px-6 short:h-12">
-              <div className="flex flex-1 items-center">
+          <div
+            className="room-light relative h-full overflow-hidden"
+            style={{ '--bar-top': `${headerH}px`, '--bar-bottom': `${dockH}px` } as React.CSSProperties}
+          >
+            {/* Header: a glass bar floating over the room. */}
+            <header
+              ref={headerRef}
+              className="pointer-events-none absolute inset-x-0 top-0 z-20 px-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] sm:px-5 sm:pt-4 short:pt-1.5"
+            >
+              <div className="astro-bar pointer-events-auto mx-auto flex h-14 max-w-[96rem] items-center gap-3 rounded-[1.375rem] px-2 sm:h-[3.75rem] sm:px-3 short:h-11 short:rounded-2xl">
+              <div className={cn('flex items-center', wide ? 'flex-1' : 'shrink-0')}>
                 <button
                   onClick={() => useSession.getState().restart()}
                   aria-label={t('nav.home')}
-                  className="cursor-pointer rounded-xl focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-4"
+                  className="grid min-h-11 min-w-11 cursor-pointer place-items-center rounded-xl focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-4"
                 >
                   <Logo compact={!wide} />
                 </button>
               </div>
-              {wide ? <PrayerChips clock={clock} onRequestSwitch={setPendingSwitch} /> : <PrayerMenu clock={clock} onRequestSwitch={setPendingSwitch} />}
-              <div className="flex flex-1 items-center justify-end gap-1.5 sm:gap-2">
+              {wide ? (
+                <PrayerChips clock={clock} onRequestSwitch={setPendingSwitch} />
+              ) : (
+                <div className="flex min-w-0 flex-1 justify-center">
+                  <PrayerMenu clock={clock} onRequestSwitch={setPendingSwitch} />
+                </div>
+              )}
+              <div className={cn('flex items-center justify-end gap-1 sm:gap-2', wide ? 'flex-1' : 'shrink-0')}>
                 <Button variant="quiet" size="icon" aria-label={t('settings.title')} onClick={() => setSettingsOpen(true)}>
                   <Settings2 className="size-[18px]" />
                 </Button>
@@ -277,10 +300,11 @@ export function App() {
                 <ListenButton on={voiceOn} status={voice.status} error={voice.error} progress={voice.progress} onToggle={() => setListen((v) => !v)} compact={!wide} />
                 <HandsFreeButton on={handsFree} status={hands.status} onToggle={toggleHandsFree} compact={!wide} />
               </div>
+              </div>
             </header>
 
-            {/* Stage */}
-            <main className="relative flex min-h-0 flex-1 flex-col short:flex-row wide:flex-row">
+            {/* Stage: full height, under the bars. */}
+            <main className="relative flex h-full flex-col short:flex-row wide:flex-row">
               {/* The room spans the page; on wide screens its window sits behind the companion. */}
               {(wideLayout || short) && <Scenery prayer={prayer} windowX={anchorX ?? (dir === 'rtl' ? 100 - (wideLayout ? 26.5 : 24) : wideLayout ? 26.5 : 24)} />}
               <div className="relative min-h-0 min-w-0 flex-1 wide:flex-[1.12]">
@@ -295,6 +319,7 @@ export function App() {
                     raiseHands={settings.raiseHands}
                     reducedMotion={reducedMotion}
                     lowPower={voiceDriving && voice.decoderBehind} // [voice] the decoder is falling behind: draw less
+                    inset={{ top: headerH, bottom: wideLayout || short ? dockH : 0 }}
                     onLoaded={() => setStageReady(true)}
                   />
                 </Suspense>
@@ -306,7 +331,7 @@ export function App() {
                   )}
                 </AnimatePresence>
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-canvas to-transparent wide:hidden" />
-                <div className="absolute end-3 top-3 z-10 sm:end-5 sm:top-4">
+                <div className="absolute end-3 top-[calc(var(--bar-top)+0.75rem)] z-10 sm:end-5">
                   <AnimatePresence>
                     {handsFree && !setupOpen && (
                       <CameraBubble
@@ -324,14 +349,14 @@ export function App() {
                     )}
                   </AnimatePresence>
                 </div>
-                <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center px-3">
+                <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center px-3 short:bottom-[calc(var(--bar-bottom)+0.5rem)] wide:bottom-[calc(var(--bar-bottom)+0.5rem)]">
                   <AnimatePresence>
                     {handsFree && demo && <DemoBar current={hands.pose} expected={nextPose} auto={demoAuto} onAct={actOut} onAuto={setDemoAuto} />}
                   </AnimatePresence>
                 </div>
               </div>
 
-              <section className="relative z-10 flex min-h-[34%] shrink-0 items-start justify-center pb-3 short:min-h-0 short:w-[52%] short:items-center short:overflow-y-auto short:py-3 wide:min-h-0 wide:flex-1 wide:items-center wide:pe-[3vw] wide:ps-[1vw] wide:pb-0">
+              <section className="relative z-10 flex min-h-[34%] shrink-0 items-start justify-center pb-[calc(var(--bar-bottom)+0.5rem)] short:min-h-0 short:w-[52%] short:items-[safe_center] short:overflow-y-auto short:pt-[var(--bar-top)] wide:min-h-0 wide:flex-1 wide:items-center wide:pe-[3vw] wide:ps-[1vw] wide:pt-[var(--bar-top)]">
                 <AnimatePresence mode="wait">
                   {phase === 'ready' && <ReadyPanel key="ready" clock={clock} handsFree={handsFree} onHandsFree={toggleHandsFree} />}
                   {phase === 'praying' && (
@@ -352,9 +377,18 @@ export function App() {
               </section>
             </main>
 
-            {/* Dock */}
-            <footer className="relative z-10 shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6 short:pb-2">
-              <PostureDock following={following} listening={voiceOn && voice.status !== 'error'} listenLoading={voiceOn && voice.status === 'loading'} onListen={setListen} />
+            {/* Dock: the second glass bar, floating at the bottom. */}
+            <footer
+              ref={dockRef}
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-5 short:pb-1.5"
+            >
+              <PostureDock
+                following={following}
+                listening={voiceOn && voice.status !== 'error'}
+                listenLoading={voiceOn && voice.status === 'loading'}
+                hearing={voiceDriving && voice.speaking}
+                onListen={setListen}
+              />
             </footer>
           </div>
 
@@ -448,8 +482,8 @@ function SwitchPrayerDialog({ pending, onClose }: { pending: PrayerId | null; on
   return (
     <AlertDialog.Root open={pending !== null} onOpenChange={(open) => !open && onClose()}>
       <AlertDialog.Portal>
-        <AlertDialog.Overlay className="sheet-overlay fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
-        <AlertDialog.Content className="fixed top-1/2 left-1/2 z-50 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 animate-pop rounded-2xl border border-line bg-raised p-5 shadow-2xl">
+        <AlertDialog.Overlay className="sheet-overlay fixed inset-0 z-50 bg-black/50" />
+        <AlertDialog.Content className="glass-panel glass-sheet fixed top-1/2 left-1/2 z-50 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 animate-pop rounded-2xl p-5">
           <AlertDialog.Title className="text-base font-semibold text-ink">{t('switch.title', { prayer: to })}</AlertDialog.Title>
           <AlertDialog.Description className="mt-1.5 text-sm leading-relaxed text-ink-soft">
             {t('switch.body', { r: rakah, from: t(`prayer.${prayer}`), to })}

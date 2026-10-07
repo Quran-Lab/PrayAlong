@@ -276,6 +276,11 @@ export class Performer {
     return this.pose
   }
 
+  /** True while moving between postures (the stage draws at full rate). */
+  get moving() {
+    return this.t < 1 || this.queue.length > 0
+  }
+
   // ————————————————————————————————————————————— measuring the character
 
   private measure() {

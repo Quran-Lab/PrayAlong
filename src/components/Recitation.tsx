@@ -124,10 +124,11 @@ function movePhrase(next: Step) {
   return getLine('takbir').transliteration
 }
 
-const enter = { opacity: 0, y: 14, filter: 'blur(6px)' }
+// A line arrives from just below, coming into focus; the last one simply fades.
+const enter = { opacity: 0, y: 10, filter: 'blur(3px)' }
 const shown = { opacity: 1, y: 0, filter: 'blur(0px)' }
-const leave = { opacity: 0, y: -10, filter: 'blur(4px)' }
-const calm = { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const }
+const leave = { opacity: 0, y: -6, filter: 'blur(2px)' }
+const calm = { duration: 0.5, ease: [0.23, 1, 0.32, 1] as const }
 
 /**
  * One line at a time, set large enough to read from the prayer mat. The hero
@@ -195,13 +196,14 @@ export function Recitation({
   const al = ALIGN[locale]?.[step.recitationId]
 
   return (
-    <div className="relative mx-auto grid w-full max-w-[46rem] px-5 text-center" aria-live="polite">
+    // A steady card: lines change inside it without the glass jumping in size.
+    <div className="glass-panel relative mx-3 grid max-w-[46rem] content-center rounded-[2rem] px-5 py-6 text-center sm:mx-auto sm:w-full sm:px-8 sm:py-8 short:py-4 wide:min-h-[min(27rem,58vh)]" aria-live="polite">
       <AnimatePresence initial={false} mode="popLayout">
         <motion.div
           key={step.id}
           initial={enter}
           animate={shown}
-          exit={{ ...leave, transition: { duration: 0.22 } }}
+          exit={{ ...leave, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }}
           transition={calm}
           className="col-start-1 row-start-1 flex w-full flex-col items-center"
         >
@@ -211,7 +213,7 @@ export function Recitation({
             {step.groupSize > 1 && <span className="tabular">{t('line.of', { i: step.groupIndex + 1, n: step.groupSize })}</span>}
             {line.ref && <span className="tabular text-ink-faint">{t('line.quran', { ref: line.ref })}</span>}
             {step.repeat > 1 && (
-              <span className="inline-flex items-center gap-2 rounded-full bg-mint/[0.12] px-3 py-1 font-medium text-mint" aria-label={t('line.times', { n: step.repeat })}>
+              <span className="glass-tint inline-flex items-center gap-2 rounded-full px-3 py-1 font-medium text-mint" aria-label={t('line.times', { n: step.repeat })}>
                 <span className="tabular">{t('line.times', { n: step.repeat })}</span>
                 <span className="flex gap-1" aria-hidden>
                   {Array.from({ length: step.repeat }, (_, i) => (
@@ -238,7 +240,7 @@ export function Recitation({
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.1, ...calm }}
-              className="mb-4 inline-flex items-center gap-2 rounded-full border border-mint/30 bg-mint/[0.09] px-4 py-1.5 text-[length:var(--text-body)] font-medium text-mint"
+              className="glass-tint mb-4 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[length:var(--text-body)] font-medium text-mint"
             >
               <ArrowDownRight className="size-4 rtl:-scale-x-100" />
               {t(`cue.${step.cue}`, { n: step.rakah })}
@@ -283,7 +285,7 @@ export function Recitation({
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="mt-6 inline-flex items-center gap-2 rounded-full border border-[var(--you)]/40 bg-[color-mix(in_oklab,var(--you)_10%,transparent)] px-4 py-1.5 text-[length:var(--text-body)] font-medium text-[var(--you)]"
+              className="glass-tint mt-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[length:var(--text-body)] font-medium text-[var(--you)] [--tint:var(--you)]"
             >
               <Mic className="size-4" />
               {t('line.thenSay')} {movePhrase(next)}

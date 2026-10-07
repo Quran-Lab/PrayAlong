@@ -5,23 +5,31 @@ import { PRAYER_BY_ID } from '@/content/prayers'
 import { resolveLine } from '@/content/lines'
 import { useLocale, useT } from '@/i18n'
 import { formatTime } from '@/lib/prayer-times'
+import { useMedia } from '@/lib/use-media'
 import type { PrayerClock } from '@/lib/use-prayer-clock'
 import { display, useSession } from '@/state/session'
 import { ModePicker } from './ModePicker'
 import { Button, Kbd } from './ui/primitives'
 
-const rise = {
-  initial: { opacity: 0, y: 12, filter: 'blur(6px)' },
-  animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
-  exit: { opacity: 0, y: -8, filter: 'blur(4px)' },
-  transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
+// Glass arriving: it rises a little and settles, then its contents follow one after another.
+// (No filter on the glass itself: that would blur it twice.)
+const EASE = [0.23, 1, 0.32, 1] as const
+const panel = {
+  hidden: { opacity: 0, y: 10, scale: 0.985 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5, ease: EASE, staggerChildren: 0.05, delayChildren: 0.08 } },
+  exit: { opacity: 0, y: -6, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] as const } },
 }
+const item = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: EASE } },
+}
+const reveal = { variants: panel, initial: 'hidden', animate: 'show', exit: 'exit' } as const
 
 function QiblaChip({ clock }: { clock: PrayerClock }) {
   const t = useT()
   const deg = Math.round(Qibla(new Coordinates(clock.place.latitude, clock.place.longitude)))
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-sm text-ink-muted">
+    <span className="glass-chip inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm text-ink-muted">
       <Navigation className="size-3.5 text-mint" style={{ transform: `rotate(${deg - 45}deg)` }} aria-hidden />
       {t('ready.qibla', { deg })}
     </span>
@@ -30,6 +38,7 @@ function QiblaChip({ clock }: { clock: PrayerClock }) {
 
 export function ReadyPanel({ clock, handsFree }: { clock: PrayerClock; handsFree: boolean; onHandsFree?: () => void }) {
   const t = useT()
+  const compact = useMedia('(max-width: 639px)')
   const { prayer, begin } = useSession()
   const info = PRAYER_BY_ID[prayer]
   const name = t(`prayer.${prayer}`)
@@ -42,31 +51,31 @@ export function ReadyPanel({ clock, handsFree }: { clock: PrayerClock; handsFree
       : t('ready.at', { time: formatTime(clock.times[prayer]) })
 
   return (
-    <motion.div {...rise} className="mx-auto flex max-w-xl flex-col items-center px-5 text-center">
-      <div className="mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[length:var(--text-meta)] text-ink-muted">
+    <motion.div {...reveal} className="glass-panel mx-3 flex max-w-xl flex-col items-center rounded-[1.75rem] px-4 py-5 text-center sm:mx-auto sm:rounded-[2rem] sm:px-9 sm:py-8 short:py-4">
+      <motion.div variants={item} className="mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[length:var(--text-meta)] text-ink-muted">
         <span className="font-semibold text-mint">{name}</span>
         <span>{t('ready.rakahs', { n: info.rakahs })}</span>
         <span className="tabular">{when}</span>
-      </div>
-      <h1 className="text-[length:var(--text-hero-long)] leading-tight font-semibold tracking-[-0.02em] text-ink">{t('ready.title')}</h1>
-      <p className="mt-3 max-w-md font-serif text-[length:var(--text-body)] leading-relaxed text-balance text-ink-soft">
+      </motion.div>
+      <motion.h1 variants={item} className="text-[length:var(--text-hero-long)] leading-tight font-semibold tracking-[-0.02em] text-ink">{t('ready.title')}</motion.h1>
+      <motion.p variants={item} className="mt-3 [@media(max-width:639px)_and_(max-height:860px)]:hidden max-w-md font-serif text-[length:var(--text-body)] leading-relaxed text-balance text-ink-soft">
         {t('ready.body')} {handsFree ? t('ready.bodyHandsFree') : t('ready.bodyListen')}
-      </p>
-      <div className="mt-6 w-full max-w-[30rem]">
-        <ModePicker />
-      </div>
-      <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+      </motion.p>
+      <motion.div variants={item} className="mt-6 w-full max-w-[30rem] max-sm:mt-4">
+        <ModePicker compact={compact} />
+      </motion.div>
+      <motion.div variants={item} className="mt-5 flex flex-wrap items-center justify-center gap-2.5 max-sm:mt-4">
         <Button variant="primary" size="lg" onClick={begin}>
           <Play className="size-4 fill-current" />
           {t('ready.begin', { prayer: name })}
         </Button>
-      </div>
-      <div className="mt-3.5 flex items-center gap-3">
+      </motion.div>
+      <motion.div variants={item} className="mt-3.5 flex items-center gap-3">
         <QiblaChip clock={clock} />
-        <span className="hidden items-center gap-1.5 text-sm text-ink-faint md:flex">
+        <span className="hidden items-center gap-1.5 text-sm text-ink-muted md:flex">
           {t('ready.orPress')} <Kbd>Space</Kbd>
         </span>
-      </div>
+      </motion.div>
     </motion.div>
   )
 }
@@ -82,7 +91,7 @@ export function CompletePanel({ clock }: { clock: PrayerClock }) {
   const next = order[(order.indexOf(prayer) + 1) % order.length]!
 
   return (
-    <motion.div {...rise} className="mx-auto flex max-w-xl flex-col items-center px-5 text-center" aria-live="polite">
+    <motion.div {...reveal} className="glass-panel mx-3 flex max-w-xl flex-col items-center rounded-[2rem] px-5 py-6 text-center sm:mx-auto sm:px-9 sm:py-8" aria-live="polite">
       <div className="mb-2 text-sm font-semibold text-mint">{t('complete.done', { prayer: t(`prayer.${prayer}`) })}</div>
       {show.arabic && (
         <p lang="ar" dir="rtl" className="arabic text-[1.9rem] text-ink sm:text-[2.3rem]">

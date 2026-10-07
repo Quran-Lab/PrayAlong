@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Every Arabic line, Quran and dhikr alike: KFGQPC Uthman Taha Naskh, the unmodified file. */
+@font-face {
+  font-family: "Uthman Taha Naskh";
+  src: url("./assets/fonts/UthmanTN1-Ver10.otf") format("opentype");
+  font-weight: 400;
+  font-display: swap;
+}
+
 /* Phones on their side: stage and words sit side by side. */
 @custom-variant short (@media (orientation: landscape) and (max-height: 540px));
 
@@ -12,8 +20,8 @@
 @theme {
   --font-sans: "Figtree Variable", "Noto Sans Arabic Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-serif: "Source Serif 4 Variable", Georgia, serif;
-  --font-arabic: "Amiri", "Noto Naskh Arabic", "Geeza Pro", serif;
-  --font-quran: "Amiri Quran", "Amiri", "Noto Naskh Arabic", serif;
+  --font-arabic: "Uthman Taha Naskh", "KFGQPC Uthman Taha Naskh", "Geeza Pro", serif;
+  --font-quran: "Uthman Taha Naskh", "KFGQPC Uthman Taha Naskh", "Geeza Pro", serif;
 
   --color-canvas: var(--room);
   --color-surface: var(--room-2);
@@ -206,6 +214,91 @@ body {
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
 }
 
+/*
+ * Quiet glass. A tinted blur and a soft shadow, nothing else: no rims, no glow, no gradient
+ * sheen (the room's light is the only colour that shows through). Three surfaces:
+ * - astro-bar: the header and the dock, floating over the stage;
+ * - glass-panel: cards, sheets, dialogs, popovers (glass-sheet makes it denser for long text);
+ * - glass-chip / glass-tint: buttons and chips inside them: plain fills, never a second blur.
+ * The blur is static and never animated. Small devices, a speech decoder falling behind, and
+ * people who ask for less transparency get the same tints without the blur.
+ */
+.astro-bar {
+  background: color-mix(in oklab, var(--room-2) 68%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.05),
+    0 12px 40px -14px rgb(0 0 0 / 0.55);
+}
+/* Where you are, inside a bar or a choice: a soft fill of the prayer's light. */
+.astro-pill {
+  background: color-mix(in oklab, var(--accent) 15%, rgb(255 255 255 / 0.03));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 42%, transparent);
+}
+
+/* Light shows through glass, so quiet text on it is a step stronger (WCAG AA over the brightest wall). */
+.astro-bar,
+.glass-panel {
+  --color-ink-muted: rgb(244 241 236 / 0.66);
+  --color-ink-faint: rgb(244 241 236 / 0.48);
+}
+
+@layer components {
+  .glass-panel {
+    /* Dark enough that text stays legible over the brightest wall light. */
+    background:
+      linear-gradient(rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.04)),
+      color-mix(in oklab, var(--room) 70%, transparent);
+    -webkit-backdrop-filter: blur(28px) saturate(1.3);
+    backdrop-filter: blur(28px) saturate(1.3);
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.05),
+      0 20px 50px -26px rgb(0 0 0 / 0.6);
+  }
+  .glass-sheet {
+    background: color-mix(in oklab, var(--room-2) 84%, transparent);
+  }
+  .glass-chip {
+    background: rgb(255 255 255 / 0.06);
+    transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  :is(button, a, label).glass-chip:hover {
+    background: rgb(255 255 255 / 0.09);
+  }
+  .glass-tint {
+    --tint: var(--accent);
+    background: color-mix(in oklab, var(--tint) 18%, transparent);
+  }
+  .glass-solid {
+    background: var(--accent);
+  }
+}
+
+:root[data-lite] :is(.astro-bar, .glass-panel) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root[data-lite] .astro-bar,
+:root[data-lite] .glass-panel {
+  background: color-mix(in oklab, var(--room-2) 94%, transparent);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .astro-bar,
+  .glass-panel {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--room-2);
+  }
+}
+
+/* The room's own light under the words on a phone: a static gradient, no blur. */
+.room-light {
+  background:
+    radial-gradient(60% 45% at 50% 82%, color-mix(in oklab, var(--sun-glow) 12%, transparent), transparent 70%),
+    var(--color-canvas);
+}
+
 @utility quran {
   font-family: var(--font-quran);
   font-feature-settings: "calt", "liga", "mark", "mkmk";
@@ -253,7 +346,7 @@ body {
   --sheet-from: -100%;
 }
 .sheet-content {
-  animation: sheet-up 380ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: sheet-up 420ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 @media (min-width: 640px) {
   .sheet-content {

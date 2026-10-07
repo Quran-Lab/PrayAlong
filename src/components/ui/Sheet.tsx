@@ -22,10 +22,10 @@ export function Sheet({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="sheet-overlay fixed inset-0 z-40 bg-black/55 backdrop-blur-[2px]" />
+        <Dialog.Overlay className="sheet-overlay fixed inset-0 z-40 bg-black/45" />
         <Dialog.Content
           className={cn(
-            'sheet-content fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col rounded-t-[1.75rem] border border-line bg-raised shadow-2xl shadow-black/60 outline-none',
+            'glass-panel glass-sheet sheet-content fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col rounded-t-[1.75rem] outline-none',
             'sm:inset-y-3 sm:start-auto sm:end-3 sm:bottom-3 sm:max-h-none sm:w-[26rem] sm:rounded-[1.5rem]',
             className,
           )}

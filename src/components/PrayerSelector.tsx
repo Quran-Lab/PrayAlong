@@ -9,6 +9,7 @@ import { formatTime } from '@/lib/prayer-times'
 import type { PrayerClock } from '@/lib/use-prayer-clock'
 import type { PrayerId } from '@/sequence/types'
 import { useSession } from '@/state/session'
+import { LiquidPill } from './ui/LiquidGlass'
 import { Tooltip } from './ui/primitives'
 
 function useChoose(onRequestSwitch: (id: PrayerId) => void) {
@@ -37,7 +38,7 @@ export function PrayerChips({ clock, onRequestSwitch }: { clock: PrayerClock; on
   const choose = useChoose(onRequestSwitch)
 
   return (
-    <nav aria-label={t('prayer.label')} className="flex items-center gap-1.5">
+    <nav aria-label={t('prayer.label')} className="flex items-center gap-0.5">
       {PRAYERS.map((p) => {
         const active = p.id === selected
         const isNow = p.id === clock.detected.id
@@ -47,19 +48,12 @@ export function PrayerChips({ clock, onRequestSwitch }: { clock: PrayerClock; on
               onClick={() => choose(p.id)}
               aria-pressed={active}
               className={cn(
-                'relative flex h-9 cursor-pointer items-center gap-2 rounded-xl px-3.5 text-sm transition-colors duration-200',
+                'relative flex h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-sm transition-colors duration-200 active:scale-[0.97]',
                 active ? 'text-ink' : 'text-ink-muted hover:text-ink-soft',
               )}
             >
-              {active ? (
-                <motion.span
-                  layoutId="prayer-chip"
-                  className="absolute inset-0 rounded-xl border border-mint/50 bg-mint/[0.08] shadow-[0_0_24px_-6px_color-mix(in_oklab,var(--accent)_55%,transparent)]"
-                  transition={{ type: 'spring', bounce: 0.12, duration: 0.5 }}
-                />
-              ) : (
-                <span className="absolute inset-0 rounded-xl border border-line" />
-              )}
+              {/* The selected prayer: one lit capsule that flows between them. */}
+              {active && <LiquidPill layoutId="prayer-chip" className="rounded-full" />}
               <span className="relative font-medium">{t(`prayer.${p.id}`)}</span>
               {active && (
                 <motion.span
@@ -89,14 +83,14 @@ export function PrayerMenu({ clock, onRequestSwitch }: { clock: PrayerClock; onR
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
-        <button className="flex h-10 min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-mint/45 bg-mint/[0.08] pr-2.5 pl-3.5 text-sm shadow-[0_0_24px_-8px_color-mix(in_oklab,var(--accent)_60%,transparent)]">
-          <span className="font-medium">{t(`prayer.${selected}`)}</span>
-          <span className="truncate text-sm text-mint">{sublabel(t, selected, clock, true)}</span>
+        <button className="astro-pill flex h-11 max-w-full min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-full ps-4 pe-3 text-sm transition-[scale] duration-150 ease-out active:scale-[0.97]">
+          <span className="shrink-0 font-medium">{t(`prayer.${selected}`)}</span>
+          <span className="min-w-0 truncate text-sm text-mint tabular max-[399px]:hidden">{sublabel(t, selected, clock, true)}</span>
           <ChevronDown className="size-4 shrink-0 text-ink-muted" />
         </button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content sideOffset={8} align="center" className="z-50 w-64 animate-pop rounded-2xl border border-line bg-raised/95 p-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl">
+        <Popover.Content sideOffset={8} align="center" className="glass-panel glass-sheet z-50 w-64 animate-pop rounded-2xl p-1.5">
           {PRAYERS.map((p) => (
             <button
               key={p.id}

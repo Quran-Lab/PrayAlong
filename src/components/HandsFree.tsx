@@ -26,9 +26,9 @@ export function HandsFreeButton({ on, status, onToggle, compact }: { on: boolean
         aria-pressed={on}
         aria-label={t('hf.button')}
         className={cn(
-          'relative flex h-10 cursor-pointer items-center gap-2.5 rounded-full border text-sm font-medium whitespace-nowrap transition-all duration-300',
-          compact ? 'w-10 justify-center' : 'ps-4 pe-3.5',
-          on ? 'border-mint/50 bg-mint/[0.1] text-ink shadow-[0_0_26px_-8px_color-mix(in_oklab,var(--accent)_70%,transparent)]' : 'glass text-ink-soft hover:text-ink',
+          'relative flex h-10 cursor-pointer items-center gap-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.97]',
+          compact ? 'h-11 w-11 justify-center sm:h-10 sm:w-10' : 'ps-4 pe-3.5',
+          on ? 'glass-tint text-ink' : 'text-ink-soft hover:bg-white/[0.07] hover:text-ink',
         )}
       >
         {!compact && <span>{t('hf.button')}</span>}
@@ -144,7 +144,7 @@ export function CameraBubble({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.97 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="frosted w-40 overflow-hidden rounded-2xl shadow-2xl shadow-black/40 sm:w-52"
+      className="glass-panel w-40 overflow-hidden rounded-2xl sm:w-52"
     >
       {stream && (
         <button onClick={onOpen} className="block w-full cursor-pointer" aria-label={t('setup.title')}>
@@ -218,7 +218,7 @@ export function DemoBar({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
-      className="frosted flex items-center gap-1 rounded-2xl p-1.5 shadow-xl shadow-black/40"
+      className="glass-panel flex items-center gap-1 rounded-2xl p-1.5"
       role="toolbar"
       aria-label={t('demo.title')}
     >

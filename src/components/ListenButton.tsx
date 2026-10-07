@@ -28,13 +28,13 @@ export function ListenButton({ on, status, error, progress, onToggle, compact }:
         onClick={onToggle}
         aria-pressed={on}
         className={cn(
-          'relative flex h-10 cursor-pointer items-center gap-2 overflow-hidden rounded-full border px-3.5 text-sm font-medium transition-colors',
-          on && !failed ? 'border-mint/50 bg-mint/[0.1] text-ink' : 'border-line text-ink-soft hover:text-ink',
-          failed && 'border-red-400/40 text-red-200',
+          'relative flex h-11 min-w-11 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full px-3 sm:h-10 sm:px-3.5 text-sm font-medium transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.97]',
+          on && !failed ? 'glass-tint text-ink' : 'text-ink-soft hover:bg-white/[0.07] hover:text-ink',
+          failed && 'text-ink-soft',
         )}
       >
         {loading && <span className="absolute inset-y-0 start-0 bg-mint/15" style={{ width: `${progress * 100}%` }} />}
-        {on && status === 'listening' && <span className="relative size-2 animate-breathe rounded-full bg-mint" />}
+        {on && status === 'listening' && <span className="relative size-2 rounded-full bg-mint" />}
         {on ? <Mic className="relative size-[18px] text-mint" /> : <MicOff className="relative size-[18px]" />}
         {!compact && <span className="relative">{label}</span>}
       </button>

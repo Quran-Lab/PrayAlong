@@ -48,8 +48,8 @@ export function SettingsSheet({ open, onOpenChange, clock }: { open: boolean; on
                   aria-checked={active}
                   onClick={() => update({ locale: l.value })}
                   className={cn(
-                    'flex cursor-pointer items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-start text-sm transition-colors',
-                    active ? 'border-mint/45 bg-mint/[0.08] text-ink' : 'border-line text-ink-soft hover:bg-white/[0.04]',
+                    'flex cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-start text-sm transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.98]',
+                    active ? 'glass-tint text-ink' : 'glass-chip text-ink-soft',
                   )}
                 >
                   <span className="min-w-0">
@@ -131,8 +131,8 @@ export function SettingsSheet({ open, onOpenChange, clock }: { open: boolean; on
                     onClick={() => update({ characterId: c.id })}
                     aria-pressed={active}
                     className={cn(
-                      'group relative flex cursor-pointer flex-col items-center overflow-hidden rounded-2xl border p-2 pb-2.5 transition-colors',
-                      active ? 'border-mint/50 bg-mint/[0.08]' : 'border-line hover:bg-white/[0.04]',
+                      'group relative flex cursor-pointer flex-col items-center overflow-hidden rounded-2xl p-2 pb-2.5 transition-[background-color,scale] duration-150 ease-out active:scale-[0.98]',
+                      active ? 'glass-tint' : 'glass-chip',
                     )}
                   >
                     {c.thumbnail ? (
