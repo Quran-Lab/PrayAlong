@@ -1,36 +1,40 @@
 {
   "yusuf": {
     "jalsah": {
-      "handUp": 0.022,
-      "handFwd": 0.022,
+      "handUp": 0.038,
+      "handFwd": -0.026,
       "handIn": 0.008,
-      "handPitch": 34,
+      "handPitch": 20,
       "handRoll": -7,
       "handTurn": 0
     },
     "tashahhud": {
-      "handUp": 0.022,
-      "handFwd": 0.022,
+      "handUp": 0.038,
+      "handFwd": -0.026,
       "handIn": 0.008,
-      "handPitch": 34,
+      "handPitch": 20,
       "handRoll": -7,
       "handTurn": 0
     },
     "salam-right": {
-      "handUp": 0.022,
-      "handFwd": 0.022,
+      "handUp": 0.038,
+      "handFwd": -0.026,
       "handIn": 0.008,
-      "handPitch": 34,
+      "handPitch": 20,
       "handRoll": -7,
       "handTurn": 0
     },
     "salam-left": {
-      "handUp": 0.022,
-      "handFwd": 0.022,
+      "handUp": 0.038,
+      "handFwd": -0.026,
       "handIn": 0.008,
-      "handPitch": 34,
+      "handPitch": 20,
       "handRoll": -7,
       "handTurn": 0
+    },
+    "kneel": {
+      "handFwd": 0.02,
+      "handIn": 0.03
     }
   },
   "maryam": {
