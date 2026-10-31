@@ -36,8 +36,13 @@ let manifestLoad: Promise<Manifest | null> | null = null
 export function loadManifest(): Promise<Manifest | null> {
   manifestLoad ??= fetch(`${BASE}manifest.json`)
     .then((r) => (r.ok ? (r.json() as Promise<Manifest>) : null))
-    .then((m) => (manifest = m))
     .catch(() => null)
+    .then((m) => {
+      manifest = m
+      // A failed download (offline for a moment) is tried again next time.
+      if (!m) manifestLoad = null
+      return m
+    })
   return manifestLoad
 }
 export const getManifest = () => manifest
@@ -105,7 +110,11 @@ class Engine {
       p = fetch(BASE + src)
         .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
         .then((b) => this.ctx!.decodeAudioData(b))
-        .catch(() => null)
+        .catch(() => {
+          // Not cached: a dropped connection should not silence this line for good.
+          this.buffers.delete(src)
+          return null
+        })
       this.buffers.set(src, p)
     }
     return p

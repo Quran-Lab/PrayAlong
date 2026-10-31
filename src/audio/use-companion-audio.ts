@@ -66,9 +66,18 @@ export function useCompanionAudio(opts: { phase: string; step: Step; next?: Step
   const [speaking, setSpeaking] = useState<Speaking | null>(null)
   const [unlocked, setUnlocked] = useState(false)
 
+  // Retried when the device comes back online, or on beginning the prayer.
   useEffect(() => {
-    void loadManifest().then((m) => setReady(m !== null))
-  }, [])
+    if (ready) return
+    let live = true
+    const load = () => void loadManifest().then((m) => live && m && setReady(true))
+    load()
+    window.addEventListener('online', load)
+    return () => {
+      live = false
+      window.removeEventListener('online', load)
+    }
+  }, [ready, phase])
 
   // Browsers only allow sound after a gesture: unlock on the first one.
   useEffect(() => {
