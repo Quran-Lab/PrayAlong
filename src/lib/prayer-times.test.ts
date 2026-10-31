@@ -59,6 +59,14 @@ describe('regional conventions', () => {
     expect(regionalMethod('Europe/Copenhagen').method).toBe('MuslimWorldLeague')
   })
 
+  it('names the method in the reader\'s language', async () => {
+    const { methodLabel } = await import('./prayer-times')
+    expect(methodLabel('Europe/Copenhagen')).toBe('Muslim World League')
+    expect(methodLabel('Europe/Copenhagen', 'ar')).toBe('رابطة العالم الإسلامي')
+    expect(methodLabel('Asia/Karachi', 'ur')).toBe('جامعہ علومِ اسلامیہ، کراچی · حنفی عصر')
+    expect(methodLabel('Europe/Istanbul', 'tr')).toBe('Diyanet · Hanefi ikindi')
+  })
+
   it('puts Hanafi Asr later than the standard Asr', () => {
     const lahore: Place = { latitude: 31.55, longitude: 74.34, source: 'gps' }
     const day = at('2026-03-20T07:00:00Z')

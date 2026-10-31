@@ -1,6 +1,7 @@
 import { CalculationMethod, Coordinates, HighLatitudeRule, Madhab, PrayerTimes } from 'adhan'
 import type { PrayerId } from '@/sequence/types'
 import type { Place } from './location'
+import type { Locale } from '@/i18n/locales'
 
 export type DayTimes = Record<PrayerId, Date> & { sunrise: Date }
 type MethodId = keyof typeof CalculationMethod
@@ -44,9 +45,53 @@ export function regionalMethod(zone = Intl.DateTimeFormat().resolvedOptions().ti
   return { method: 'MuslimWorldLeague', hanafi: false }
 }
 
-export function methodLabel(zone?: string) {
+/** The authorities' names where the Latin ones would stand out (right-to-left scripts). */
+const METHOD_NAMES_LOCAL: Partial<Record<Locale, Partial<Record<MethodId, string>>>> = {
+  ar: {
+    MuslimWorldLeague: 'رابطة العالم الإسلامي',
+    Egyptian: 'الهيئة المصرية العامة للمساحة',
+    Karachi: 'جامعة العلوم الإسلامية، كراتشي',
+    UmmAlQura: 'أم القرى، مكة المكرمة',
+    Dubai: 'دبي',
+    MoonsightingCommittee: 'لجنة رؤية الهلال',
+    NorthAmerica: 'الجمعية الإسلامية لأمريكا الشمالية',
+    Kuwait: 'الكويت',
+    Qatar: 'قطر',
+    Tehran: 'طهران',
+    Turkey: 'رئاسة الشؤون الدينية التركية',
+    Other: 'مخصص',
+  },
+  ur: {
+    MuslimWorldLeague: 'مسلم ورلڈ لیگ',
+    Egyptian: 'مصری جنرل اتھارٹی',
+    Karachi: 'جامعہ علومِ اسلامیہ، کراچی',
+    UmmAlQura: 'ام القریٰ، مکہ مکرمہ',
+    Dubai: 'دبئی',
+    MoonsightingCommittee: 'رؤیتِ ہلال کمیٹی',
+    Kuwait: 'کویت',
+    Qatar: 'قطر',
+    Tehran: 'تہران',
+    Turkey: 'دیانت',
+    Other: 'اپنی مرضی کا',
+  },
+}
+
+const HANAFI_ASR: Record<Locale, string> = {
+  en: 'Hanafi Asr',
+  de: 'Hanafi-Asr',
+  fr: 'Asr hanafite',
+  es: 'Asr hanafí',
+  tr: 'Hanefi ikindi',
+  id: 'Asar Hanafi',
+  nl: 'Hanafi-asr',
+  ur: 'حنفی عصر',
+  ar: 'العصر على المذهب الحنفي',
+}
+
+export function methodLabel(zone?: string, locale: Locale = 'en') {
   const { method, hanafi } = regionalMethod(zone)
-  return METHOD_NAMES[method] + (hanafi ? ' · Hanafi Asr' : '')
+  const name = METHOD_NAMES_LOCAL[locale]?.[method] ?? METHOD_NAMES[method]
+  return name + (hanafi ? ` · ${HANAFI_ASR[locale]}` : '')
 }
 
 export function timesFor(place: Place, date = new Date(), zone?: string): DayTimes {
