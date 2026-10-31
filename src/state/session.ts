@@ -38,11 +38,15 @@ export interface Settings {
 /** What to show, after applying per-language defaults. */
 export function display(settings: Settings, locale: Locale) {
   const readsArabic = READS_ARABIC.has(locale)
-  return {
+  const shown = {
     arabic: settings.arabic ?? readsArabic,
     transliteration: settings.transliteration ?? !readsArabic,
     translation: settings.translation ?? locale !== 'ar',
   }
+  // Never a line with nothing to read (choices made in another language can add up to that;
+  // Arabic has no meaning line): show the script the reader knows.
+  if (!shown.arabic && !shown.transliteration && !(shown.translation && locale !== 'ar')) shown[readsArabic ? 'arabic' : 'transliteration'] = true
+  return shown
 }
 
 export const PACE_FACTOR: Record<Pace, number> = { slow: 1.35, normal: 1, brisk: 0.75 }

@@ -49,16 +49,28 @@ export function Button({ variant = 'ghost', size = 'md', className, ...props }: 
   )
 }
 
-export function Switch({ checked, onCheckedChange, label }: { checked: boolean; onCheckedChange: (v: boolean) => void; label: string }) {
+export function Switch({
+  checked,
+  onCheckedChange,
+  label,
+  disabled = false,
+}: {
+  checked: boolean
+  onCheckedChange: (v: boolean) => void
+  label: string
+  disabled?: boolean
+}) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-4 py-1.5 text-sm text-ink-soft">
+    <label className={cn('flex items-center justify-between gap-4 py-1.5 text-sm text-ink-soft', disabled ? 'cursor-not-allowed' : 'cursor-pointer')}>
       {label}
       <RadixSwitch.Root
         checked={checked}
         onCheckedChange={onCheckedChange}
-        className="relative h-6 w-10 shrink-0 cursor-pointer rounded-full bg-white/10 transition-colors data-[state=checked]:bg-mint-strong"
+        disabled={disabled}
+        className="relative h-6 w-10 shrink-0 cursor-pointer rounded-full bg-white/10 transition-[background-color,opacity] data-[state=checked]:bg-mint-strong disabled:cursor-not-allowed disabled:opacity-45"
       >
-        <RadixSwitch.Thumb className="block size-5 translate-x-0.5 rounded-full bg-white shadow transition-transform duration-200 data-[state=checked]:translate-x-[18px]" />
+        {/* The thumb starts at the inline start: mirrored in right-to-left languages. */}
+        <RadixSwitch.Thumb className="block size-5 translate-x-(--x) rounded-full bg-white shadow transition-transform duration-200 [--x:0.125rem] data-[state=checked]:[--x:1.125rem] rtl:-translate-x-(--x)" />
       </RadixSwitch.Root>
     </label>
   )

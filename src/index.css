@@ -195,10 +195,11 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Urdu reads in Nastaliq. */
+/* Urdu reads in Nastaliq. Its tall letters need open lines; a crowded screen can set
+   --ur-leading a little closer (this rule outranks the leading-* utilities). */
 :lang(ur) {
   font-family: "Noto Nastaliq Urdu", "Noto Sans Arabic Variable", var(--font-sans);
-  line-height: 2;
+  line-height: var(--ur-leading, 2);
 }
 
 ::selection {

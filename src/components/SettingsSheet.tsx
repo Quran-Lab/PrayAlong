@@ -1,5 +1,5 @@
 import { Check, MapPin } from 'lucide-react'
-import { quranCredit } from '@/content/lines'
+import { quranCredit, resolveLine } from '@/content/lines'
 import { detectLocale, LOCALES, useLocale, useT, type Locale } from '@/i18n'
 import { cn } from '@/lib/cn'
 import { methodLabel } from '@/lib/prayer-times'
@@ -27,6 +27,10 @@ export function SettingsSheet({ open, onOpenChange, clock }: { open: boolean; on
   const demo = useSession((s) => s.demo)
   const setDemo = useSession((s) => s.setDemo)
   const show = display(settings, locale)
+  // What a line actually shows: the meaning only where the language has one (Arabic readers get none).
+  const shown = { arabic: show.arabic, transliteration: show.transliteration, translation: show.translation && resolveLine('takbir', locale).meaning !== '' }
+  // Never let every way of reading a line be switched off: the last one shown stays on.
+  const last = (k: keyof typeof shown) => shown[k] && Object.values(shown).filter(Boolean).length === 1
   const { place } = clock
 
   const languages: { value: 'auto' | Locale; label: string; hint?: string }[] = [
@@ -89,9 +93,9 @@ export function SettingsSheet({ open, onOpenChange, clock }: { open: boolean; on
         </Section>
 
         <Section title={t('settings.show')}>
-          <Switch label={t('settings.transliteration')} checked={show.transliteration} onCheckedChange={(v) => update({ transliteration: v })} />
-          <Switch label={t('settings.translation')} checked={show.translation} onCheckedChange={(v) => update({ translation: v })} />
-          <Switch label={t('settings.arabic')} checked={show.arabic} onCheckedChange={(v) => update({ arabic: v })} />
+          <Switch label={t('settings.transliteration')} checked={show.transliteration} disabled={last('transliteration')} onCheckedChange={(v) => update({ transliteration: v })} />
+          <Switch label={t('settings.translation')} checked={show.translation} disabled={last('translation')} onCheckedChange={(v) => update({ translation: v })} />
+          <Switch label={t('settings.arabic')} checked={show.arabic} disabled={last('arabic')} onCheckedChange={(v) => update({ arabic: v })} />
         </Section>
 
         <Section title={t('settings.size')}>
@@ -167,7 +171,12 @@ export function SettingsSheet({ open, onOpenChange, clock }: { open: boolean; on
               </button>
             )}
           </div>
-          <p className="text-sm text-ink-faint">{t('settings.method', { method: methodLabel() })}</p>
+          {clock.locationError && (
+            <p role="status" className="text-sm text-amber-100/90">
+              {t(clock.locationError === 'denied' ? 'settings.locationDenied' : 'settings.locationFailed')}
+            </p>
+          )}
+          <p className="text-sm text-ink-faint">{t('settings.method', { method: methodLabel(undefined, locale) })}</p>
         </Section>
 
         <div className="hidden flex-wrap gap-x-3 gap-y-1.5 border-t border-line pt-4 text-sm text-ink-muted md:flex">

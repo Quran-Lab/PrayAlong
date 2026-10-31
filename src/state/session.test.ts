@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { useSession } from './session'
+import { display, useSession } from './session'
 
 const s = () => useSession.getState()
 
@@ -43,5 +43,24 @@ describe('hands-free session flow', () => {
     s().choosePrayer('isha')
     s().autoSelectPrayer('maghrib')
     expect(s().prayer).toBe('isha')
+  })
+})
+
+describe('display', () => {
+  const base = useSession.getState().settings
+
+  it('follows the reader by default', () => {
+    expect(display({ ...base, arabic: null, transliteration: null, translation: null }, 'en')).toEqual({ arabic: false, transliteration: true, translation: true })
+    expect(display({ ...base, arabic: null, transliteration: null, translation: null }, 'ar')).toMatchObject({ arabic: true, transliteration: false })
+  })
+
+  it('never leaves a line with nothing to read after a language change', () => {
+    // Chosen in English (Arabic and meaning off), then Urdu, where pronunciation is off by default.
+    expect(display({ ...base, arabic: false, transliteration: null, translation: false }, 'ur')).toMatchObject({ arabic: true })
+    // Only a meaning, then Arabic (which has no meaning line).
+    expect(display({ ...base, arabic: false, transliteration: false, translation: true }, 'ar')).toMatchObject({ arabic: true })
+    expect(display({ ...base, arabic: false, transliteration: false, translation: false }, 'de')).toMatchObject({ transliteration: true })
+    // A real choice is kept.
+    expect(display({ ...base, arabic: false, transliteration: false, translation: true }, 'en')).toEqual({ arabic: false, transliteration: false, translation: true })
   })
 })

@@ -53,13 +53,14 @@ export function PostureDock({
       aria-label={t('dock.rakah')}
       // Compact until the prayer begins, then it widens as the controls arrive.
       className={cn(
-        'mx-auto flex w-full items-center gap-2.5 rounded-[1.75rem] border border-line bg-[color-mix(in_oklab,var(--room-2)_88%,transparent)] px-2.5 py-2.5 shadow-[0_24px_70px_-24px_rgba(0,0,0,0.75)] backdrop-blur-md sm:gap-5 sm:px-5 sm:py-3',
+        // On a phone on its side (short) it stays slim, leaving the words their room.
+        'mx-auto flex w-full items-center gap-2.5 rounded-[1.75rem] border border-line bg-[color-mix(in_oklab,var(--room-2)_88%,transparent)] px-2.5 py-2.5 shadow-[0_24px_70px_-24px_rgba(0,0,0,0.75)] backdrop-blur-md sm:gap-5 sm:px-5 sm:py-3 short:py-1.5',
         phase === 'ready' ? 'max-w-[42rem]' : 'max-w-[60rem]',
       )}
     >
       {/* Rak'ah: a ring that fills over the whole prayer, the number inside. */}
       <div className="flex shrink-0 items-center gap-3">
-        <div className="relative grid size-12 place-items-center sm:size-14">
+        <div className="relative grid size-12 place-items-center sm:size-14 short:size-11">
           <svg viewBox="0 0 48 48" className="absolute inset-0 -rotate-90" aria-hidden>
             <circle cx="24" cy="24" r="21" fill="none" stroke="rgb(255 255 255 / 0.08)" strokeWidth="3.5" />
             <motion.circle
@@ -86,7 +87,7 @@ export function PostureDock({
       </div>
 
       {/* This rak'ah's movements. */}
-      <ol className="flex min-w-0 flex-1 items-end gap-1 sm:gap-1.5">
+      <ol className="@container flex min-w-0 flex-1 items-end gap-1 sm:gap-1.5">
         {inRakah.map((seg) => {
           const active = praying && index >= seg.start && index < seg.end
           const done = phase === 'complete' || (praying && index >= seg.end)
@@ -96,10 +97,12 @@ export function PostureDock({
           return (
             <li
               key={`${seg.rakah}-${seg.start}`}
-              className={cn('min-w-0 transition-[flex-grow] duration-500', active && 'sm:min-w-max')}
-              // The current movement makes room for its name.
+              // Never narrower than its icon: a rak'ah's movements (eight at most) fit side by side even on a 360 px phone.
+              className={cn('transition-[flex-grow] duration-500', active ? 'min-w-8 sm:min-w-9' : 'min-w-[1.125rem] sm:min-w-7')}
+              // The current movement makes room for its name: it starts at its full width and is the
+              // only one that gives way when the dock is narrow (its name then ends in an ellipsis).
               style={{
-                flex: `${weight(seg) / total + (active ? 0.35 : 0)} 1 0%`,
+                flex: `${weight(seg) / total} 1 ${active ? 'auto' : '0%'}`,
               }}
             >
               <Tooltip
@@ -118,13 +121,14 @@ export function PostureDock({
                 >
                   <span
                     className={cn(
-                      'flex items-center gap-1.5 transition-colors duration-300',
+                      'flex max-w-full min-w-0 items-center gap-1.5 transition-colors duration-300',
                       active ? 'text-mint' : done ? 'text-ink-soft' : 'text-ink-muted group-hover:text-ink-soft',
                     )}
                   >
-                    <PostureIcon posture={seg.posture} className={cn('shrink-0 transition-transform duration-300', active ? 'size-7 sm:size-8' : 'size-5 sm:size-6')} />
+                    <PostureIcon posture={seg.posture} className={cn('shrink-0 transition-transform duration-300', active ? 'size-7 sm:size-8' : 'size-4 sm:size-6')} />
                     {active && (
-                      <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-base font-semibold whitespace-nowrap max-sm:hidden">
+                      // Named only where the track has room for a name (never on phones).
+                      <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="hidden min-w-0 truncate text-base font-semibold @min-[22rem]:inline">
                         {label}
                       </motion.span>
                     )}
@@ -168,7 +172,7 @@ export function PostureDock({
                 <button
                   onClick={() => onListen?.(false)}
                   aria-label={t('dock.pauseListening')}
-                  className="relative grid size-12 cursor-pointer place-items-center rounded-full bg-mint text-canvas shadow-[0_10px_30px_-10px_color-mix(in_oklab,var(--accent)_70%,transparent)] transition-transform duration-200 hover:brightness-110 active:scale-95 sm:size-14"
+                  className="relative grid size-12 cursor-pointer place-items-center rounded-full bg-mint text-canvas shadow-[0_10px_30px_-10px_color-mix(in_oklab,var(--accent)_70%,transparent)] transition-transform duration-200 hover:brightness-110 active:scale-95 sm:size-14 short:size-11"
                 >
                   {listenLoading ? (
                     <span className="absolute inset-1 animate-spin rounded-full border-2 border-canvas/30 border-t-canvas" aria-hidden />
@@ -188,13 +192,13 @@ export function PostureDock({
                 <button
                   onClick={() => onListen?.(true)}
                   aria-label={t('dock.resumeListening')}
-                  className="grid size-12 cursor-pointer place-items-center rounded-full border-2 border-mint/60 text-mint transition-transform duration-200 hover:bg-mint/10 active:scale-95 sm:size-14"
+                  className="grid size-12 cursor-pointer place-items-center rounded-full border-2 border-mint/60 text-mint transition-transform duration-200 hover:bg-mint/10 active:scale-95 sm:size-14 short:size-11"
                 >
                   <MicOff className="size-6" />
                 </button>
               </Tooltip>
             ) : leading ? (
-              <div className="flex h-12 items-center gap-2 rounded-full bg-mint/[0.1] px-4 text-sm font-medium text-mint max-sm:hidden">
+              <div className="flex h-12 items-center gap-2 rounded-full bg-mint/[0.1] px-4 text-sm font-medium text-mint max-sm:hidden short:h-11">
                 <span className="size-2 animate-breathe rounded-full bg-mint" />
                 {t('dock.following')}
               </div>
@@ -204,7 +208,7 @@ export function PostureDock({
                   onClick={() => setAutoplay(!autoplay)}
                   disabled={phase === 'complete'}
                   aria-label={autoplay ? t('dock.pause') : t('dock.guide')}
-                  className="grid size-12 cursor-pointer place-items-center rounded-full bg-mint sm:size-14 text-canvas shadow-[0_10px_30px_-10px_color-mix(in_oklab,var(--accent)_70%,transparent)] transition-transform duration-200 hover:brightness-110 active:scale-95 disabled:opacity-30"
+                  className="grid size-12 cursor-pointer place-items-center rounded-full bg-mint sm:size-14 short:size-11 text-canvas shadow-[0_10px_30px_-10px_color-mix(in_oklab,var(--accent)_70%,transparent)] transition-transform duration-200 hover:brightness-110 active:scale-95 disabled:opacity-30"
                 >
                   {autoplay ? <Pause className="size-6 fill-current" /> : <Play className="ms-0.5 size-6 fill-current" />}
                 </button>
@@ -227,7 +231,7 @@ function IconButton({ label, children, className, ...props }: React.ComponentPro
         {...props}
         aria-label={label}
         className={cn(
-          'flex size-12 cursor-pointer items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-white/[0.08] hover:text-ink focus:outline-none focus-visible:outline-2 disabled:pointer-events-none disabled:opacity-30',
+          'flex size-12 cursor-pointer items-center justify-center rounded-full short:size-11 text-ink-soft transition-colors hover:bg-white/[0.08] hover:text-ink focus:outline-none focus-visible:outline-2 disabled:pointer-events-none disabled:opacity-30',
           className,
         )}
       >

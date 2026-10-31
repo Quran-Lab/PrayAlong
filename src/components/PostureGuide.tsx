@@ -50,6 +50,7 @@ export function PostureGuide({ posture, character, teach }: { posture: PoseName;
   }, [posture, teach])
 
   const shot = shots?.[Math.min(tab, shots.length - 1)]
+  const tabs = (shots?.length ?? 0) > 1
   return (
     <AnimatePresence mode="wait" initial={false}>
       {shots && shot && (
@@ -62,8 +63,16 @@ export function PostureGuide({ posture, character, teach }: { posture: PoseName;
           className="mx-auto mt-[clamp(1rem,2.6vh,1.75rem)] flex w-full max-w-[38rem] justify-center px-3 sm:px-0"
         >
           {open ? (
-            <figure className="relative flex w-full items-stretch gap-3.5 rounded-[1.6rem] border border-mint/30 bg-white/[0.06] p-2.5 text-start sm:gap-4">
-              <div className="relative aspect-square w-[clamp(5.5rem,min(15vw,19vh),12rem)] shrink-0 overflow-hidden rounded-2xl bg-[#f7f5f2]">
+            // Two pictures (tashahhud): on a phone the tabs get a row of their own above the picture, clear
+            // of the close button; from sm up they sit over the caption, the pair centred beside the picture.
+            <figure
+              className={cn(
+                // Nastaliq's open lines (index.css) a little closer, so the card clears the dock in Urdu.
+                'relative grid w-full grid-cols-[auto_minmax(0,1fr)] gap-x-3.5 rounded-[1.6rem] [--ur-leading:1.6] border border-mint/30 bg-white/[0.06] p-2.5 text-start sm:gap-x-4',
+                tabs && 'gap-y-2 sm:grid-rows-[1fr_auto_auto_1fr] sm:gap-y-1.5',
+              )}
+            >
+              <div className={cn('relative aspect-square w-[clamp(5.5rem,min(15vw,19vh),12rem)] overflow-hidden rounded-2xl bg-[#f7f5f2]', tabs && 'row-start-2 sm:row-span-4 sm:row-start-1')}>
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.img
                     key={shot}
@@ -78,27 +87,30 @@ export function PostureGuide({ posture, character, teach }: { posture: PoseName;
                   />
                 </AnimatePresence>
               </div>
-              <figcaption className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 py-1 pe-8">
-                {shots.length > 1 ? (
-                  <div role="tablist" className="flex w-fit gap-0.5 rounded-full bg-white/[0.06] p-0.5">
-                    {shots.map((s, i) => (
-                      <button
-                        key={s}
-                        role="tab"
-                        aria-selected={i === tab}
-                        onClick={() => setTab(i)}
-                        className={cn(
-                          'cursor-pointer rounded-full px-3 py-1 text-[length:var(--text-body)] font-semibold whitespace-nowrap transition-colors low:px-2.5 low:text-[0.95rem]',
-                          i === tab ? 'bg-white/[0.12] text-ink' : 'text-ink-muted hover:text-ink-soft',
-                        )}
-                      >
-                        {t(TITLE[s])}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-[length:var(--text-body)] font-semibold text-mint">{t(TITLE[shot])}</span>
-                )}
+              {tabs && (
+                <div
+                  role="tablist"
+                  className="col-span-2 row-start-1 flex w-fit max-w-[calc(100%-2rem)] gap-0.5 rounded-full bg-white/[0.06] p-0.5 sm:col-span-1 sm:col-start-2 sm:row-start-2"
+                >
+                  {shots.map((s, i) => (
+                    <button
+                      key={s}
+                      role="tab"
+                      aria-selected={i === tab}
+                      onClick={() => setTab(i)}
+                      className={cn(
+                        // A label that still does not fit ends in an ellipsis rather than running off the card.
+                        'min-w-0 cursor-pointer truncate rounded-full px-3 py-1 text-[length:var(--text-body)] font-semibold transition-colors low:px-2 low:text-[0.9rem]',
+                        i === tab ? 'bg-white/[0.12] text-ink' : 'text-ink-muted hover:text-ink-soft',
+                      )}
+                    >
+                      {t(TITLE[s])}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <figcaption className={cn('flex min-w-0 flex-col justify-center gap-1.5', tabs ? 'col-start-2 row-start-2 py-1 sm:row-start-3 sm:py-0 sm:pe-8' : 'py-1 pe-8')}>
+                {!tabs && <span className="text-[length:var(--text-body)] font-semibold text-mint">{t(TITLE[shot])}</span>}
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.p
                     key={shot}

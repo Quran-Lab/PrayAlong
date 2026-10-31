@@ -206,7 +206,10 @@ export function Recitation({
   const al = ALIGN[locale]?.[step.recitationId]
 
   return (
-    <div className="relative mx-auto grid w-full max-w-[46rem] px-5 text-center" aria-live="polite">
+    // One column exactly as wide as the panel (minmax(0, 1fr)): an implicit auto column grows to the
+    // widest unbreakable content (the one-line "Next" preview), and popLayout then freezes that width
+    // onto the line leaving, pushing the words past the panel's edge.
+    <div className="relative mx-auto grid w-full max-w-[46rem] grid-cols-[minmax(0,1fr)] px-5 text-center" aria-live="polite">
       <AnimatePresence initial={false} mode="popLayout">
         <motion.div
           key={step.id}
@@ -215,7 +218,7 @@ export function Recitation({
           exit={{ ...leave, transition: { duration: 0.14 } }}
           // Start after most of the old line has gone, so two lines never sit on top of each other.
           transition={{ ...calm, delay: 0.08 }}
-          className="col-start-1 row-start-1 flex w-full flex-col items-center"
+          className="col-start-1 row-start-1 flex w-full min-w-0 flex-col items-center"
         >
           {/* Where we are, in plain words. */}
           <div className="mb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[length:var(--text-meta)] text-ink-muted low:mb-2">
