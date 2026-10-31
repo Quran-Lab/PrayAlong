@@ -73,7 +73,7 @@ export function PrayerChips({ clock, onRequestSwitch }: { clock: PrayerClock; on
                   <span className="hidden xl:inline">{sublabel(t, p.id, clock, false, locale)}</span>
                 </motion.span>
               )}
-              {!active && isNow && <span className="relative size-1.5 rounded-full bg-mint" aria-label="now" />}
+              {!active && isNow && <span className="relative size-1.5 rounded-full bg-mint" aria-label={t('prayer.now')} />}
             </button>
           </Tooltip>
         )

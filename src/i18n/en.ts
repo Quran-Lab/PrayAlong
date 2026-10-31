@@ -242,6 +242,8 @@ export const en = {
   'settings.approx': '{place} (approx.)',
   'settings.yourZone': 'Your time zone',
   'settings.useLocation': 'Use my location',
+  'settings.locationDenied': 'Location is blocked for this site. Allow it in your browser’s site settings to use it.',
+  'settings.locationFailed': 'Couldn’t find your location. Times follow your time zone for now.',
   'settings.locating': 'Locating…',
   'settings.method': 'Calculation: {method}',
   'settings.demo': 'Demo mode (no camera)',
@@ -258,6 +260,8 @@ export const en = {
   'switch.body': 'You’re in rak‘ah {r} of {from}. Switching starts {to} from the beginning.',
   'switch.keep': 'Keep praying',
   'switch.confirm': 'Switch',
+  'restart.title': 'Start over?',
+  'restart.body': 'You’re in rak‘ah {r} of {from}. Your place in it will be lost.',
 } as const
 
 export type MessageKey = keyof typeof en

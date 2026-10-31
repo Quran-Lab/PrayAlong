@@ -51,7 +51,8 @@ export function CompanionStage(props: StageProps) {
     <div className="absolute inset-0">
       {props.scenery !== false && <Scenery prayer={prayer} windowX={localAnchor} />}
     <Canvas
-      shadows={!props.lowPower}
+      // PCF: three.js no longer has the soft variant (it falls back to this with a warning).
+      shadows={props.lowPower ? false : 'percentage'}
       frameloop={props.lowPower ? 'demand' : 'always'}
       dpr={props.lowPower ? 1 : quality === 'high' ? [1, 2] : [1, 1.5]}
       gl={{ antialias: true, alpha: true, toneMapping: THREE.NeutralToneMapping, powerPreference: 'high-performance' }}

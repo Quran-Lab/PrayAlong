@@ -174,10 +174,12 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState & VoiceControl
       )
     }
 
+    let status: VoiceStatus = 'idle'
     const off = engine.on((e) => {
       core.driver.cfg.mode = optsRef.current.mode
       switch (e.type) {
         case 'status':
+          status = e.status
           // Listening starts now; the person may already be some way into the
           // prayer (the model became ready late): one resync is allowed.
           if (e.status === 'listening') core.armResync(performance.now())
@@ -233,6 +235,9 @@ export function useVoiceFollow(opts: UseVoiceOptions): VoiceState & VoiceControl
     })
     void engine.start(optsRef.current.engine)
     const timer = window.setInterval(() => {
+      // Listening failed (no mic, model unreachable): the app guides by time, or waits
+      // when paused; the driver's own timers must not keep moving the prayer.
+      if (status === 'error') return
       core.driver.cfg.mode = optsRef.current.mode
       core.tick(performance.now())
     }, 250)

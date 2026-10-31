@@ -1,6 +1,7 @@
 import { ResilientCamera, type CameraState } from './camera'
 import { SIG_SIZE, signature, type Signature } from './face-signature'
 import type { Detection } from './face-track'
+import { blockMediapipeTelemetry } from './no-telemetry'
 
 const base = import.meta.env.BASE_URL
 
@@ -98,6 +99,7 @@ export class FaceEngine {
   }
 
   private async load(): Promise<Detector> {
+    blockMediapipeTelemetry()
     const { FilesetResolver, FaceDetector } = await import('@mediapipe/tasks-vision')
     const fileset = await FilesetResolver.forVisionTasks(`${base}mediapipe`)
     return (await FaceDetector.createFromOptions(fileset, {

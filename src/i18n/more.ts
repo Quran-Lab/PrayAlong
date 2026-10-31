@@ -241,6 +241,8 @@ export const fr: Messages = {
   'settings.approx': '{place} (approx.)',
   'settings.yourZone': 'Votre fuseau horaire',
   'settings.useLocation': 'Utiliser ma position',
+  'settings.locationDenied': 'La localisation est bloquée pour ce site. Autorisez-la dans les paramètres du site de votre navigateur.',
+  'settings.locationFailed': 'Position introuvable. Les horaires suivent votre fuseau horaire pour l’instant.',
   'settings.locating': 'Localisation…',
   'settings.method': 'Calcul : {method}',
   'settings.demo': 'Mode démo (sans caméra)',
@@ -257,6 +259,8 @@ export const fr: Messages = {
   'switch.body': 'Vous êtes à la rak‘a {r} de {from}. Si vous changez, {to} commencera depuis le début.',
   'switch.keep': 'Continuer à prier',
   'switch.confirm': 'Changer',
+  'restart.title': 'Recommencer ?',
+  'restart.body': 'Vous êtes à la rak‘a {r} de {from}. Vous perdrez votre progression.',
 }
 
 export const es: Messages = {
@@ -499,6 +503,8 @@ export const es: Messages = {
   'settings.approx': '{place} (aprox.)',
   'settings.yourZone': 'Tu zona horaria',
   'settings.useLocation': 'Usar mi ubicación',
+  'settings.locationDenied': 'La ubicación está bloqueada para este sitio. Permítela en la configuración del sitio de tu navegador.',
+  'settings.locationFailed': 'No se pudo encontrar tu ubicación. Por ahora, los horarios siguen tu zona horaria.',
   'settings.locating': 'Buscando ubicación…',
   'settings.method': 'Cálculo: {method}',
   'settings.demo': 'Modo demo (sin cámara)',
@@ -515,6 +521,8 @@ export const es: Messages = {
   'switch.body': 'Estás en la rak‘a {r} de {from}. Si cambias, {to} empezará desde el principio.',
   'switch.keep': 'Seguir rezando',
   'switch.confirm': 'Cambiar',
+  'restart.title': '¿Empezar de nuevo?',
+  'restart.body': 'Estás en la rak‘a {r} de {from}. Perderás tu progreso.',
 }
 
 export const tr: Messages = {
@@ -757,6 +765,8 @@ export const tr: Messages = {
   'settings.approx': '{place} (yaklaşık)',
   'settings.yourZone': 'Saat diliminiz',
   'settings.useLocation': 'Konumumu kullan',
+  'settings.locationDenied': 'Bu site için konum engellendi. Tarayıcınızın site ayarlarından izin verin.',
+  'settings.locationFailed': 'Konumunuz bulunamadı. Vakitler şimdilik saat diliminize göre.',
   'settings.locating': 'Konum bulunuyor…',
   'settings.method': 'Hesaplama: {method}',
   'settings.demo': 'Demo modu (kamerasız)',
@@ -773,6 +783,8 @@ export const tr: Messages = {
   'switch.body': '{from} namazının {r}. rekâtındasınız. Geçerseniz {to} namazı baştan başlar.',
   'switch.keep': 'Namaza devam et',
   'switch.confirm': 'Geç',
+  'restart.title': 'Baştan başlansın mı?',
+  'restart.body': '{from} namazının {r}. rekâtındasınız. Kaldığınız yer kaybolacak.',
 }
 
 export const id: Messages = {
@@ -1015,6 +1027,8 @@ export const id: Messages = {
   'settings.approx': '{place} (perkiraan)',
   'settings.yourZone': 'Zona waktu Anda',
   'settings.useLocation': 'Gunakan lokasi saya',
+  'settings.locationDenied': 'Lokasi diblokir untuk situs ini. Izinkan di pengaturan situs pada browser Anda.',
+  'settings.locationFailed': 'Lokasi Anda tidak ditemukan. Untuk sementara, waktu salat mengikuti zona waktu Anda.',
   'settings.locating': 'Mencari lokasi…',
   'settings.method': 'Perhitungan: {method}',
   'settings.demo': 'Mode demo (tanpa kamera)',
@@ -1031,6 +1045,8 @@ export const id: Messages = {
   'switch.body': 'Anda sedang di rakaat ke-{r} salat {from}. Jika pindah, salat {to} dimulai dari awal.',
   'switch.keep': 'Lanjutkan salat',
   'switch.confirm': 'Pindah',
+  'restart.title': 'Mulai dari awal?',
+  'restart.body': 'Anda sedang di rakaat ke-{r} salat {from}. Posisi Anda saat ini akan hilang.',
 }
 
 export const nl: Messages = {
@@ -1273,6 +1289,8 @@ export const nl: Messages = {
   'settings.approx': '{place} (ongeveer)',
   'settings.yourZone': 'Je tijdzone',
   'settings.useLocation': 'Mijn locatie gebruiken',
+  'settings.locationDenied': 'Locatie is geblokkeerd voor deze site. Sta het toe in de site-instellingen van je browser.',
+  'settings.locationFailed': 'Je locatie is niet gevonden. De tijden volgen voorlopig je tijdzone.',
   'settings.locating': 'Locatie zoeken…',
   'settings.method': 'Berekening: {method}',
   'settings.demo': 'Demomodus (zonder camera)',
@@ -1289,6 +1307,8 @@ export const nl: Messages = {
   'switch.body': 'Je zit in rak‘a {r} van {from}. Als je overstapt, begint {to} weer vanaf het begin.',
   'switch.keep': 'Verder bidden',
   'switch.confirm': 'Overstappen',
+  'restart.title': 'Opnieuw beginnen?',
+  'restart.body': 'Je zit in rak‘a {r} van {from}. Je huidige plek gaat verloren.',
 }
 
 export const ur: Messages = {
@@ -1531,6 +1551,8 @@ export const ur: Messages = {
   'settings.approx': '{place} (تقریباً)',
   'settings.yourZone': 'آپ کا ٹائم زون',
   'settings.useLocation': 'میرا مقام استعمال کریں',
+  'settings.locationDenied': 'اس سائٹ کے لیے مقام کی اجازت بند ہے۔ براؤزر کی سائٹ سیٹنگز میں اجازت دیں۔',
+  'settings.locationFailed': 'آپ کا مقام نہیں مل سکا۔ فی الحال اوقات آپ کے ٹائم زون کے مطابق ہیں۔',
   'settings.locating': 'مقام معلوم کیا جا رہا ہے…',
   'settings.method': 'حساب: {method}',
   'settings.demo': 'ڈیمو موڈ (بغیر کیمرے کے)',
@@ -1547,6 +1569,8 @@ export const ur: Messages = {
   'switch.body': 'آپ {from} کی رکعت {r} میں ہیں۔ تبدیل کرنے پر {to} کی نماز شروع سے ہوگی۔',
   'switch.keep': 'نماز جاری رکھیں',
   'switch.confirm': 'تبدیل کریں',
+  'restart.title': 'دوبارہ شروع کریں؟',
+  'restart.body': 'آپ {from} کی رکعت {r} میں ہیں۔ آپ کی موجودہ جگہ ختم ہو جائے گی۔',
 }
 
 export const ar: Messages = {
@@ -1789,6 +1813,8 @@ export const ar: Messages = {
   'settings.approx': '{place} (تقريبي)',
   'settings.yourZone': 'منطقتك الزمنية',
   'settings.useLocation': 'استخدم موقعي',
+  'settings.locationDenied': 'تحديد الموقع محظور لهذه الصفحة. اسمح به من إعدادات المتصفح.',
+  'settings.locationFailed': 'تعذّر تحديد موقعك. المواقيت تتبع منطقتك الزمنية حاليًا.',
   'settings.locating': 'جارٍ تحديد الموقع…',
   'settings.method': 'طريقة الحساب: {method}',
   'settings.demo': 'الوضع التجريبي (بدون كاميرا)',
@@ -1805,4 +1831,6 @@ export const ar: Messages = {
   'switch.body': 'أنت في الركعة {r} من صلاة {from}. عند الانتقال تبدأ صلاة {to} من أولها.',
   'switch.keep': 'متابعة الصلاة',
   'switch.confirm': 'انتقال',
+  'restart.title': 'البدء من جديد؟',
+  'restart.body': 'أنت في الركعة {r} من صلاة {from}. سيضيع موضعك الحالي.',
 }

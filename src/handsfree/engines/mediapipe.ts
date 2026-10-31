@@ -1,5 +1,6 @@
 import type { Keypoint } from '../types'
 import type { PoseEngine } from './types'
+import { blockMediapipeTelemetry } from '../no-telemetry'
 
 /** BlazePose's 33 landmarks → COCO-17 order. */
 const COCO_FROM_BLAZE = [0, 2, 5, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28] as const
@@ -12,6 +13,7 @@ const base = import.meta.env.BASE_URL
  * runtime and model are self-hosted.
  */
 export async function createMediaPipeEngine(): Promise<PoseEngine> {
+  blockMediapipeTelemetry()
   const { FilesetResolver, PoseLandmarker } = await import('@mediapipe/tasks-vision')
   const fileset = await FilesetResolver.forVisionTasks(`${base}mediapipe`)
   const create = (delegate: 'GPU' | 'CPU') =>

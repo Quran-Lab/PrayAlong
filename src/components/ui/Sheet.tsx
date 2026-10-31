@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 import type { ReactNode } from 'react'
+import { useT } from '@/i18n'
 import { cn } from '@/lib/cn'
 
 /** Bottom sheet on phones, side panel on larger screens. */
@@ -19,6 +20,7 @@ export function Sheet({
   children: ReactNode
   className?: string
 }) {
+  const t = useT()
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -36,7 +38,7 @@ export function Sheet({
               <Dialog.Title className="text-lg font-semibold tracking-[-0.01em] text-ink">{title}</Dialog.Title>
               {description && <Dialog.Description className="mt-1 text-sm leading-relaxed text-ink-soft">{description}</Dialog.Description>}
             </div>
-            <Dialog.Close className="-me-1 flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-white/[0.07] hover:text-ink" aria-label="Close">
+            <Dialog.Close className="-me-1 flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-muted hover:bg-white/[0.07] hover:text-ink" aria-label={t('guide.close')}>
               <X className="size-[18px]" />
             </Dialog.Close>
           </div>

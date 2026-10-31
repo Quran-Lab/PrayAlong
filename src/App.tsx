@@ -60,12 +60,14 @@ export function App() {
   const wide = useMedia('(min-width: 1024px)')
   const wideLayout = useMedia('(min-width: 900px) and (min-aspect-ratio: 1/1)')
   const short = useMedia('(orientation: landscape) and (max-height: 540px)')
+  const narrow = useMedia('(max-width: 639px)')
   const reducedMotion = useReducedMotion()
   const character = CHARACTERS.find((c) => c.id === settings.characterId) ?? DEFAULT_CHARACTER
   const [stageReady, setStageReady] = useState(false)
   // The page's window follows where the companion is drawn (any language direction).
   const [anchorX, setAnchorX] = useState<number | null>(null)
-  const [pendingSwitch, setPendingSwitch] = useState<PrayerId | null>(null)
+  // A prayer to switch to, or 'restart' (the logo), waiting for a confirmation mid-prayer.
+  const [pendingSwitch, setPendingSwitch] = useState<PrayerId | 'restart' | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [facingMode] = useState<'user' | 'environment'>('user')
   const [demoAuto, setDemoAuto] = useState(false)
@@ -278,7 +280,7 @@ export function App() {
     } else setListen((v) => !v)
   }, [voiceOn, voice.status, setListen])
   const micNote = voiceOn && voice.status === 'error' ? (voice.error === 'mic-denied' || voice.error === 'mic-missing' || !voice.error ? t('media.mic.needed') : `${t(voice.error === 'unsupported' ? 'listen.unsupported' : 'listen.model')}. ${t('hf.status.fallback')}.`) : null
-  const note = micNote ?? (camNote ? t('media.cam.blocked') : handsFree && !demo && face.hint === 'no-face' ? t('media.cam.noFace') : null)
+  const note = useFlash(micNote, 8000) ?? (camNote ? t('media.cam.blocked') : handsFree && !demo && face.hint === 'no-face' ? t('media.cam.noFace') : null)
 
   // Deep link: /?prayer=maghrib opens that prayer.
   useEffect(() => {
@@ -306,6 +308,9 @@ export function App() {
   const appTimedMs = useStepTimer(demo ? following && (!hands.lost || hands.hold) : following && phase === 'praying' && cameraRule(sequence.steps, index) !== null, audioMs, voiceDriving)
   // In Listen mode you lead: no countdown on screen (the quiet timer fallback still runs underneath).
   const timedMs = voiceDriving ? null : appTimedMs
+
+  // Phones have no room for back/next buttons: swipe the text like a page.
+  const swipe = useSwipe(phase === 'praying', dir)
 
   // P toggles timed guidance whenever the dock offers it (listening is unavailable, nothing else leads).
   useKeyboard(toggleHandsFree, voice.status === 'error' && !(handsFree && following))
@@ -343,7 +348,12 @@ export function App() {
             <header className="relative z-20 flex h-16 shrink-0 items-center gap-3 px-4 sm:h-[4.5rem] sm:px-6 short:h-12">
               <div className="flex flex-1 items-center">
                 <button
-                  onClick={() => useSession.getState().restart()}
+                  onClick={() => {
+                    const s = useSession.getState()
+                    // Mid-prayer, ask first (as switching prayer does): the place would be lost.
+                    if (s.phase === 'praying' && s.index > 0) setPendingSwitch('restart')
+                    else s.restart()
+                  }}
                   aria-label={t('nav.home')}
                   className="cursor-pointer rounded-xl focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-4"
                 >
@@ -393,19 +403,25 @@ export function App() {
                   )}
                 </AnimatePresence>
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-canvas to-transparent wide:hidden" />
+                {/* Notes sit in a top corner; on phones that is the companion's face, so below it. */}
                 <div className="absolute end-3 top-3 z-10 sm:end-5 sm:top-4">
                   <AnimatePresence>
-                    {note && <MediaNote key={note} text={note} />}
+                    {note && !narrow && <MediaNote key={note} text={note} />}
                   </AnimatePresence>
                 </div>
-                <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center px-3">
+                <div className="absolute inset-x-0 bottom-3 z-10 flex flex-col items-center gap-2 px-3">
+                  <AnimatePresence>
+                    {note && narrow && <MediaNote key={note} text={note} />}
+                  </AnimatePresence>
                   <AnimatePresence>
                     {handsFree && demo && <DemoBar current={hands.pose} expected={nextPose} auto={demoAuto} onAct={actOut} onAuto={setDemoAuto} />}
                   </AnimatePresence>
                 </div>
               </div>
 
-              <section className="relative z-10 flex min-h-[34%] shrink-0 items-start justify-center pb-3 short:min-h-0 short:w-[52%] short:items-center-safe short:overflow-y-auto short:py-2 wide:min-h-0 wide:flex-1 wide:items-center-safe wide:overflow-y-auto wide:pe-[3vw] wide:ps-[1vw] wide:py-3">
+              <section
+                {...swipe}
+                className="relative z-10 flex min-h-[34%] shrink-0 items-start justify-center pb-3 short:min-h-0 short:w-[52%] short:items-center-safe short:overflow-y-auto short:py-2 wide:min-h-0 wide:flex-1 wide:items-center-safe wide:overflow-y-auto wide:pe-[3vw] wide:ps-[1vw] wide:py-3">
                 <AnimatePresence mode="wait">
                   {phase === 'ready' && <ReadyPanel key="ready" clock={clock} handsFree={handsFree} onHandsFree={toggleHandsFree} />}
                   {phase === 'praying' && (
@@ -429,7 +445,7 @@ export function App() {
 
             {/* Dock */}
             <footer className="relative z-10 shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6 short:pb-2">
-              <PostureDock following={following} listening={voiceOn && voice.status !== 'error'} listenLoading={voiceOn && voice.status === 'loading'} hearing={voiceDriving && voice.speaking} micUsable={voice.status !== 'error'} onListen={setListen} />
+              <PostureDock following={following && !(handsFree && !demo && face.hint === 'no-face')} listening={voiceOn && voice.status !== 'error'} listenLoading={voiceOn && voice.status === 'loading'} hearing={voiceDriving && voice.speaking} micUsable={voice.status !== 'error'} onListen={setListen} />
             </footer>
           </div>
 
@@ -473,15 +489,25 @@ function useKeyboard(toggleHandsFree: () => void, canGuide: boolean) {
   const guide = useRef(canGuide)
   guide.current = canGuide
   useEffect(() => {
+    // Whether focus last came from a click or tap (not Tab).
+    let byPointer = false
+    const onPointer = () => (byPointer = true)
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') byPointer = false
       if (e.metaKey || e.ctrlKey || e.altKey) return
       const el = e.target as HTMLElement
-      if (el.closest('input, textarea, [role="dialog"], [role="alertdialog"], [role="radiogroup"], [role="toolbar"]')) return
+      if (el.closest('input, textarea, select, [role="dialog"], [role="alertdialog"]')) return
       const s = useSession.getState()
       const rtl = document.documentElement.dir === 'rtl'
       const forward = rtl ? 'ArrowLeft' : 'ArrowRight'
       const back = rtl ? 'ArrowRight' : 'ArrowLeft'
-      if ((e.key === ' ' || e.key === 'Enter') && el.tagName === 'BUTTON') return // let the button handle it
+      const press = e.key === ' ' || e.key === 'Enter'
+      // A control reached with Tab keeps its keys. One that was only clicked or tapped must
+      // not be pressed again by Space or Enter ("or press Space" means the prayer): let go of it.
+      if (el.closest('[role="radiogroup"], [role="toolbar"]') || (press && el.closest('button, a[href]'))) {
+        if (!(press && byPointer)) return
+        el.blur()
+      }
       const moves = e.key === ' ' || e.key === 'Enter' || e.key === forward || e.key === back
       // A held key would race through the prayer: one press, one line.
       if (moves && e.repeat) return e.preventDefault()
@@ -497,32 +523,78 @@ function useKeyboard(toggleHandsFree: () => void, canGuide: boolean) {
         s.setAutoplay(!s.autoplay)
       }
     }
+    window.addEventListener('pointerdown', onPointer, true)
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointerdown', onPointer, true)
+      window.removeEventListener('keydown', onKey)
+    }
   }, [toggleHandsFree])
 }
 
-function SwitchPrayerDialog({ pending, onClose }: { pending: PrayerId | null; onClose: () => void }) {
+/** A horizontal swipe on a touch screen moves a line, like turning a page (mirrored right to left). */
+function useSwipe(enabled: boolean, dir: 'ltr' | 'rtl') {
+  const start = useRef<{ x: number; y: number; at: number } | null>(null)
+  return {
+    onTouchStart: (e: React.TouchEvent) => {
+      const p = e.touches[0]
+      // Event times, not handler times: a busy phone may run these late.
+      start.current = enabled && e.touches.length === 1 && p ? { x: p.clientX, y: p.clientY, at: e.timeStamp } : null
+    },
+    onTouchEnd: (e: React.TouchEvent) => {
+      const from = start.current
+      const p = e.changedTouches[0]
+      start.current = null
+      if (!from || !p || e.timeStamp - from.at > 1000) return
+      const dx = p.clientX - from.x
+      const dy = p.clientY - from.y
+      if (Math.abs(dx) < 60 || Math.abs(dx) < 1.5 * Math.abs(dy)) return
+      const s = useSession.getState()
+      if (s.phase !== 'praying') return
+      if (dir === 'rtl' ? dx > 0 : dx < 0) s.next()
+      else s.prev()
+    },
+  }
+}
+
+/** Shows `text` for `ms` after it appears (or changes), then hides it. */
+function useFlash(text: string | null, ms: number) {
+  const [shown, setShown] = useState(text)
+  useEffect(() => {
+    setShown(text)
+    if (!text) return
+    const id = setTimeout(() => setShown(null), ms)
+    return () => clearTimeout(id)
+  }, [text, ms])
+  return shown
+}
+
+function SwitchPrayerDialog({ pending, onClose }: { pending: PrayerId | 'restart' | null; onClose: () => void }) {
   const t = useT()
-  const { prayer, sequence, index, choosePrayer } = useSession()
+  const { prayer, sequence, index, choosePrayer, restart } = useSession()
   const rakah = sequence.steps[index]?.rakah ?? 1
-  const to = pending ? t(`prayer.${pending}`) : ''
+  // Keep the last request's text while the dialog animates closed.
+  const last = useRef(pending)
+  if (pending) last.current = pending
+  const shown = last.current
+  const restarting = shown === 'restart'
+  const to = shown && shown !== 'restart' ? t(`prayer.${shown}`) : ''
   return (
     <AlertDialog.Root open={pending !== null} onOpenChange={(open) => !open && onClose()}>
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="sheet-overlay fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
         <AlertDialog.Content className="fixed top-1/2 left-1/2 z-50 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 animate-pop rounded-2xl border border-line bg-raised p-5 shadow-2xl">
-          <AlertDialog.Title className="text-base font-semibold text-ink">{t('switch.title', { prayer: to })}</AlertDialog.Title>
+          <AlertDialog.Title className="text-base font-semibold text-ink">{restarting ? t('restart.title') : t('switch.title', { prayer: to })}</AlertDialog.Title>
           <AlertDialog.Description className="mt-1.5 text-sm leading-relaxed text-ink-soft">
-            {t('switch.body', { r: rakah, from: t(`prayer.${prayer}`), to })}
+            {restarting ? t('restart.body', { r: rakah, from: t(`prayer.${prayer}`) }) : t('switch.body', { r: rakah, from: t(`prayer.${prayer}`), to })}
           </AlertDialog.Description>
           <div className="mt-5 flex justify-end gap-2">
             <AlertDialog.Cancel asChild>
               <Button variant="quiet">{t('switch.keep')}</Button>
             </AlertDialog.Cancel>
             <AlertDialog.Action asChild>
-              <Button variant="primary" onClick={() => pending && choosePrayer(pending)}>
-                {t('switch.confirm')}
+              <Button variant="primary" onClick={() => (pending === 'restart' ? restart() : pending && choosePrayer(pending))}>
+                {restarting ? t('nav.home') : t('switch.confirm')}
               </Button>
             </AlertDialog.Action>
           </div>

@@ -239,6 +239,8 @@ export const de: Messages = {
   'settings.approx': '{place} (ungefähr)',
   'settings.yourZone': 'Deine Zeitzone',
   'settings.useLocation': 'Meinen Standort verwenden',
+  'settings.locationDenied': 'Der Standort ist für diese Seite blockiert. Erlaube ihn in den Website-Einstellungen deines Browsers.',
+  'settings.locationFailed': 'Standort nicht gefunden. Die Zeiten richten sich vorerst nach deiner Zeitzone.',
   'settings.locating': 'Standort wird ermittelt…',
   'settings.method': 'Berechnung: {method}',
   'settings.demo': 'Demomodus (ohne Kamera)',
@@ -255,4 +257,6 @@ export const de: Messages = {
   'switch.body': 'Du bist beim {from}-Gebet in der {r}. Rak‘a. Beim Wechsel beginnt {to} von vorn.',
   'switch.keep': 'Weiterbeten',
   'switch.confirm': 'Wechseln',
+  'restart.title': 'Von vorn beginnen?',
+  'restart.body': 'Du bist beim {from}-Gebet in der {r}. Rak‘a. Deine Stelle geht dabei verloren.',
 }

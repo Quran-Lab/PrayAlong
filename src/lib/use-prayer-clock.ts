@@ -11,6 +11,8 @@ export function usePrayerClock() {
   const [place, setPlace] = useState<Place>(() => loadSavedPlace() ?? estimateFromTimeZone())
   const [now, setNow] = useState(() => new Date())
   const [locating, setLocating] = useState(false)
+  /** Why the last "Use my location" failed, to say so instead of doing nothing. */
+  const [locationError, setLocationError] = useState<'denied' | 'unavailable' | null>(null)
   const autoSelect = useSession((s) => s.autoSelectPrayer)
 
   useEffect(() => {
@@ -36,16 +38,18 @@ export function usePrayerClock() {
 
   const useMyLocation = useCallback(async () => {
     setLocating(true)
+    setLocationError(null)
     try {
       setPlace(await requestDevicePlace())
-    } catch {
-      /* declined or unavailable — keep the time-zone estimate */
+    } catch (err) {
+      // Declined or unavailable: keep the time-zone estimate, and say why.
+      setLocationError((err as GeolocationPositionError | undefined)?.code === 1 ? 'denied' : 'unavailable')
     } finally {
       setLocating(false)
     }
   }, [])
 
-  return { place, detected, times, locating, useMyLocation }
+  return { place, detected, times, locating, locationError, useMyLocation }
 }
 
 export type PrayerClock = ReturnType<typeof usePrayerClock>

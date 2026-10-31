@@ -7,6 +7,7 @@
  */
 import type { FaceLandmarker, PoseLandmarker } from '@mediapipe/tasks-vision'
 import { eulerFromMatrix, LUMA_H, LUMA_W, type FaceObs, type Observation, type Point } from './observation'
+import { blockMediapipeTelemetry } from './no-telemetry'
 
 export type VisionIn =
   | {
@@ -49,6 +50,7 @@ const importUrl = new Function('u', 'return import(u)') as (u: string) => Promis
 
 async function init(msg: Extract<VisionIn, { type: 'init' }>) {
   try {
+    blockMediapipeTelemetry()
     const { FilesetResolver, PoseLandmarker, FaceLandmarker } = await import('@mediapipe/tasks-vision')
     // `true`: the ES-module build of the wasm loader (module workers can't importScripts).
     const fileset = await FilesetResolver.forVisionTasks(`${msg.base}mediapipe`, true)
