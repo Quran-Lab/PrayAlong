@@ -24,13 +24,14 @@ import { isFollowing } from '@/handsfree/types'
 import { useFaceFollow } from '@/handsfree/use-face-follow'
 import { useHandsFree } from '@/handsfree/use-hands-free'
 import { LOCALES, useLocale, useT } from '@/i18n'
-import { chime } from '@/lib/chime'
+import { chime, ding } from '@/lib/chime'
 import { useMedia, useReducedMotion } from '@/lib/use-media'
 import { usePrayerClock } from '@/lib/use-prayer-clock'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import type { PrayerId, Step } from '@/sequence/types'
 import { PACE_FACTOR, currentStep, useSession } from '@/state/session'
 import { optionalWords, useBurstFollow } from '@/voice/burst'
+import { RepetitionBell } from '@/voice/repetition-bell'
 import { useVoiceFollow } from '@/voice/use-voice' // [voice]
 import { prefetchVoiceModelWhenIdle } from '@/voice/engine' // [voice]
 
@@ -137,6 +138,32 @@ export function App() {
     followerDone: doneStep === index,
     log: (m) => localStorage.getItem('prayalong:voiceDebug') !== '0' && console.log(`%c${m}`, 'color:#e0a050'),
   })
+  // A soft ding for each repetition of a repeated line (tasbih ×3) that is heard, so it
+  // can be counted without looking; the last one rings brighter. Counted per step, from
+  // the follower's own position (it may already be on the next line when the last
+  // repetition lands) and from the speech bursts of the current line.
+  const bell = useRef({ sequence, index, bell: new RepetitionBell() })
+  if (bell.current.sequence !== sequence) bell.current = { sequence, index, bell: new RepetitionBell() }
+  if (index < bell.current.index) bell.current.bell.rewind(index)
+  bell.current.index = index
+  // The burst count resets one render after the step changes: ignore it until it has.
+  const burstFor = useRef({ index: -1, fresh: false })
+  if (burstFor.current.index !== index) burstFor.current = { index, fresh: false }
+  if (burst.reps === 0) burstFor.current.fresh = true
+  const burstReps = burstFor.current.fresh ? burst.reps : 0
+  useEffect(() => {
+    if (!voiceDriving || phase !== 'praying' || !settings.sounds) return
+    const heard = (at: number, reps: number) => {
+      const rang = bell.current.bell.heard(at, reps, sequence.steps[at]?.repeat ?? 1)
+      if (!rang) return
+      if (localStorage.getItem('prayalong:voiceDebug') !== '0') console.log(`[voice] ding ${rang} step ${at} reps ${reps}`)
+      ding(rang === 'last', settings.volume)
+    }
+    if (voice.cursor) heard(voice.cursor.step, voice.cursor.repsDone)
+    heard(index, burstReps)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceDriving, phase, settings.sounds, voice.cursor?.step, voice.cursor?.repsDone, burstReps, index])
+
   // The follower counts the optional basmala before a surah as words of its first verse.
   const skip = optionalWords(sequence.steps[index]?.recitationId ?? '')
   // Listen mode: when a line is finished and the next begins, keep the finished line on
