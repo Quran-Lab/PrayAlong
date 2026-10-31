@@ -80,7 +80,11 @@ export class FaceEngine {
     this.cb.onStatus('starting')
     const model = this.load()
     await this.camera.start()
-    if (this.stopped || this.status === 'denied' || this.status === 'no-camera') return
+    if (this.stopped || this.status === 'denied' || this.status === 'no-camera') {
+      // No camera to watch: let the detector that was loading meanwhile go.
+      model.then((d) => d.close(), () => {})
+      return
+    }
     try {
       this.detector = await model
     } catch (err) {

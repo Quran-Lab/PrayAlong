@@ -69,7 +69,8 @@ export interface DetectedPrayer {
   endsAt: Date
 }
 
-const DAY = 24 * 60 * 60 * 1000
+/** Noon on the calendar day `days` away (24 h steps go wrong on daylight-saving days). */
+const dayFrom = (date: Date, days: number) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + days, 12)
 
 /** The prayer the user most likely wants to pray right now. */
 export function detectPrayer(place: Place, now = new Date(), zone?: string): DetectedPrayer {
@@ -77,8 +78,10 @@ export function detectPrayer(place: Place, now = new Date(), zone?: string): Det
   const at = now.getTime()
 
   if (at < today.fajr.getTime()) {
+    const yesterday = timesFor(place, dayFrom(now, -1), zone)
+    // Summer far north or west, Isha can begin after midnight: until it does, it is still Maghrib.
+    if (at < yesterday.isha.getTime()) return { id: 'maghrib', status: 'now', startsAt: yesterday.maghrib, endsAt: yesterday.isha }
     // After midnight, before Fajr: last night's Isha is still on.
-    const yesterday = timesFor(place, new Date(at - DAY), zone)
     return { id: 'isha', status: 'now', startsAt: yesterday.isha, endsAt: today.fajr }
   }
   if (at < today.sunrise.getTime()) return { id: 'fajr', status: 'now', startsAt: today.fajr, endsAt: today.sunrise }
@@ -86,7 +89,7 @@ export function detectPrayer(place: Place, now = new Date(), zone?: string): Det
   if (at < today.asr.getTime()) return { id: 'dhuhr', status: 'now', startsAt: today.dhuhr, endsAt: today.asr }
   if (at < today.maghrib.getTime()) return { id: 'asr', status: 'now', startsAt: today.asr, endsAt: today.maghrib }
   if (at < today.isha.getTime()) return { id: 'maghrib', status: 'now', startsAt: today.maghrib, endsAt: today.isha }
-  const tomorrow = timesFor(place, new Date(at + DAY), zone)
+  const tomorrow = timesFor(place, dayFrom(now, 1), zone)
   return { id: 'isha', status: 'now', startsAt: today.isha, endsAt: tomorrow.fajr }
 }
 

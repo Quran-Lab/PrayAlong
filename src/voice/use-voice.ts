@@ -105,7 +105,7 @@ export function toEvidence(e: FollowerEvent, now: number): Evidence {
  * what line it expected and where the follower is. On while Listen mode is
  * in beta; turn off with localStorage.setItem('prayalong:voiceDebug', '0').
  */
-function voiceDebug() {
+export function voiceDebug() {
   try {
     return localStorage.getItem('prayalong:voiceDebug') !== '0'
   } catch {

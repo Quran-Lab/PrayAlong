@@ -30,9 +30,9 @@ import { usePrayerClock } from '@/lib/use-prayer-clock'
 import { useWakeLock } from '@/lib/use-wake-lock'
 import type { PrayerId, Step } from '@/sequence/types'
 import { PACE_FACTOR, currentStep, useSession } from '@/state/session'
-import { optionalWords, useBurstFollow } from '@/voice/burst'
+import { useBurstFollow } from '@/voice/burst'
 import { RepetitionBell } from '@/voice/repetition-bell'
-import { useVoiceFollow } from '@/voice/use-voice' // [voice]
+import { useVoiceFollow, voiceDebug } from '@/voice/use-voice' // [voice]
 import { prefetchVoiceModelWhenIdle } from '@/voice/engine' // [voice]
 
 // The 3D stack is the heaviest part of the app; let the UI paint first.
@@ -124,6 +124,14 @@ export function App() {
     onEvidence: (e) => (e.kind === 'takbir' || e.kind === 'tasmi' || e.kind === 'salam') && hands.addEvidence({ kind: e.kind, confidence: e.confidence, at: e.at }),
   })
   const voiceDriving = voiceOn && voice.status === 'listening'
+  // A finished line only counts on its own step: going back to it (or a new prayer)
+  // must not move on by itself as if it had just been heard again.
+  const lastIndex = useRef(index)
+  useEffect(() => {
+    if (index < lastIndex.current) setDoneStep(-1)
+    lastIndex.current = index
+  }, [index])
+  useEffect(() => setDoneStep(-1), [sequence])
   // [voice] Load the speech model while the page is idle (and again after listening
   // stops), so Listen is ready at once and nothing said after Begin is lost to loading.
   useEffect(() => (voiceOn ? undefined : prefetchVoiceModelWhenIdle()), [voiceOn])
@@ -136,7 +144,7 @@ export function App() {
     speaking: voice.speaking,
     follower: onStep ? { wordIndex: onStep.wordIndex, repsDone: onStep.repsDone } : null,
     followerDone: doneStep === index,
-    log: (m) => localStorage.getItem('prayalong:voiceDebug') !== '0' && console.log(`%c${m}`, 'color:#e0a050'),
+    log: (m) => voiceDebug() && console.log(`%c${m}`, 'color:#e0a050'),
   })
   // A soft ding for each repetition of a repeated line (tasbih ×3) that is heard, so it
   // can be counted without looking; the last one rings brighter. Counted per step, from
@@ -156,7 +164,7 @@ export function App() {
     const heard = (at: number, reps: number) => {
       const rang = bell.current.bell.heard(at, reps, sequence.steps[at]?.repeat ?? 1)
       if (!rang) return
-      if (localStorage.getItem('prayalong:voiceDebug') !== '0') console.log(`[voice] ding ${rang} step ${at} reps ${reps}`)
+      if (voiceDebug()) console.log(`[voice] ding ${rang} step ${at} reps ${reps}`)
       ding(rang === 'last', settings.volume)
     }
     if (voice.cursor) heard(voice.cursor.step, voice.cursor.repsDone)
@@ -164,8 +172,6 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [voiceDriving, phase, settings.sounds, voice.cursor?.step, voice.cursor?.repsDone, burstReps, index])
 
-  // The follower counts the optional basmala before a surah as words of its first verse.
-  const skip = optionalWords(sequence.steps[index]?.recitationId ?? '')
   // Listen mode: when a line is finished and the next begins, keep the finished line on
   // screen fully green for a moment, so the last word is seen as said.
   const [shownIndex, setShownIndex] = useState(index)
@@ -188,7 +194,8 @@ export function App() {
     setShownIndex(index)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, voiceDriving])
-  const held = shownIndex !== index && phase === 'praying'
+  // Only while listening, and only for a line that was said (not skipped by hand).
+  const held = voiceDriving && phase === 'praying' && index === shownIndex + 1 && performance.now() - lastInputAt.current > 400
   // Listen mode safety net: the last word of the line is done (fill 1) but the follower has
   // made no progress for a while (e.g. a repeated tasbih it fails to count): move on.
   const cursorKey = voice.cursor ? `${voice.cursor.step}:${voice.cursor.rep}:${voice.cursor.wordIndex}:${voice.cursor.fill >= 0.99}` : ''
@@ -202,7 +209,7 @@ export function App() {
     const at = index
     const id = setTimeout(() => {
       if (useSession.getState().index === at) {
-        if (localStorage.getItem('prayalong:voiceDebug') !== '0') console.log('[voice] stuck after last word, advancing', at)
+        if (voiceDebug()) console.log('[voice] stuck after last word, advancing', at)
         useSession.getState().next()
       }
     }, STUCK_MS)
@@ -221,7 +228,7 @@ export function App() {
     const at = index
     const id = setTimeout(() => {
       if (useSession.getState().index === at) {
-        if (localStorage.getItem('prayalong:voiceDebug') !== '0') console.log('[voice] movement fallback advance after line done', at)
+        if (voiceDebug()) console.log('[voice] movement fallback advance after line done', at)
         useSession.getState().next()
       }
     }, MOVE_GRACE_MS)
@@ -257,9 +264,12 @@ export function App() {
     s.setHandsFree(false)
     if (wasTimed) s.setAutoplay(true)
     setCamNote(true)
+  }, [face.status, handsFree, demo])
+  useEffect(() => {
+    if (!camNote) return
     const id = setTimeout(() => setCamNote(false), 6000)
     return () => clearTimeout(id)
-  }, [face.status, handsFree, demo])
+  }, [camNote])
   // The microphone toggle; tapping it after an error tries again.
   const toggleMic = useCallback(() => {
     if (voiceOn && voice.status === 'error') {
@@ -273,7 +283,7 @@ export function App() {
   // Deep link: /?prayer=maghrib opens that prayer.
   useEffect(() => {
     const p = new URLSearchParams(location.search).get('prayer') as PrayerId | null
-    if (p && p in PRAYER_BY_ID) useSession.getState().choosePrayer(p)
+    if (p && Object.hasOwn(PRAYER_BY_ID, p)) useSession.getState().choosePrayer(p)
   }, [])
 
   // Language and direction for the whole document.
@@ -289,7 +299,7 @@ export function App() {
   }, [prayer])
 
   useWakeLock(phase === 'praying')
-  const { speaking, audioMs } = useCompanionAudio({ phase, step, next: sequence.steps[index + 1], prayer, voice: character.id, locale, settings, listen: voiceOn })
+  const { speaking, audioMs } = useCompanionAudio({ phase, step, next: sequence.steps[index + 1], prayer, voice: character.id, locale, settings, listen: voiceOn && voice.status !== 'error' })
   // [hands-free] The body decides when to change posture. If the camera has
   // lost the person for 8 s, time takes over again, except in sujud (a head
   // too close to the lens is normal there): hold.
@@ -297,7 +307,8 @@ export function App() {
   // In Listen mode you lead: no countdown on screen (the quiet timer fallback still runs underneath).
   const timedMs = voiceDriving ? null : appTimedMs
 
-  useKeyboard(toggleHandsFree)
+  // P toggles timed guidance whenever the dock offers it (listening is unavailable, nothing else leads).
+  useKeyboard(toggleHandsFree, voice.status === 'error' && !(handsFree && following))
 
   // A soft chime when PrayAlong follows a movement, so nobody has to look up.
   const posture: PoseName = phase === 'ready' ? 'rest' : phase === 'complete' ? 'jalsah' : step.posture
@@ -400,9 +411,10 @@ export function App() {
                   {phase === 'praying' && (
                     <motion.div key="praying" className="w-full" exit={{ opacity: 0 }}>
                       <Recitation step={held ? sequence.steps[shownIndex]! : step} next={sequence.steps[shownIndex + 1]} timedMs={timedMs} distance={following} speaking={speaking}
-                        heardWord={held ? 9999 : onStep ? (onStep.wordIndex < skip ? -1 : onStep.wordIndex - skip) : null}
+                        // The follower's word index counts the optional basmala before a surah, as the Arabic on screen does.
+                        heardWord={held ? 9999 : onStep ? onStep.wordIndex : null}
                         heardRep={held ? sequence.steps[shownIndex]!.repeat : voiceDriving ? Math.max(onStep?.repsDone ?? 0, burst.reps) : null}
-                        heardFill={held ? 1 : onStep ? (onStep.wordIndex < skip ? 0 : onStep.fill) : null}
+                        heardFill={held ? 1 : onStep ? onStep.fill : null}
                         listening={voiceDriving}
                         quiet={settings.mode === 'pray'}
                       />
@@ -457,17 +469,22 @@ function useStepTimer(following: boolean, audioMs: number | null, voiceDriving =
   return timed && !waitForBody ? ms : null
 }
 
-function useKeyboard(toggleHandsFree: () => void) {
+function useKeyboard(toggleHandsFree: () => void, canGuide: boolean) {
+  const guide = useRef(canGuide)
+  guide.current = canGuide
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
       const el = e.target as HTMLElement
-      if (el.closest('input, textarea, [role="dialog"], [role="radiogroup"], [role="toolbar"]')) return
+      if (el.closest('input, textarea, [role="dialog"], [role="alertdialog"], [role="radiogroup"], [role="toolbar"]')) return
       const s = useSession.getState()
       const rtl = document.documentElement.dir === 'rtl'
       const forward = rtl ? 'ArrowLeft' : 'ArrowRight'
       const back = rtl ? 'ArrowRight' : 'ArrowLeft'
       if ((e.key === ' ' || e.key === 'Enter') && el.tagName === 'BUTTON') return // let the button handle it
+      const moves = e.key === ' ' || e.key === 'Enter' || e.key === forward || e.key === back
+      // A held key would race through the prayer: one press, one line.
+      if (moves && e.repeat) return e.preventDefault()
       if (e.key === ' ' || e.key === forward || e.key === 'Enter') {
         e.preventDefault()
         s.next()
@@ -476,6 +493,8 @@ function useKeyboard(toggleHandsFree: () => void) {
         s.prev()
       } else if (e.key === 'h' || e.key === 'H') {
         toggleHandsFree()
+      } else if ((e.key === 'p' || e.key === 'P') && guide.current && s.phase !== 'complete') {
+        s.setAutoplay(!s.autoplay)
       }
     }
     window.addEventListener('keydown', onKey)

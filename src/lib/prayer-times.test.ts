@@ -25,6 +25,22 @@ describe('detectPrayer', () => {
     expect(detectPrayer(mecca, plus(t.fajr, -30))).toMatchObject({ id: 'isha', status: 'now' })
   })
 
+  it('keeps Maghrib on after midnight when Isha comes later (Galicia in June)', () => {
+    const tz = process.env.TZ
+    process.env.TZ = 'Europe/Madrid'
+    try {
+      const santiago: Place = { latitude: 42.88, longitude: -8.54, source: 'gps' }
+      const day = timesFor(santiago, new Date(2026, 5, 21, 12), 'Europe/Madrid')
+      expect(day.isha.getDate()).toBe(22) // Isha starts after midnight
+      const night = new Date(2026, 5, 22, 0, 5)
+      expect(night.getTime()).toBeLessThan(day.isha.getTime())
+      expect(detectPrayer(santiago, night, 'Europe/Madrid')).toMatchObject({ id: 'maghrib', status: 'now', startsAt: day.maghrib, endsAt: day.isha })
+      expect(detectPrayer(santiago, new Date(day.isha.getTime() + 60_000), 'Europe/Madrid')).toMatchObject({ id: 'isha', status: 'now', startsAt: day.isha })
+    } finally {
+      process.env.TZ = tz
+    }
+  })
+
   it('copes with Nordic summer nights', () => {
     const copenhagen: Place = { latitude: 55.68, longitude: 12.57, source: 'gps' }
     const times = timesFor(copenhagen, at('2026-06-21T12:00:00Z'))

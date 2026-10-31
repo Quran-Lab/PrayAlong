@@ -144,6 +144,9 @@ export class VoiceEngine {
   private worker: Worker | null = null
   private ctx: AudioContext | null = null
   private media: MediaStream | null = null
+  /** Bumped by every teardown: work started before it must not bring anything back to life. */
+  private generation = 0
+  private rejectReady: ((err: Error) => void) | null = null
   private node: AudioWorkletNode | null = null
   private listeners = new Set<(e: EngineEvent) => void>()
   private pending = new Map<number, () => void>()
@@ -172,19 +175,22 @@ export class VoiceEngine {
     const mic = opts.mic ?? true
     if (!voiceSupported() && mic) return this.setStatus('error', 'unsupported')
     this.setStatus('loading')
+    const generation = this.generation
     this.lagBase = Infinity
     this.lagSec = 0
     // Created inside the user's click so it is allowed to start.
     if (mic) this.ctx = new AudioContext({ latencyHint: 'interactive' })
     // The permission prompt goes up while the model downloads, unless asked not to.
-    const micPromise = mic && !opts.micAfterLoad ? this.openMic(opts) : Promise.resolve(null)
+    const micPromise = mic && !opts.micAfterLoad ? this.openMic(opts, generation) : Promise.resolve(null)
     try {
       await Promise.all([this.loadWorker(opts.modelBase ?? DEFAULT_MODEL_BASE), micPromise])
-      if (mic && opts.micAfterLoad) await this.openMic(opts)
+      if (mic && opts.micAfterLoad) await this.openMic(opts, generation)
       if (mic) await this.connectMic()
       this.micLeadSec = (performance.now() - this.micOpenedAt) / 1000
       this.setStatus('listening')
     } catch (err) {
+      // Stopped while starting (e.g. listening turned off at the permission prompt): stay idle.
+      if (generation !== this.generation) return
       const e = err as Error & { code?: VoiceError }
       this.teardown()
       this.setStatus('error', e.code ?? 'engine-failed', e.message)
@@ -201,6 +207,7 @@ export class VoiceEngine {
     this.worker = worker
     if (adopted?.progress) this.emit({ type: 'progress', ...adopted.progress })
     this.ready = new Promise<void>((resolve, reject) => {
+      this.rejectReady = reject
       if (adopted) adopted.ready.then(resolve, reject)
       worker.onmessage = (ev: MessageEvent) => {
         const m = ev.data
@@ -243,14 +250,17 @@ export class VoiceEngine {
       }
       worker.onerror = (ev) => reject(Object.assign(new Error(ev.message || 'worker failed'), { code: 'engine-failed' as VoiceError }))
     })
+    // Rejected by teardown when stopped mid-load; whoever awaits it handles that.
+    this.ready.catch(() => {})
     if (!adopted) worker.postMessage({ type: 'init', modelBase: base })
     return this.ready
   }
 
-  private async openMic(opts: VoiceEngineOptions) {
+  private async openMic(opts: VoiceEngineOptions, generation: number) {
+    let media: MediaStream
     try {
       this.micOpenedAt = performance.now()
-      this.media = await navigator.mediaDevices.getUserMedia({
+      media = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
           echoCancellation: opts.echoCancellation ?? true,
@@ -263,6 +273,12 @@ export class VoiceEngine {
       const code: VoiceError = name === 'NotFoundError' || name === 'OverconstrainedError' ? 'mic-missing' : 'mic-denied'
       throw Object.assign(new Error(name), { code })
     }
+    // Allowed only after listening was stopped: let the microphone go at once.
+    if (generation !== this.generation) {
+      for (const t of media.getTracks()) t.stop()
+      throw new Error('stopped')
+    }
+    this.media = media
   }
 
   private async connectMic() {
@@ -338,6 +354,10 @@ export class VoiceEngine {
   }
 
   private teardown() {
+    this.generation++
+    // A start still waiting on the model must not hang on a worker that is gone.
+    this.rejectReady?.(new Error('stopped'))
+    this.rejectReady = null
     this.node?.disconnect()
     this.node = null
     for (const t of this.media?.getTracks() ?? []) t.stop()
