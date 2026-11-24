@@ -127,7 +127,7 @@ Built by Quran Lab.
 
 ## Licence
 
-PrayAlong is released under the Quran-Lab No-Profit License, Version 1.2
-(NPL-1.2); see [LICENSE](LICENSE). Third-party components, fonts, models and
+PrayAlong is released under the Quran-Lab No-Profit License, Version 1.3
+(NPL-1.3); see [LICENSE](LICENSE). Third-party components, fonts, models and
 texts keep their own licences; they are listed in
 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
